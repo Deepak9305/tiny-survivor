@@ -1,5 +1,4 @@
 import { ArrowLeft } from 'lucide-react';
-import { GameLogo } from './GameLogo';
 
 interface ScreenHeaderProps {
   title: string;
@@ -10,9 +9,9 @@ interface ScreenHeaderProps {
 export function ScreenHeader({ title, onBack, right }: ScreenHeaderProps) {
   return (
     <header className="screen-header">
-      <button className="icon-button" onClick={onBack} aria-label="Back"><ArrowLeft size={21} /></button>
+      <button type="button" className="icon-button" onClick={onBack} aria-label="Back"><ArrowLeft size={21} /></button>
       <div className="screen-header__title">{title}</div>
-      {right ?? <GameLogo compact />}
+      {right ?? <span className="screen-header__spacer" aria-hidden="true" />}
     </header>
   );
 }

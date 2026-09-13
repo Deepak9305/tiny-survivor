@@ -127,7 +127,7 @@ export default function App() {
 
   switch (screen) {
     case 'home': return <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
-    case 'map': return <WorldMapScreen save={save} onBack={sharedBack} onNavigate={navigate} onSelect={(id) => { setSelectedStageId(id); setScreen('stage'); }} />;
+    case 'map': return <WorldMapScreen save={save} onBack={sharedBack} onSelect={(id) => { setSelectedStageId(id); setScreen('stage'); }} />;
     case 'stage': return <StageDetailScreen stageId={selectedStageId} save={save} onBack={() => setScreen('map')} onStart={() => startStage(selectedStageId)} />;
     case 'heroes': return <HeroesScreen save={save} onBack={sharedBack} onSelect={handleHeroSelect} />;
     case 'upgrades': return <UpgradesScreen save={save} onBack={sharedBack} onUpgrade={handleUpgrade} />;
