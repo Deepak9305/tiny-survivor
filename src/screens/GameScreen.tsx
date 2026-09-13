@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Flame, Heart, Pause, Play, RotateCw, Shield, Sparkles, Target, Zap } from 'lucide-react';
+import { Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
 import { getActiveGameScene, mountPhaserGame, destroyPhaserGame } from '../game/PhaserGame';
 import { AdService } from '../services/adService';
 import { GameOverScreen } from './GameOverScreen';
@@ -15,6 +15,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
   const [paused, setPaused] = useState(false);
   const [warning, setWarning] = useState(false);
+  const [tutorialVisible, setTutorialVisible] = useState(true);
   const [gameOver, setGameOver] = useState<RunResult | undefined>();
   const warningTimer = useRef<number | undefined>(undefined);
 
@@ -31,6 +32,11 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); destroyPhaserGame(); };
   }, [stage.id]);
 
+  useEffect(() => {
+    const tutorialTimer = window.setTimeout(() => setTutorialVisible(false), 4600);
+    return () => window.clearTimeout(tutorialTimer);
+  }, []);
+
   const chooseUpgrade = (choice: UpgradeChoice) => {
     setUpgradeChoices(undefined);
     getActiveGameScene()?.selectUpgrade(choice.id);
@@ -41,14 +47,26 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     if (earned && getActiveGameScene()?.revive()) setGameOver(undefined);
   };
 
+  const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
+  const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
+
   return <main className="game-screen"><div ref={gameRoot} className="phaser-root" />
     <div className="game-ui">
-      <div className="game-topbar"><div className="game-health"><div className="game-health__labels"><span><Heart size={14} fill="currentColor" /> HP</span><strong>{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</strong></div><div className="game-health__track"><i style={{ width: `${Math.max(0, snapshot.hp / snapshot.maxHp * 100)}%` }} /></div></div><div className="game-timer"><span>STAGE {stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div><button className="game-pause" onClick={() => { if (paused) getActiveGameScene()?.resumeRun(); else getActiveGameScene()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={17} fill="currentColor" /> : <Pause size={17} fill="currentColor" />}</button></div>
-      <div className="game-progress"><div className="game-progress__label"><span><Sparkles size={14} /> LV. {snapshot.level}</span><span>{snapshot.kills} defeated</span></div><div className="game-progress__track"><i style={{ width: `${Math.min(100, snapshot.xp / snapshot.xpRequired * 100)}%` }} /></div></div>
+      <div className="game-topbar">
+        <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
+          <div className="game-health__labels"><span><Heart size={14} fill="currentColor" /> HP</span><strong>{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</strong></div>
+          <div className="game-health__track"><i style={{ width: `${hpPercent}%` }} /></div>
+        </div>
+        <div className="game-timer"><span>{stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div>
+        <div className="game-actions">
+          <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}><Skull size={15} /><strong>{snapshot.kills.toLocaleString()}</strong></div>
+          <button className="game-pause" onClick={() => { if (paused) getActiveGameScene()?.resumeRun(); else getActiveGameScene()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
+        </div>
+      </div>
+      <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
       {snapshot.boss && <div className="boss-hud"><div><span><Shield size={13} /> {snapshot.boss.name}</span><strong>PHASE {snapshot.boss.phase}</strong></div><div className="boss-hud__track"><i style={{ width: `${Math.max(0, snapshot.boss.hp / snapshot.boss.maxHp * 100)}%` }} /></div></div>}
-      <div className="game-weapon-hud"><span><Zap size={14} /> Magic Bolt <b>LV {snapshot.weaponLevels['magic-bolt'] ?? 1}</b></span>{snapshot.weaponLevels['fire-orb'] && <span className="is-fire"><Flame size={14} /> Fire Orb <b>LV {snapshot.weaponLevels['fire-orb']}</b></span>}{snapshot.weaponLevels['orbiting-blades'] && <span><Target size={14} /> Blades <b>LV {snapshot.weaponLevels['orbiting-blades']}</b></span>}</div>
-      {warning && <div className="boss-warning"><span>BOSS APPROACHING</span><small>{stage.bossName} enters the graveyard</small></div>}
-      <div className="game-tip">DRAG TO MOVE · ATTACKS ARE AUTOMATIC</div>
+      {warning && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName} enters the graveyard</small></div>}
+      {tutorialVisible && <div className="game-tip">MOVE WITH JOYSTICK <span aria-hidden="true">&middot;</span> AUTO ATTACK</div>}
     </div>
     {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
     {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><button onClick={() => getActiveGameScene()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
@@ -57,7 +75,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
 }
 
 function LevelUpOverlay({ choices, onChoose }: { choices: UpgradeChoice[]; onChoose: (choice: UpgradeChoice) => void }) {
-  return <div className="level-up-overlay"><div className="level-up-panel"><div className="level-up-panel__spark">✦</div><span className="eyebrow">POWER SURGE</span><h1>Level Up!</h1><p>Choose 1 upgrade</p><div className="choice-grid">{choices.map((choice) => <button key={choice.id} className={`choice-card choice-card--${choice.rarity}`} onClick={() => onChoose(choice)}><span className="choice-card__icon">{getChoiceIcon(choice)}</span><span className="choice-card__rarity">{choice.rarity.toUpperCase()}</span><strong>{choice.title}</strong><small>LV {choice.level} → {Math.min(5, choice.level + 1)}</small><em>{choice.nextEffect}</em></button>)}</div><div className="level-up-panel__footer"><span>Run level {choices[0]?.level ? choices[0].level + 1 : 2}</span><button disabled>REROLL <small>WATCH AD</small></button></div></div></div>;
+  return <div className="level-up-overlay"><div className="level-up-panel"><Sparkles className="level-up-panel__spark" size={20} aria-hidden="true" /><h1>Level Up!</h1><p>Choose an Upgrade</p><div className="choice-grid">{choices.map((choice) => <button type="button" key={choice.id} className={`choice-card choice-card--${choice.rarity}`} onClick={() => onChoose(choice)} aria-label={`${choice.title}: ${choice.nextEffect}`}><span className="choice-card__icon">{getChoiceIcon(choice)}</span><span className="choice-card__content"><span className="choice-card__kind">{choice.kind === 'weapon' ? 'WEAPON' : 'PASSIVE'}</span><strong>{choice.title}</strong><small>Lv {choice.level} <span aria-hidden="true">→</span> {Math.min(5, choice.level + 1)}</small><em>{choice.nextEffect}</em></span><span className="choice-card__rarity">{choice.rarity.toUpperCase()}</span></button>)}</div><div className="level-up-panel__footer"><span>Choose one power</span><button type="button" disabled><Dices size={16} /><span>REROLL</span><small>WATCH AD</small></button></div></div></div>;
 }
 
 function getChoiceIcon(choice: UpgradeChoice) {
