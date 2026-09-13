@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
-import { getActiveGameScene, mountPhaserGame, destroyPhaserGame } from '../game/PhaserGame';
+import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
+import { VirtualJoystick } from '../components/VirtualJoystick';
 import { AdService } from '../services/adService';
 import { GameOverScreen } from './GameOverScreen';
 import type { GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
@@ -21,7 +22,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
 
   useEffect(() => {
     if (!gameRoot.current) return;
-    mountPhaserGame(gameRoot.current, stage, save, {
+    mountThreeGame(gameRoot.current, stage, save, {
       onSnapshot: setSnapshot,
       onLevelUp: setUpgradeChoices,
       onGameOver: (result) => { setGameOver(result); onGameOver(result); },
@@ -29,7 +30,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       onPaused: setPaused,
       onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
     });
-    return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); destroyPhaserGame(); };
+    return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); destroyThreeGame(); };
   }, [stage.id]);
 
   useEffect(() => {
@@ -39,18 +40,18 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
 
   const chooseUpgrade = (choice: UpgradeChoice) => {
     setUpgradeChoices(undefined);
-    getActiveGameScene()?.selectUpgrade(choice.id);
+    getActiveThreeGame()?.selectUpgrade(choice.id);
   };
 
   const revive = async () => {
     const earned = await AdService.showRewarded('revive');
-    if (earned && getActiveGameScene()?.revive()) setGameOver(undefined);
+    if (earned && getActiveThreeGame()?.revive()) setGameOver(undefined);
   };
 
   const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
   const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
 
-  return <main className="game-screen"><div ref={gameRoot} className="phaser-root" />
+  return <main className="game-screen"><div ref={gameRoot} className="three-root" />
     <div className="game-ui">
       <div className="game-topbar">
         <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
@@ -60,7 +61,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
         <div className="game-timer"><span>{stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div>
         <div className="game-actions">
           <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}><Skull size={15} /><strong>{snapshot.kills.toLocaleString()}</strong></div>
-          <button className="game-pause" onClick={() => { if (paused) getActiveGameScene()?.resumeRun(); else getActiveGameScene()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
+          <button className="game-pause" onClick={() => { if (paused) getActiveThreeGame()?.resumeRun(); else getActiveThreeGame()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
         </div>
       </div>
       <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
@@ -68,8 +69,9 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       {warning && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName} enters the graveyard</small></div>}
       {tutorialVisible && <div className="game-tip">MOVE WITH JOYSTICK <span aria-hidden="true">&middot;</span> AUTO ATTACK</div>}
     </div>
+    <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
     {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
-    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><button onClick={() => getActiveGameScene()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
+    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
     {gameOver && <GameOverScreen result={gameOver} onRevive={revive} onRetry={onRetry} onHome={onHome} />}
   </main>;
 }

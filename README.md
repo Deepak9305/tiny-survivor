@@ -1,6 +1,6 @@
 # Tiny Survivor
 
-An offline-first portrait survivor roguelite vertical slice built with React, Phaser 3, TypeScript, Vite, and Capacitor.
+An offline-first portrait survivor roguelite vertical slice built with React, Three.js, TypeScript, Vite, and Capacitor. Gameplay uses a perspective WebGL scene with procedural low-poly models and a React HUD.
 
 ## Run the web build
 

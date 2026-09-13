@@ -15,7 +15,7 @@ state: current Home, all-world map, Stage 1-1 detail, selected Shadow hero, perm
 - Upgrades uses two-column progression tiles with real saved levels and costs, five level pips, current/next effects, and disabled affordability states. `meta-upgrades-360.png` and `meta-upgrades-390.png` show the narrow and standard layouts.
 - Missions shows only saved mission progress or a zero-progress fallback, says “Refreshes daily,” and has no fabricated timer or weekly chest. `meta-missions-390.png` shows the empty-safe state.
 - Stage Clear uses actual RunResult time, kills, highest level, and coins; Next Stage is gold, Replay is blue, and Home is ghost. `meta-stage-clear-412.png` shows the revised result state.
-- Game Over uses deep crimson contrast, actual run stats, cyan revive, gold Retry, and ghost Home. `meta-game-over-390.png` was captured from a live Phaser run after the player died.
+- Game Over uses deep crimson contrast, actual run stats, cyan revive, gold Retry, and ghost Home. `meta-game-over-390.png` was captured from a live browser run after the player died.
 - Settings uses game-like toggle rows and an in-app reset confirmation instead of `window.confirm`. `meta-settings-reset-390.png` shows the modal state.
 
 ## Focused region comparison evidence
@@ -38,7 +38,7 @@ state: current Home, all-world map, Stage 1-1 detail, selected Shadow hero, perm
 
 No actionable P0, P1, or P2 findings remain.
 
-- P3 / intentional constraint: the concept sheets show bespoke character/enemy illustrations per screen. This pass reuses the existing key art and leaves Phaser entity rendering unchanged to honor the no-gameplay-change constraint. Knight/Ranger use vector rune/silhouette treatments because no corresponding art assets or hero portrait fields exist.
+- P3 / intentional constraint: the concept sheets show bespoke character/enemy illustrations per screen. The metadata UI continues to reuse the existing key art; active gameplay now uses the separate Three.js low-poly renderer so the simulation remains stable while the world gains real 3D depth. Knight/Ranger use vector rune/silhouette treatments because no corresponding art assets or hero portrait fields exist.
 - P3 / data safety note: Stage Clear intentionally shows the actual run coin reward and omits first-clear gems because the component receives `RunResult` but not the App-level `firstClear` flag. The App still awards `stage.firstClearReward` in the existing save flow; no fake gem amount is shown.
 - P3 / scope note: Endless Survival stays disabled and visibly marked “Coming soon” because the current `Screen` model has no real Endless screen. It is not routed to a normal stage detail screen or falsely enabled.
 - Evidence limit: the source concept images were available in the conversation but not as local files, so QA is visual and responsive rather than a normalized source-pixel diff. A full 180-second stage-clear run was not repeated; the Stage Clear component was rendered with a representative `RunResult` for visual validation.
@@ -66,7 +66,7 @@ No actionable P0, P1, or P2 findings remain.
 ## Verification
 
 - `npm run lint`: passed (`tsc --noEmit`)
-- `npm run build`: passed (`vite build`); only the existing Phaser bundle-size warning remains
+- `npm run build`: passed (`tsc --noEmit && vite build`) with the Three.js gameplay bundle included
 - Browser verification: passed in Brave at 360 x 800, 390 x 844, and 412 x 915; local page loaded and browser error checks were clear
 - Localhost fix preserved: Vite binds to `::`, so `localhost`, `127.0.0.1`, and IPv6 localhost resolve to the same dev server
 

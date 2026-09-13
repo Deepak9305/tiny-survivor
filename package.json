@@ -19,10 +19,11 @@
     "@capacitor/haptics": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.1",
+    "@types/three": "^0.186.0",
     "lucide-react": "^0.546.0",
-    "phaser": "^3.90.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
