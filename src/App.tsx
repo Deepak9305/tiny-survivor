@@ -31,13 +31,22 @@ function createDailyMissions(): MissionProgress[] {
   ];
 }
 
+function getInitialParams() {
+  if (typeof window === 'undefined') return { initialScreen: null, initialStage: null };
+  const params = new URLSearchParams(window.location.search);
+  return {
+    initialScreen: params.get('screen') as Screen | null,
+    initialStage: params.get('stage'),
+  };
+}
+
+const { initialScreen: INITIAL_SCREEN, initialStage: INITIAL_STAGE } = getInitialParams();
+
 export default function App() {
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const initialScreenParam = searchParams?.get('screen') as Screen | null;
-  const [screen, setScreen] = useState<Screen>(initialScreenParam || 'splash');
+  const [screen, setScreen] = useState<Screen>(INITIAL_SCREEN || 'splash');
   const [save, setSave] = useState<SaveData>(DEFAULT_SAVE);
   const [ready, setReady] = useState(false);
-  const [selectedStageId, setSelectedStageId] = useState(searchParams?.get('stage') || '1-1');
+  const [selectedStageId, setSelectedStageId] = useState(INITIAL_STAGE || '1-1');
   const [lastResult, setLastResult] = useState<RunResult | undefined>();
   const [selectedBestiaryId, setSelectedBestiaryId] = useState<string>('skeleton');
   const [runKey, setRunKey] = useState(0);
@@ -48,20 +57,20 @@ export default function App() {
       if (!mounted) return;
       const withDaily = loaded.missionDate === localDate() ? loaded : normalizeSave({ ...loaded, missionDate: localDate(), missions: createDailyMissions() });
       setSave(withDaily);
-      if (searchParams?.get('stage')) {
-        setSelectedStageId(searchParams.get('stage')!);
+      if (INITIAL_STAGE) {
+        setSelectedStageId(INITIAL_STAGE);
       } else {
         setSelectedStageId(getCurrentStage(withDaily).id);
       }
-      if (initialScreenParam) {
-        setScreen(initialScreenParam);
+      if (INITIAL_SCREEN) {
+        setScreen(INITIAL_SCREEN);
       }
       setReady(true);
       void saveGame(withDaily);
       void AdService.initialize();
     });
     return () => { mounted = false; };
-  }, [initialScreenParam, searchParams]);
+  }, []);
 
   const handleNativeBack = useCallback(() => {
     if (screen === 'game') {
@@ -163,7 +172,11 @@ export default function App() {
     setScreen(next);
   }, [save]);
 
-  if (screen === 'splash') return <SplashScreen ready={ready} onDone={() => setScreen('home')} />;
+  const handleSplashDone = useCallback(() => {
+    setScreen('home');
+  }, []);
+
+  if (screen === 'splash') return <SplashScreen ready={ready} onDone={handleSplashDone} />;
 
   const sharedBack = () => setScreen('home');
   const stage = getStage(selectedStageId);
