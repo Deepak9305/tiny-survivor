@@ -26,26 +26,28 @@ export class Enemy3D implements SpatialEntity {
   private slowUntil = 0;
   private phaseTime: number;
   private hitPulse = 0;
+  private healthBarLife = 0;
   private readonly baseVisualScale: number;
+  private readonly baseModelScale = 1.14;
 
-  constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, difficulty = 1) {
+  constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1) {
     const balance = ENEMY_BALANCE[kind];
     this.id = `enemy-${enemySequence += 1}`;
     this.kind = kind;
     this.elite = elite;
     this.radius = balance.radius * (elite ? 1.28 : 1);
-    this.maxHP = balance.hp * difficulty * (elite ? 2.35 : 1);
+    this.maxHP = balance.hp * hpMultiplier * (elite ? 2.35 : 1);
     this.hp = this.maxHP;
     this.baseSpeed = balance.speed * (elite ? 1.08 : 1);
-    this.contactDamage = balance.damage * difficulty * (elite ? 1.2 : 1);
+    this.contactDamage = balance.damage * damageMultiplier * (elite ? 1.2 : 1);
     this.xpValue = balance.xp * (elite ? 4 : 1);
     this.group = new THREE.Group();
     this.group.name = this.id;
-    this.model = createEnemyModel(kind, balance.color, resources);
+    this.model = createEnemyModel(kind, balance.color, resources, worldId);
     const visualScale = (this.radius * LOGICAL_SCALE) / 0.38;
     this.baseVisualScale = visualScale;
     this.phaseTime = (enemySequence * 1.618) % 5;
-    this.model.scale.setScalar(visualScale);
+    this.model.scale.setScalar(visualScale * this.baseModelScale);
     this.group.add(this.model);
     if (elite) addEliteAccent(this.model, resources);
     this.healthBar = createHealthBar(resources, elite);
@@ -85,9 +87,10 @@ export class Enemy3D implements SpatialEntity {
     const bob = this.kind === 'bat' || this.kind === 'ghost' ? Math.sin(this.phaseTime * 3.2) * 0.09 : Math.sin(this.phaseTime * 2.2) * 0.025;
     this.model.position.y = bob;
     this.hitPulse = Math.max(0, this.hitPulse - delta);
+    this.healthBarLife = Math.max(0, this.healthBarLife - delta);
     const elitePulse = this.elite ? 1 + Math.sin(this.phaseTime * 4) * 0.035 : 1;
     const hitScale = this.hitPulse > 0 ? 1 + Math.sin((1 - this.hitPulse / 0.16) * Math.PI) * 0.13 : 1;
-    this.model.scale.setScalar(this.baseVisualScale * elitePulse * hitScale);
+    this.model.scale.setScalar(this.baseVisualScale * this.baseModelScale * elitePulse * hitScale);
     this.model.rotation.y = Math.atan2(directionX, directionY);
     const parts = this.model.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
     if (this.kind === 'bat' && parts?.wings instanceof Array) {
@@ -120,16 +123,22 @@ export class Enemy3D implements SpatialEntity {
   damage(amount: number): boolean {
     this.hp = Math.max(0, this.hp - Math.max(1, amount));
     this.hitPulse = 0.16;
+    this.healthBarLife = 2.4;
     this.updateHealthBar();
     return this.hp <= 0;
   }
 
   private updateHealthBar(): void {
-    if (!this.elite && this.hp >= this.maxHP) {
+    if (!this.elite && (this.hp >= this.maxHP || this.healthBarLife <= 0)) {
       this.healthBar.visible = false;
       return;
     }
     this.healthBar.visible = true;
+    if (!this.elite) {
+      const materials = this.healthBar.children.flatMap((child) => child instanceof THREE.Mesh ? (Array.isArray(child.material) ? child.material : [child.material]) : []);
+      const fade = Math.min(1, this.healthBarLife / 0.45);
+      for (const material of materials) material.opacity = fade;
+    }
     this.healthFill.scale.x = Math.max(0.001, this.hp / this.maxHP);
     this.healthFill.position.x = -0.5 * (1 - this.hp / this.maxHP);
   }

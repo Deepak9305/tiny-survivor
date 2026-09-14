@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { StageDefinition } from '../../types';
+import { getWorldMapSignature, WORLD_LAYOUT_VALIDATION } from './WorldLayout';
 import { ARENA_DEPTH, ARENA_WIDTH, logicalToWorld } from '../core/coordinates';
 import { SharedResources } from '../core/SharedResources';
 import { biomeThemeFor, type BiomeTheme } from './BiomeTheme';
@@ -10,22 +11,26 @@ export function paletteFor(stage: StageDefinition): BiomeTheme { return biomeThe
 
 export function createArena(scene: THREE.Scene, stage: StageDefinition, resources: SharedResources, lowPerformanceMode: boolean): THREE.Group {
   const theme = biomeThemeFor(stage);
+  const mapSeed = stage.mapSeed;
   const arena = new THREE.Group();
   arena.name = 'arena';
 
-  const groundTexture = createGroundTexture(theme, stage.worldId * 104729 + stage.stageNumber * 9176);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, map: groundTexture, roughness: 1, metalness: 0 });
+  const groundTexture = createGroundTexture(theme, mapSeed);
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, map: groundTexture, roughness: 0.94, metalness: 0, emissive: theme.groundDeep, emissiveIntensity: 0.16 });
   const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH, ARENA_DEPTH), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.015;
   ground.receiveShadow = false;
   arena.add(ground);
 
-  addGroundDetails(arena, stage, resources, theme, lowPerformanceMode);
+  addGroundDetails(arena, mapSeed, resources, theme, lowPerformanceMode);
   addMoonAndHorizon(arena, resources, theme, stage.worldId);
   addBiomeProps(arena, stage, resources, theme, lowPerformanceMode);
   if (!lowPerformanceMode) addMist(arena, theme, stage.worldId);
   arena.userData.theme = theme;
+  arena.userData.mapSeed = mapSeed;
+  arena.userData.mapSignature = getWorldMapSignature(stage.worldId);
+  arena.userData.mapValidation = WORLD_LAYOUT_VALIDATION;
   scene.add(arena);
   return arena;
 }
@@ -71,8 +76,8 @@ function createGroundTexture(theme: BiomeTheme, seed: number): THREE.CanvasTextu
   return texture;
 }
 
-function addGroundDetails(parent: THREE.Group, stage: StageDefinition, resources: SharedResources, theme: BiomeTheme, lowPerformanceMode: boolean): void {
-  const rng = seeded(77 + stage.worldId * 193 + stage.stageNumber * 37);
+function addGroundDetails(parent: THREE.Group, mapSeed: number, resources: SharedResources, theme: BiomeTheme, lowPerformanceMode: boolean): void {
+  const rng = seeded(mapSeed + 77);
   const transforms: Transform[] = [];
   for (let index = 0; index < (lowPerformanceMode ? 16 : 28); index += 1) {
     const point = edgePoint(rng, 170);
@@ -157,7 +162,7 @@ function rgba(color: number, alpha: number): string {
 }
 
 function addBiomeProps(parent: THREE.Group, stage: StageDefinition, resources: SharedResources, theme: BiomeTheme, lowPerformanceMode: boolean): void {
-  const rng = seeded(stage.worldId * 104729 + stage.stageNumber * 9176);
+  const rng = seeded(stage.mapSeed);
   switch (stage.worldId) {
     case 1: addGraveyard(parent, resources, theme, rng, lowPerformanceMode); break;
     case 2: addHauntedForest(parent, resources, theme, rng, lowPerformanceMode); break;
@@ -170,15 +175,18 @@ function addGraveyard(parent: THREE.Group, resources: SharedResources, theme: Bi
   const markers: Transform[] = [];
   const crosses: Transform[] = [];
   const broken: Transform[] = [];
+  const caps: Transform[] = [];
   for (let index = 0; index < (low ? 18 : 30); index += 1) {
     const point = clusterPoint(rng, index, 185);
     const position = logicalToWorld(point.x, point.y);
     const scale = 0.65 + rng() * 0.38;
     markers.push({ position: new THREE.Vector3(position.x, 0.44 * scale, position.z), scale: new THREE.Vector3(0.42 * scale, 0.92 * scale, 0.18 * scale), rotationY: (rng() - 0.5) * 0.32 });
+    caps.push({ position: new THREE.Vector3(position.x, 0.9 * scale, position.z - 0.01), scale: new THREE.Vector3(0.26 * scale, 0.18 * scale, 0.16 * scale), rotationY: (rng() - 0.5) * 0.32 });
     if (index % 3 !== 1) crosses.push({ position: new THREE.Vector3(position.x, 0.84 * scale, position.z - 0.015), scale: new THREE.Vector3(0.62 * scale, 0.12 * scale, 0.2 * scale), rotationY: (rng() - 0.5) * 0.32 });
     if (index % 5 === 0) broken.push({ position: new THREE.Vector3(position.x + 0.16, 0.25, position.z + 0.04), scale: new THREE.Vector3(0.38, 0.16, 0.18), rotationZ: (rng() - 0.5) * 0.8 });
   }
   addInstances(parent, 'grave-markers', resources.box('grave-marker'), resources.standardMaterial('grave-marker', theme.prop, { roughness: 0.96 }), markers);
+  addInstances(parent, 'grave-marker-caps', resources.ico('grave-marker-cap'), resources.standardMaterial('grave-marker-cap', theme.propAlt, { roughness: 0.9 }), caps);
   addInstances(parent, 'grave-crossbars', resources.box('grave-crossbar'), resources.standardMaterial('grave-crossbar', theme.propAlt, { roughness: 0.94 }), crosses);
   addInstances(parent, 'broken-graves', resources.box('broken-grave'), resources.standardMaterial('broken-grave', theme.prop, { roughness: 1 }), broken);
 
@@ -200,8 +208,80 @@ function addGraveyard(parent: THREE.Group, resources: SharedResources, theme: Bi
   addInstances(parent, 'crypts', resources.box('crypt'), resources.standardMaterial('crypt', theme.propAlt, { roughness: 0.92 }), crypts);
   addInstances(parent, 'dead-trees', resources.cylinder('dead-tree'), resources.standardMaterial('dead-tree', 0x172735, { roughness: 1 }), trees);
   addInstances(parent, 'dead-tree-branches', resources.cylinder('dead-tree-branch'), resources.standardMaterial('dead-tree-branch', 0x1f3040, { roughness: 1 }), branches);
+  addGraveyardPath(parent, resources, theme, rng, low);
+  addForegroundGraves(parent, resources, theme, rng, low);
+  addForegroundTrees(parent, resources, low);
+  addLanterns(parent, resources, theme);
   addFence(parent, resources, theme, -ARENA_WIDTH * 0.46, ARENA_WIDTH * 0.46, -ARENA_DEPTH * 0.44, low);
   addCandles(parent, resources, theme, rng, low);
+}
+
+function addGraveyardPath(parent: THREE.Group, resources: SharedResources, theme: BiomeTheme, rng: () => number, low: boolean): void {
+  const stones: Transform[] = [];
+  for (let index = 0; index < (low ? 10 : 16); index += 1) {
+    const progress = index / 15;
+    const z = 5.8 - progress * 14.4;
+    const width = 0.62 + (1 - progress) * 0.32;
+    stones.push({
+      position: new THREE.Vector3((rng() - 0.5) * width, 0.055, z + (rng() - 0.5) * 0.34),
+      scale: new THREE.Vector3(0.9 + rng() * 0.55, 0.07 + rng() * 0.05, 0.52 + rng() * 0.38),
+      rotationY: (rng() - 0.5) * 0.24,
+    });
+  }
+  addInstances(parent, 'graveyard-path-stones', resources.ico('graveyard-path-stone'), resources.standardMaterial('graveyard-path-stone', theme.propAlt, { roughness: 0.98 }), stones);
+}
+
+function addForegroundGraves(parent: THREE.Group, resources: SharedResources, theme: BiomeTheme, rng: () => number, low: boolean): void {
+  const markers: Transform[] = [];
+  const caps: Transform[] = [];
+  const crosses: Transform[] = [];
+  const count = low ? 5 : 9;
+  for (let index = 0; index < count; index += 1) {
+    const side = index % 2 === 0 ? -1 : 1;
+    const x = side * (1.76 + rng() * 0.82);
+    const z = 1.2 + rng() * 7.4;
+    const scale = 0.92 + rng() * 0.3;
+    markers.push({ position: new THREE.Vector3(x, 0.48 * scale, z), scale: new THREE.Vector3(0.46 * scale, 1.04 * scale, 0.2 * scale), rotationY: (rng() - 0.5) * 0.25 });
+    caps.push({ position: new THREE.Vector3(x, 0.97 * scale, z - 0.015), scale: new THREE.Vector3(0.29 * scale, 0.2 * scale, 0.18 * scale), rotationY: (rng() - 0.5) * 0.25 });
+    if (index % 3 !== 1) crosses.push({ position: new THREE.Vector3(x, 0.93 * scale, z - 0.03), scale: new THREE.Vector3(0.66 * scale, 0.1 * scale, 0.18 * scale), rotationY: (rng() - 0.5) * 0.25 });
+  }
+  addInstances(parent, 'foreground-graves', resources.box('foreground-grave'), resources.standardMaterial('foreground-grave', theme.prop, { roughness: 0.94 }), markers);
+  addInstances(parent, 'foreground-grave-caps', resources.ico('foreground-grave-cap'), resources.standardMaterial('foreground-grave-cap', theme.propAlt, { roughness: 0.88 }), caps);
+  addInstances(parent, 'foreground-grave-crossbars', resources.box('foreground-grave-crossbar'), resources.standardMaterial('foreground-grave-crossbar', theme.propAlt, { roughness: 0.92 }), crosses);
+}
+
+function addForegroundTrees(parent: THREE.Group, resources: SharedResources, low: boolean): void {
+  const trunks: Transform[] = [];
+  const branches: Transform[] = [];
+  const count = low ? 3 : 5;
+  for (let index = 0; index < count; index += 1) {
+    const side = index % 2 === 0 ? -1 : 1;
+    const x = side * (3.8 + (index % 3) * 0.34);
+    const z = -0.9 + (index % 3) * 3.1;
+    const height = 2.8 + (index % 2) * 0.7;
+    trunks.push({ position: new THREE.Vector3(x, height / 2, z), scale: new THREE.Vector3(0.22, height, 0.2), rotationY: index * 0.7 });
+    branches.push({ position: new THREE.Vector3(x + side * 0.32, height * 0.68, z), scale: new THREE.Vector3(0.14, 1.1, 0.14), rotationY: side * (0.55 + (index % 2) * 0.26), rotationZ: side * 0.82 });
+    branches.push({ position: new THREE.Vector3(x - side * 0.28, height * 0.82, z + 0.04), scale: new THREE.Vector3(0.11, 0.86, 0.11), rotationY: -side * 0.74, rotationZ: -side * 0.72 });
+  }
+  const material = resources.standardMaterial('foreground-dead-tree', 0x0b1723, { roughness: 1 });
+  addInstances(parent, 'foreground-dead-trees', resources.cylinder('foreground-dead-tree'), material, trunks);
+  addInstances(parent, 'foreground-dead-branches', resources.cylinder('foreground-dead-branch'), material, branches);
+}
+
+function addLanterns(parent: THREE.Group, resources: SharedResources, theme: BiomeTheme): void {
+  const positions = [-2.85, 2.85].flatMap((x) => [new THREE.Vector3(x, 0.72, 2.6), new THREE.Vector3(x * 0.94, 0.72, 5.4)]);
+  const posts = positions.map((position) => ({ position, scale: new THREE.Vector3(0.1, 1.44, 0.1) }));
+  const lamps = positions.map((position) => ({ position: new THREE.Vector3(position.x, 1.5, position.z), scale: new THREE.Vector3(0.3, 0.42, 0.3) }));
+  addInstances(parent, 'graveyard-lantern-posts', resources.cylinder('graveyard-lantern-post'), resources.standardMaterial('graveyard-lantern-post', 0x263a4c, { roughness: 0.82, metalness: 0.28 }), posts);
+  addInstances(parent, 'graveyard-lanterns', resources.ico('graveyard-lantern'), resources.basicMaterial('graveyard-lantern', theme.warm), lamps);
+  const glowTexture = createGlowTexture(theme.warm);
+  for (const position of positions) {
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.position.set(position.x, 1.5, position.z + 0.02);
+    glow.scale.set(1.2, 1.2, 1);
+    parent.add(glow);
+  }
+  addRuinedArch(parent, resources, theme, 0, -8.4);
 }
 
 function addHauntedForest(parent: THREE.Group, resources: SharedResources, theme: BiomeTheme, rng: () => number, low: boolean): void {

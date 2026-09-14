@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
+import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { VirtualJoystick } from '../components/VirtualJoystick';
 import { AdService } from '../services/adService';
@@ -7,11 +7,11 @@ import { audioService } from '../services/audioService';
 import { GameOverScreen } from './GameOverScreen';
 import type { GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
 
-interface GameScreenProps { stage: StageDefinition; save: SaveData; onStageClear: (result: RunResult) => void; onGameOver: (result: RunResult) => void; onRetry: () => void; onHome: () => void }
+interface GameScreenProps { stage: StageDefinition; save: SaveData; onStageClear: (result: RunResult) => void; onGameOver: (result: RunResult) => void; onRetry: () => void; onHome: () => void; onBestiary: () => void }
 
 const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteKills: 0, level: 1, xp: 0, xpRequired: 82, hp: 100, maxHp: 100, coins: 0, aliveEnemies: 0, weaponLevels: { 'magic-bolt': 1 }, passiveLevels: {} };
 
-export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onHome }: GameScreenProps) {
+export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onHome, onBestiary }: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
@@ -86,12 +86,12 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       </div>
       <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
       {snapshot.boss && <div className="boss-hud"><div><span><Shield size={13} /> {snapshot.boss.name}</span><strong>PHASE {snapshot.boss.phase}</strong></div><div className="boss-hud__track"><i style={{ width: `${Math.max(0, snapshot.boss.hp / snapshot.boss.maxHp * 100)}%` }} /></div></div>}
-      {warning && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName} enters the graveyard</small></div>}
+      {warning && stage.bossStage && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName ?? 'World boss'} enters the arena</small></div>}
       {tutorialVisible && <div className="game-tip">MOVE WITH JOYSTICK <span aria-hidden="true">&middot;</span> AUTO ATTACK</div>}
     </div>
     <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
     {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
-    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
+    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__codex" onClick={onBestiary}><BookOpen size={16} /> MONSTER CODEX</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
     {gameOver && <GameOverScreen result={gameOver} onRevive={revive} reviveLoading={reviveLoading} reviveMessage={reviveMessage} onRetry={onRetry} onHome={onHome} />}
   </main>;
 }

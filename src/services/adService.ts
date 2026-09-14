@@ -23,8 +23,8 @@ export const AdService = {
     try {
       const { AdMob } = await import('@capacitor-community/admob');
       await AdMob.prepareRewardVideoAd({ adId: 'ca-app-pub-3940256099942544/5224354917' });
-      await AdMob.showRewardVideoAd();
-      return true;
+      const reward = await AdMob.showRewardVideoAd();
+      return reward.amount > 0;
     } catch {
       return false;
     }

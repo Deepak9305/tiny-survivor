@@ -1,5 +1,5 @@
 import { WEAPON_BALANCE } from '../../data/balance';
-import type { WeaponId } from '../../types';
+import type { DamageType, WeaponId } from '../../types';
 
 export interface TargetPoint {
   id: string;
@@ -16,6 +16,7 @@ export interface ProjectileSpec {
   radius: number;
   pierce: number;
   color: number;
+  damageType: DamageType;
   explosive?: boolean;
 }
 
@@ -24,8 +25,8 @@ export interface WeaponHooks {
   findNearestTarget: () => TargetPoint | undefined;
   findTargetsInRadius: (x: number, y: number, radius: number) => TargetPoint[];
   fireProjectile: (spec: ProjectileSpec) => void;
-  dealAreaDamage: (x: number, y: number, radius: number, damage: number, color: number) => void;
-  dealOrbitDamage: (x: number, y: number, radius: number, damage: number) => void;
+  dealAreaDamage: (x: number, y: number, radius: number, damage: number, color: number, damageType: DamageType) => void;
+  dealOrbitDamage: (x: number, y: number, radius: number, damage: number, damageType: DamageType) => void;
   getDamageMultiplier: () => number;
   getCooldownMultiplier: () => number;
 }
@@ -96,6 +97,7 @@ export class WeaponSystem {
           radius: 6,
           pierce: level >= 5 ? 1 : 0,
           color: WEAPON_BALANCE[id].color,
+          damageType: WEAPON_BALANCE[id].damageType,
           angle: count === 2 ? (index === 0 ? -0.12 : 0.12) : 0,
         });
       }
@@ -104,16 +106,16 @@ export class WeaponSystem {
     if (id === 'fire-orb') {
       const target = this.hooks.findNearestTarget();
       if (!target) return;
-      this.hooks.fireProjectile({ weaponId: id, target, damage, speed: 210, radius: 11, pierce: level >= 5 ? 1 : 0, color: WEAPON_BALANCE[id].color, explosive: true });
+      this.hooks.fireProjectile({ weaponId: id, target, damage, speed: 210, radius: 11, pierce: level >= 5 ? 1 : 0, color: WEAPON_BALANCE[id].color, damageType: WEAPON_BALANCE[id].damageType, explosive: true });
       return;
     }
     if (id === 'chain-lightning') {
       const target = this.hooks.findNearestTarget();
       if (!target) return;
       const targets = this.hooks.findTargetsInRadius(target.x, target.y, 190).slice(0, level >= 4 ? 4 : level >= 2 ? 3 : 2);
-      for (const chainTarget of targets) this.hooks.dealAreaDamage(chainTarget.x, chainTarget.y, 22, damage, WEAPON_BALANCE[id].color);
+      for (const chainTarget of targets) this.hooks.dealAreaDamage(chainTarget.x, chainTarget.y, 22, damage, WEAPON_BALANCE[id].color, WEAPON_BALANCE[id].damageType);
       return;
     }
-    this.hooks.dealOrbitDamage(player.x, player.y, 48 + level * 4, damage * 0.6);
+    this.hooks.dealOrbitDamage(player.x, player.y, 48 + level * 4, damage * 0.6, WEAPON_BALANCE[id].damageType);
   }
 }

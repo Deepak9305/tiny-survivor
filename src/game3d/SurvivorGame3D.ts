@@ -1,10 +1,12 @@
 import * as THREE from 'three';
-import { BOSS_BALANCE, PLAYER_BALANCE } from '../data/balance';
+import { PLAYER_BALANCE, WEAPON_BALANCE } from '../data/balance';
+import { getBossDefinition } from '../data/bosses';
+import { getMonsterDefinition } from '../data/monsters';
 import { generateUpgradeChoices } from '../data/upgrades';
-import type { EnemyKind, GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId } from '../types';
+import type { BossAttack, BossId, DamageType, EnemyKind, GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId } from '../types';
 import { HapticsService } from '../services/hapticsService';
 import { audioService } from '../services/audioService';
-import { BossSystem, type BossAttack } from '../game/systems/BossSystem';
+import { BossSystem } from '../game/systems/BossSystem';
 import { calculateDamage } from '../game/systems/DamageSystem';
 import { EnemySpawner } from '../game/systems/EnemySpawner';
 import { RunController } from '../game/systems/RunController';
@@ -69,6 +71,10 @@ export class SurvivorGame3D {
   private kills = 0;
   private eliteKills = 0;
   private xpCollected = 0;
+  private readonly encounteredEnemies = new Set<EnemyKind>();
+  private readonly enemyKillsByKind: Record<string, number> = {};
+  private readonly encounteredBosses = new Set<BossId>();
+  private readonly bossKillsById: Record<string, number> = {};
   private lastLightningPoint?: { x: number; y: number };
   private bossSpawned = false;
   private bossWarningShown = false;
@@ -218,7 +224,7 @@ export class SurvivorGame3D {
       aliveEnemies: this.enemies.length,
       weaponLevels: this.weaponSystem?.getLevels() ?? { 'magic-bolt': 1 },
       passiveLevels: { ...this.passiveLevels },
-      boss: bossState ? { name: this.stage.bossName, hp: bossState.hp, maxHp: bossState.maxHp, phase: bossState.phase } : undefined,
+      boss: bossState ? { name: bossState.name, hp: bossState.hp, maxHp: bossState.maxHp, phase: bossState.phase } : undefined,
     };
   }
 
@@ -290,8 +296,8 @@ export class SurvivorGame3D {
       findNearestTarget: () => this.findNearestTarget(),
       findTargetsInRadius: (x, y, radius) => this.spatialGrid.queryRadius(x, y, radius).map((enemy) => ({ id: enemy.id, x: enemy.x, y: enemy.y })),
       fireProjectile: (spec) => this.fireProjectile(spec),
-      dealAreaDamage: (x, y, radius, damage, color) => this.dealAreaDamage(x, y, radius, damage, color),
-      dealOrbitDamage: (x, y, radius, damage) => this.dealOrbitDamage(x, y, radius, damage),
+      dealAreaDamage: (x, y, radius, damage, color, damageType) => this.dealAreaDamage(x, y, radius, damage, color, damageType),
+      dealOrbitDamage: (x, y, radius, damage, damageType) => this.dealOrbitDamage(x, y, radius, damage, damageType),
       getDamageMultiplier: () => this.player.stats.damageMultiplier,
       getCooldownMultiplier: () => this.player.stats.cooldownMultiplier,
     });
@@ -306,11 +312,11 @@ export class SurvivorGame3D {
       getPlayerPosition: () => this.player.getPosition(),
       getBossPosition: () => this.boss?.getPosition() ?? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 },
       setBossPosition: (x, y) => this.setBossPosition(x, y),
-      spawnSummon: () => {
+      spawnSummon: (kind) => {
         const position = this.boss?.getPosition() ?? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
         for (let index = 0; index < 4; index += 1) {
           const angle = index * Math.PI / 2;
-          this.spawnEnemy('skeleton', position.x + Math.cos(angle) * 88, position.y + Math.sin(angle) * 88, false);
+          this.spawnEnemy(kind, position.x + Math.cos(angle) * 88, position.y + Math.sin(angle) * 88, false);
         }
       },
       telegraphAttack: (attack, x, y) => this.telegraphBossAttack(attack, x, y),
@@ -328,6 +334,10 @@ export class SurvivorGame3D {
   private update(delta: number): void {
     this.gameTime += delta;
     this.snapshotTimer -= delta;
+    if (!this.stage.bossStage && this.gameTime >= this.stage.duration) {
+      this.finishStageClear();
+      return;
+    }
     this.orbitAngle += delta * 1.8;
     const movement = this.input.getMovementVector();
     this.player.setMovementVector(movement.x, movement.y);
@@ -381,8 +391,9 @@ export class SurvivorGame3D {
       }
       if (enemy.kind === 'archer' && distance < 250 && Math.random() < delta * 0.25) this.fireEnemyProjectile(enemy);
       if (enemy.kind === 'imp' && distance < enemy.radius + 22) {
-        this.dealAreaDamage(enemy.x, enemy.y, 88, enemy.contactDamage * 1.35, 0xff774b);
+        this.dealAreaDamage(enemy.x, enemy.y, 88, enemy.contactDamage * 1.35, 0xff774b, 'fire');
         this.removeEnemy(enemy, false);
+        this.onEnemyKilled(enemy.kind, enemy.elite);
       }
     }
   }
@@ -390,8 +401,11 @@ export class SurvivorGame3D {
   private getPlayerDamage(amount: number): number { return Math.max(1, amount * 0.68 * (1 - Math.min(0.75, this.player.stats.armor))); }
 
   private spawnEnemy(type: EnemyKind, x: number, y: number, elite: boolean): void {
-    const difficulty = 0.86 + this.gameTime / this.stage.duration * 0.85;
-    const enemy = new Enemy3D(this.actors, type, x, y, this.resources, elite, difficulty);
+    this.encounteredEnemies.add(type);
+    const progress = Math.min(1, this.gameTime / Math.max(1, this.stage.duration));
+    const hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.96 + progress * 0.16);
+    const damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.96 + progress * 0.12);
+    const enemy = new Enemy3D(this.actors, type, x, y, this.resources, elite, hpMultiplier, damageMultiplier, this.stage.worldId);
     this.enemies.push(enemy);
     this.spatialGrid.insert(enemy);
     if (elite) {
@@ -452,7 +466,7 @@ export class SurvivorGame3D {
         const dx = projectile.x - this.boss.x;
         const dy = projectile.y - this.boss.y;
         if (Math.sqrt(dx * dx + dy * dy) < 42 + projectile.spec.radius) {
-          this.damageBoss(projectile.spec.damage);
+          this.damageBoss(projectile.spec.damage, projectile.spec.damageType);
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
           audioService.playSFX('hit', { pitch: 0.82 });
           hit = true;
@@ -464,8 +478,8 @@ export class SurvivorGame3D {
           const dx = projectile.x - enemy.x;
           const dy = projectile.y - enemy.y;
           if (Math.sqrt(dx * dx + dy * dy) > enemy.radius + projectile.spec.radius + 2) continue;
-          this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color);
-          if (projectile.spec.explosive) this.dealAreaDamage(projectile.x, projectile.y, 68, projectile.spec.damage * 0.64, projectile.spec.color);
+          this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color, projectile.spec.damageType);
+          if (projectile.spec.explosive) this.dealAreaDamage(projectile.x, projectile.y, 68, projectile.spec.damage * 0.64, projectile.spec.color, projectile.spec.damageType);
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
           audioService.playSFX('hit', { pitch: projectile.spec.explosive ? 0.76 : 1, throttle: 0.08 });
           hit = true;
@@ -479,8 +493,9 @@ export class SurvivorGame3D {
     }
   }
 
-  private damageEnemy(enemy: Enemy3D, baseDamage: number, color: number): void {
-    const result = calculateDamage({ baseDamage, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
+  private damageEnemy(enemy: Enemy3D, baseDamage: number, color: number, damageType: DamageType): void {
+    const monster = getMonsterDefinition(enemy.kind);
+    const result = calculateDamage({ baseDamage, damageType, weakness: monster.weakness, resistance: monster.resistance, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
     const killed = enemy.damage(result.finalDamage);
     this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, result.critical ? 0xffd37c : color);
     this.effects.burst(enemy.x, enemy.y, result.critical ? 0xffd37c : color, result.critical);
@@ -488,11 +503,11 @@ export class SurvivorGame3D {
     if (killed) {
       this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
       this.removeEnemy(enemy, true);
-      this.onEnemyKilled(enemy.elite);
+      this.onEnemyKilled(enemy.kind, enemy.elite);
     }
   }
 
-  private dealAreaDamage(x: number, y: number, radius: number, damage: number, color: number): void {
+  private dealAreaDamage(x: number, y: number, radius: number, damage: number, color: number, damageType: DamageType): void {
     if (color === 0x9f8cff) {
       const isFirstChainHit = !this.lastLightningPoint;
       const from = this.lastLightningPoint ?? this.player.getPosition();
@@ -504,7 +519,8 @@ export class SurvivorGame3D {
     const targets = [...this.spatialGrid.queryRadius(x, y, radius)];
     for (const enemy of targets) {
       if (!this.enemies.includes(enemy)) continue;
-      const result = calculateDamage({ baseDamage: damage, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
+      const monster = getMonsterDefinition(enemy.kind);
+      const result = calculateDamage({ baseDamage: damage, damageType, weakness: monster.weakness, resistance: monster.resistance, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
       if (enemy.kind === 'slime') enemy.applySlow(0.82, 1.5, this.gameTime);
       const killed = enemy.damage(result.finalDamage);
       this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, color);
@@ -512,15 +528,15 @@ export class SurvivorGame3D {
         this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
         audioService.playSFX('death', { throttle: 0.08 });
         this.removeEnemy(enemy, true);
-        this.onEnemyKilled(enemy.elite);
+        this.onEnemyKilled(enemy.kind, enemy.elite);
       }
     }
   }
 
-  private dealOrbitDamage(x: number, y: number, radius: number, damage: number): void {
+  private dealOrbitDamage(x: number, y: number, radius: number, damage: number, damageType: DamageType): void {
     if (this.gameTime - this.lastOrbitDamage < 0.52) return;
     this.lastOrbitDamage = this.gameTime;
-    this.dealAreaDamage(x, y, radius, damage, 0xb8d8ff);
+    this.dealAreaDamage(x, y, radius, damage, 0xb8d8ff, damageType);
   }
 
   private updateOrbitVisuals(): void {
@@ -595,8 +611,9 @@ export class SurvivorGame3D {
   }
 
   private checkBossTimer(delta: number): void {
+    if (!this.stage.bossStage) return;
     if (this.bossSpawned) return;
-    if (!this.bossWarningShown && this.gameTime >= this.stage.duration - 31) {
+    if (!this.bossWarningShown && this.gameTime >= this.stage.duration - 3.4) {
       this.bossWarningShown = true;
       this.bossSpawnCountdown = 3.4;
       this.callbacks.onBossWarning();
@@ -610,14 +627,17 @@ export class SurvivorGame3D {
   }
 
   private spawnBoss(): void {
-    if (this.bossSpawned || this.isFinished) return;
+    if (this.bossSpawned || this.isFinished || !this.stage.bossStage || !this.stage.bossId) return;
+    const bossDefinition = getBossDefinition(this.stage.bossId);
+    if (!bossDefinition) return;
     this.bossSpawned = true;
+    this.encounteredBosses.add(bossDefinition.id);
     this.enemySpawner.stopSpawning();
     const angle = Math.atan2(WORLD_HEIGHT / 2 - this.player.y, WORLD_WIDTH / 2 - this.player.x);
     const x = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * 190, 100, WORLD_WIDTH - 100);
     const y = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
-    this.boss = new Boss3D(this.actors, x, y, this.resources);
-    this.bossSystem.spawnBoss(this.stage.bossId);
+    this.boss = new Boss3D(this.actors, x, y, this.resources, bossDefinition.id);
+    this.bossSystem.spawnBoss(bossDefinition.id);
     this.effects.bossArrival(x, y);
     this.cameraController.triggerPullback(1.15, 0.9);
     this.cameraController.triggerShake(0.2, 0.32);
@@ -634,50 +654,70 @@ export class SurvivorGame3D {
   private telegraphBossAttack(attack: BossAttack, x: number, y: number): void {
     this.boss?.startAttack(attack);
     this.telegraphs.show(attack, x, y, this.player.x, this.player.y);
-    audioService.playSFX(attack === 'slam' ? 'boss-slam' : 'boss-warning', { volume: 0.72, throttle: 0.24 });
+    audioService.playSFX(attack === 'slam' || attack === 'ground-slam' ? 'boss-slam' : 'boss-warning', { volume: 0.72, throttle: 0.24 });
   }
 
   private executeBossAttack(attack: BossAttack, x: number, y: number): void {
+    const definition = this.bossSystem.getDefinition();
+    if (!definition) return;
     const dx = this.player.x - x;
     const dy = this.player.y - y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    if (attack === 'slam') {
-      this.dealAreaDamage(x, y, 112, BOSS_BALANCE.damage * 0.88, 0xff4e62);
-      if (distance < 112 && this.player.takeDamage(this.getPlayerDamage(BOSS_BALANCE.damage), this.gameTime)) {
-        this.effects.burst(this.player.x, this.player.y, 0xff4e62, true);
-        this.cameraController.triggerShake(0.3, 0.3);
-        audioService.playSFX('hurt', { throttle: 0.28 });
-        this.callbacks.onPlayerHit?.();
-        void HapticsService.heavy(this.save.settings.haptics);
-        this.callbacks.onSnapshot(this.getSnapshot());
-        if (this.player.stats.currentHP <= 0) this.finishGameOver();
+    const dangerColor = definition.visualTheme === 'frost' ? 0x70dfff : definition.visualTheme === 'forest' ? 0xb875df : definition.visualTheme === 'infernal' ? 0xff654d : 0xff4e62;
+    if (attack === 'slam' || attack === 'ground-slam' || attack === 'thorn-circle' || attack === 'frost-zones' || attack === 'meteor') {
+      const radius = attack === 'meteor' ? 96 : attack === 'thorn-circle' ? 92 : attack === 'frost-zones' ? 88 : 112;
+      const damageType: DamageType = attack === 'thorn-circle' || attack === 'meteor' ? 'fire' : attack === 'frost-zones' ? 'lightning' : 'physical';
+      this.dealAreaDamage(x, y, radius, definition.damage * 0.72, dangerColor, damageType);
+      if (distance < radius) this.damagePlayerFromBoss(definition.damage * (attack === 'meteor' ? 1.1 : 1), dangerColor);
+      return;
+    }
+    if (attack === 'bone-ring' || attack === 'fire-wave') {
+      const count = attack === 'fire-wave' ? 12 : 10;
+      const color = attack === 'fire-wave' ? 0xff704d : dangerColor;
+      for (let index = 0; index < count; index += 1) this.spawnEnemyProjectile(x, y, index * Math.PI * 2 / count, attack === 'fire-wave' ? 142 : 176, definition.damage * 0.62, color);
+      return;
+    }
+    if (attack === 'spirit-volley' || attack === 'ice-shard-fan') {
+      const angle = Math.atan2(dy, dx);
+      const count = attack === 'ice-shard-fan' ? 5 : 4;
+      const color = attack === 'ice-shard-fan' ? 0x70dfff : dangerColor;
+      for (let index = 0; index < count; index += 1) {
+        const spread = (index - (count - 1) / 2) * 0.18;
+        this.spawnEnemyProjectile(x, y, angle + spread, attack === 'spirit-volley' ? 124 : 158, definition.damage * 0.58, color);
       }
       return;
     }
-    if (attack === 'bone-ring') {
-      for (let index = 0; index < 10; index += 1) this.spawnEnemyProjectile(x, y, index * Math.PI * 2 / 10, 176, 12);
-      return;
-    }
-    if (attack === 'charge') {
+    if (attack === 'charge' || attack === 'demon-charge') {
       this.setBossPosition(x + (dx / Math.max(1, distance)) * 130, y + (dy / Math.max(1, distance)) * 130);
-      if (distance < 150 && this.player.takeDamage(this.getPlayerDamage(BOSS_BALANCE.damage * 1.15), this.gameTime)) {
-        this.effects.burst(this.player.x, this.player.y, 0xff4e62, true);
-        this.cameraController.triggerShake(0.24, 0.24);
-        audioService.playSFX('hurt', { throttle: 0.28 });
-        this.callbacks.onPlayerHit?.();
-        void HapticsService.heavy(this.save.settings.haptics);
-        this.callbacks.onSnapshot(this.getSnapshot());
-        if (this.player.stats.currentHP <= 0) this.finishGameOver();
-      }
+      if (distance < 150) this.damagePlayerFromBoss(definition.damage * 1.15, dangerColor);
+      return;
+    }
+    if (attack === 'blink') {
+      this.setBossPosition(this.player.x - (dx / Math.max(1, distance)) * 180, this.player.y - (dy / Math.max(1, distance)) * 180);
+      this.effects.ring(this.player.x, this.player.y, 1.25, dangerColor);
     }
   }
 
-  private damageBoss(baseDamage: number): void {
-    const result = calculateDamage({ baseDamage, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
+  private damagePlayerFromBoss(amount: number, color: number): void {
+    if (!this.player.takeDamage(this.getPlayerDamage(amount), this.gameTime)) return;
+    this.spawnDamageNumber(this.player.x, this.player.y - 30, amount, false, color);
+    this.effects.burst(this.player.x, this.player.y, color, true);
+    this.cameraController.triggerShake(0.24, 0.26);
+    audioService.playSFX('hurt', { throttle: 0.28 });
+    this.callbacks.onPlayerHit?.();
+    void HapticsService.heavy(this.save.settings.haptics);
+    this.callbacks.onSnapshot(this.getSnapshot());
+    if (this.player.stats.currentHP <= 0) this.finishGameOver();
+  }
+
+  private damageBoss(baseDamage: number, damageType: DamageType): void {
+    const bossDefinition = this.bossSystem.getDefinition();
+    const result = calculateDamage({ baseDamage, damageType, weakness: bossDefinition?.weakness, resistance: bossDefinition?.resistance, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
     this.spawnDamageNumber(this.boss?.x ?? 0, (this.boss?.y ?? 0) - 72, result.finalDamage, result.critical, 0xffd37c);
     this.effects.burst(this.boss?.x ?? 0, this.boss?.y ?? 0, 0xffd37c, result.critical);
     audioService.playSFX('hit', { pitch: result.critical ? 1.3 : 0.82, throttle: 0.08 });
     if (this.bossSystem.damageBoss(result.finalDamage)) {
+      if (bossDefinition) this.bossKillsById[bossDefinition.id] = (this.bossKillsById[bossDefinition.id] ?? 0) + 1;
       if (this.boss) {
         this.boss.startDeath();
         this.effects.bossDeath(this.boss.x, this.boss.y);
@@ -690,11 +730,11 @@ export class SurvivorGame3D {
 
   private fireEnemyProjectile(enemy: Enemy3D): void {
     const angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x);
-    this.spawnEnemyProjectile(enemy.x, enemy.y, angle, 135, enemy.contactDamage * 0.72);
+    this.spawnEnemyProjectile(enemy.x, enemy.y, angle, 135, enemy.contactDamage * 0.72, 0xff6372);
   }
 
-  private spawnEnemyProjectile(x: number, y: number, angle: number, speed: number, _damage: number): void {
-    this.enemyProjectiles.push(new EnemyProjectile3D(this.actors, x, y, angle, speed, this.resources));
+  private spawnEnemyProjectile(x: number, y: number, angle: number, speed: number, damage: number, color = 0xff6372): void {
+    this.enemyProjectiles.push(new EnemyProjectile3D(this.actors, x, y, angle, speed, this.resources, damage, color));
   }
 
   private updateEnemyProjectiles(delta: number): void {
@@ -704,9 +744,9 @@ export class SurvivorGame3D {
       projectile.update(delta);
       const dx = projectile.x - this.player.x;
       const dy = projectile.y - this.player.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 25 && this.player.takeDamage(13, this.gameTime, 0.72)) {
+      if (Math.sqrt(dx * dx + dy * dy) < 25 && this.player.takeDamage(this.getPlayerDamage(projectile.damage), this.gameTime, 0.72)) {
         projectile.active = false;
-        this.spawnDamageNumber(this.player.x, this.player.y - 28, 13, false, 0xff6372);
+        this.spawnDamageNumber(this.player.x, this.player.y - 28, Math.round(projectile.damage), false, 0xff6372);
         this.effects.burst(this.player.x, this.player.y, 0xff6372);
         this.cameraController.triggerShake(0.1, 0.16);
         audioService.playSFX('hurt', { throttle: 0.3 });
@@ -722,9 +762,10 @@ export class SurvivorGame3D {
     }
   }
 
-  private onEnemyKilled(elite: boolean): void {
+  private onEnemyKilled(kind: EnemyKind, elite: boolean): void {
     this.kills += 1;
     if (elite) this.eliteKills += 1;
+    this.enemyKillsByKind[kind] = (this.enemyKillsByKind[kind] ?? 0) + 1;
     this.effects.burst(this.player.x, this.player.y, elite ? 0xffba58 : 0x5ddcff);
     this.runController.updateStats({ kills: this.kills, eliteKills: this.eliteKills, highestLevel: this.xpSystem.level });
   }
@@ -760,8 +801,23 @@ export class SurvivorGame3D {
   }
 
   private buildRunResult(coins: number): RunResult {
-    const bossKills = this.bossSpawned && !this.bossSystem.isActive() ? 1 : 0;
-    return { stageId: this.stage.id, stageName: this.stage.name, time: this.gameTime, kills: this.kills, eliteKills: this.eliteKills, bossKills, coins, xpCollected: this.xpCollected, highestLevel: this.xpSystem.level };
+    const bossKills = Object.values(this.bossKillsById).reduce((total, count) => total + count, 0);
+    return {
+      stageId: this.stage.id,
+      stageName: this.stage.name,
+      time: this.gameTime,
+      kills: this.kills,
+      eliteKills: this.eliteKills,
+      bossKills,
+      coins,
+      xpCollected: this.xpCollected,
+      highestLevel: this.xpSystem.level,
+      enemyKillsByKind: { ...this.enemyKillsByKind },
+      encounteredEnemies: [...this.encounteredEnemies],
+      bossesDefeated: Object.keys(this.bossKillsById) as BossId[],
+      bossKillsById: { ...this.bossKillsById },
+      encounteredBosses: [...this.encounteredBosses],
+    };
   }
 
   private pauseFromBackground(): void {

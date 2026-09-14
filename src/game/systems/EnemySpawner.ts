@@ -27,7 +27,8 @@ export class EnemySpawner {
 
   calculateSpawnRate(): number {
     const progress = Math.min(1, this.elapsed / (this.stage?.duration ?? 180));
-    return Math.max(0.22, 0.82 - progress * 0.52);
+    const density = this.stage?.difficulty.densityMultiplier ?? 1;
+    return Math.max(0.18, (0.82 - progress * 0.52) / density);
   }
 
   chooseEnemyType(): EnemyKind {
@@ -48,10 +49,13 @@ export class EnemySpawner {
   }
 
   spawnWave(): void {
-    const count = this.elapsed > 100 ? 3 : this.elapsed > 48 ? 2 : 1;
+    const baseCount = this.elapsed > 100 ? 3 : this.elapsed > 48 ? 2 : 1;
+    const density = this.stage?.difficulty.densityMultiplier ?? 1;
+    const count = Math.min(4, Math.max(1, Math.round(baseCount * density)));
+    const eliteMultiplier = this.stage?.difficulty.eliteMultiplier ?? 1;
     for (let index = 0; index < count; index += 1) {
       const position = this.getSafeSpawnPosition();
-      const elite = this.elapsed > 42 && Math.random() < Math.min(0.13, 0.035 + this.elapsed / 1500);
+      const elite = this.elapsed > 42 && Math.random() < Math.min(0.34, (0.035 + this.elapsed / 1500) * eliteMultiplier);
       this.hooks.spawnEnemy(this.chooseEnemyType(), position.x, position.y, elite);
     }
   }

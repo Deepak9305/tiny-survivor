@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { BossAttack } from '../../game/systems/BossSystem';
+import type { BossAttack } from '../../types';
 import { logicalToWorld } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 
@@ -17,8 +17,9 @@ export class Telegraph3D {
 
   show(attack: BossAttack, x: number, y: number, targetX: number, targetY: number): void {
     const group = new THREE.Group();
-    const material = this.resources.basicMaterial(`telegraph-${attack}`, 0xff5d65, { transparent: true, opacity: 0.7, side: THREE.DoubleSide }).clone();
-    if (attack === 'charge') {
+    const color = attack === 'frost-zones' || attack === 'ice-shard-fan' ? 0x70dfff : attack === 'thorn-circle' || attack === 'spirit-volley' ? 0x9ee889 : attack === 'fire-wave' || attack === 'meteor' || attack === 'summon-imps' || attack === 'demon-charge' ? 0xff704e : 0xff5d65;
+    const material = this.resources.basicMaterial(`telegraph-${attack}`, color, { transparent: true, opacity: 0.7, side: THREE.DoubleSide }).clone();
+    if (attack === 'charge' || attack === 'demon-charge') {
       const start = logicalToWorld(x, y);
       const target = logicalToWorld(targetX, targetY);
       const dx = target.x - start.x;
@@ -29,7 +30,7 @@ export class Telegraph3D {
       line.rotation.z = -Math.atan2(dz, dx);
       line.position.set((start.x + target.x) / 2, 0.035, (start.z + target.z) / 2);
     } else {
-      const radius = attack === 'slam' ? 2.8 : 1.85;
+      const radius = attack === 'slam' || attack === 'ground-slam' ? 2.8 : attack === 'meteor' || attack === 'frost-zones' ? 2.2 : attack === 'fire-wave' || attack === 'thorn-circle' ? 2 : 1.85;
       const ring = addMesh(group, this.resources.ring(`telegraph-ring-${attack}`, radius * 0.84, radius), material);
       ring.rotation.x = -Math.PI / 2;
       const fillMaterial = material.clone();

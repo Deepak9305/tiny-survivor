@@ -7,7 +7,7 @@ interface MissionsScreenProps { save: SaveData; onBack: () => void; onClaim: (id
 const fallbackMissions: MissionProgress[] = [
   { id: 'daily-kills', title: 'Defeat 500 enemies', target: 500, progress: 0, reward: 100, claimed: false },
   { id: 'daily-survive', title: 'Survive for 10 minutes', target: 600, progress: 0, reward: 150, claimed: false },
-  { id: 'daily-clear', title: 'Clear stage 1-5', target: 1, progress: 0, reward: 200, claimed: false },
+  { id: 'daily-clear', title: 'Clear a boss stage', target: 1, progress: 0, reward: 200, claimed: false },
 ];
 
 export function MissionsScreen({ save, onBack, onClaim }: MissionsScreenProps) {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { BossId } from '../../types';
 import { setLogicalPosition } from '../core/coordinates';
 import { SharedResources } from '../core/SharedResources';
 import { createBossModel } from '../visuals/CharacterFactory';
@@ -9,6 +10,7 @@ export class Boss3D {
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
   private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
+  readonly bossId: BossId;
   private visualTime = 0;
   private attackTime = 0;
   private attackKind: string | undefined;
@@ -18,10 +20,11 @@ export class Boss3D {
   x: number;
   y: number;
 
-  constructor(parent: THREE.Object3D, x: number, y: number, resources: SharedResources) {
-    const visual = createBossModel(resources);
+  constructor(parent: THREE.Object3D, x: number, y: number, resources: SharedResources, bossId: BossId) {
+    const visual = createBossModel(bossId, resources);
     this.group = new THREE.Group();
-    this.group.name = 'boss-skeleton-king';
+    this.bossId = bossId;
+    this.group.name = `boss-${bossId}`;
     this.model = visual.root;
     this.aura = visual.aura;
     this.shadow = visual.shadow;
@@ -49,11 +52,15 @@ export class Boss3D {
     this.arrivalTime = Math.max(0, this.arrivalTime - delta);
     const attackProgress = this.attackTime > 0 ? 1 - this.attackTime / 0.72 : 0;
     const attackSwing = attackProgress > 0 ? Math.sin(Math.min(1, attackProgress) * Math.PI) : 0;
-    const sword = this.parts.sword;
-    if (sword instanceof THREE.Object3D) sword.rotation.z = -0.4 - (this.attackKind === 'slam' ? attackSwing * 0.9 : attackSwing * 0.3);
+    const weapon = this.parts.sword instanceof THREE.Object3D ? this.parts.sword : this.parts.weapon;
+    if (weapon instanceof THREE.Object3D) weapon.rotation.z = -0.4 - (this.attackKind === 'slam' || this.attackKind === 'ground-slam' ? attackSwing * 0.9 : attackSwing * 0.3);
     this.model.position.y = Math.sin(this.visualTime * 2.1) * 0.06 + (this.attackKind === 'charge' ? attackSwing * 0.16 : 0);
     this.model.rotation.y += delta * 0.12;
-    this.model.rotation.x = this.attackKind === 'charge' ? attackSwing * 0.14 : 0;
+    this.model.rotation.x = this.attackKind === 'charge' || this.attackKind === 'demon-charge' ? attackSwing * 0.14 : 0;
+    if (this.parts.wings instanceof Array) {
+      for (let index = 0; index < this.parts.wings.length; index += 1) this.parts.wings[index].rotation.z += Math.sin(this.visualTime * 3.2 + index) * delta * 0.6;
+    }
+    if (this.parts.core instanceof THREE.Object3D) this.parts.core.rotation.y += delta * 2.4;
     this.group.scale.setScalar(0.72 + arrivalProgress * 0.28);
     this.attackTime = Math.max(0, this.attackTime - delta);
     if (this.attackTime === 0) this.attackKind = undefined;

@@ -1,7 +1,8 @@
 import { Preferences } from '@capacitor/preferences';
-import type { MissionProgress, SaveData, Settings } from '../types';
+import type { BossId, EnemyKind, MissionProgress, SaveData, Settings } from '../types';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
+const SAVE_SCHEMA_VERSION = 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   music: true,
@@ -14,7 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const DEFAULT_SAVE: SaveData = {
-  schemaVersion: 1,
+  schemaVersion: SAVE_SCHEMA_VERSION,
   coins: 1280,
   gems: 36,
   highestUnlockedStage: 1,
@@ -28,6 +29,10 @@ export const DEFAULT_SAVE: SaveData = {
   totalDeaths: 0,
   totalBossKills: 0,
   totalPlayTime: 0,
+  discoveredEnemies: [],
+  enemyKillCounts: {},
+  discoveredBosses: [],
+  bossKillCounts: {},
   missions: [],
   missionDate: '',
   achievements: {},
@@ -37,6 +42,7 @@ export const DEFAULT_SAVE: SaveData = {
   endlessBestKills: 0,
   ownedCosmetics: ['classic'],
   selectedCosmetics: { hero: 'classic', trail: 'ember', projectile: 'arcane' },
+  freeChestClaimedDate: '',
   lastPlayedTimestamp: Date.now(),
 };
 
@@ -61,6 +67,15 @@ function normalizeMissions(value: unknown): MissionProgress[] {
     }));
 }
 
+function normalizeIdList<T extends string>(value: unknown): T[] {
+  return Array.isArray(value) ? [...new Set(value.filter((item): item is T => typeof item === 'string'))] : [];
+}
+
+function normalizeCountMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).filter(([key, count]) => typeof key === 'string' && typeof count === 'number' && Number.isFinite(count) && count > 0).map(([key, count]) => [key, Math.floor(count as number)]));
+}
+
 export function normalizeSave(raw: unknown): SaveData {
   const data = raw && typeof raw === 'object' ? raw as Partial<SaveData> : {};
   const permanent = data.permanentUpgrades && typeof data.permanentUpgrades === 'object' ? data.permanentUpgrades : {};
@@ -70,7 +85,7 @@ export function normalizeSave(raw: unknown): SaveData {
   return {
     ...DEFAULT_SAVE,
     ...data,
-    schemaVersion: 1,
+    schemaVersion: SAVE_SCHEMA_VERSION,
     coins: validInteger(data.coins, DEFAULT_SAVE.coins),
     gems: validInteger(data.gems, DEFAULT_SAVE.gems),
     highestUnlockedStage: Math.min(20, Math.max(1, validInteger(data.highestUnlockedStage, 1, 1))),
@@ -84,6 +99,10 @@ export function normalizeSave(raw: unknown): SaveData {
     totalDeaths: validInteger(data.totalDeaths, 0),
     totalBossKills: validInteger(data.totalBossKills, 0),
     totalPlayTime: validNumber(data.totalPlayTime, 0),
+    discoveredEnemies: normalizeIdList<EnemyKind>(data.discoveredEnemies),
+    enemyKillCounts: normalizeCountMap(data.enemyKillCounts),
+    discoveredBosses: normalizeIdList<BossId>(data.discoveredBosses),
+    bossKillCounts: normalizeCountMap(data.bossKillCounts),
     missions: normalizeMissions(data.missions),
     missionDate: typeof data.missionDate === 'string' ? data.missionDate : '',
     achievements: data.achievements && typeof data.achievements === 'object' ? data.achievements : {},
@@ -93,6 +112,7 @@ export function normalizeSave(raw: unknown): SaveData {
     endlessBestKills: validInteger(data.endlessBestKills, 0),
     ownedCosmetics: Array.isArray(data.ownedCosmetics) ? data.ownedCosmetics.filter((id): id is string => typeof id === 'string') : ['classic'],
     selectedCosmetics: data.selectedCosmetics && typeof data.selectedCosmetics === 'object' ? data.selectedCosmetics : DEFAULT_SAVE.selectedCosmetics,
+    freeChestClaimedDate: typeof data.freeChestClaimedDate === 'string' ? data.freeChestClaimedDate : '',
     lastPlayedTimestamp: validNumber(data.lastPlayedTimestamp, Date.now()),
   };
 }

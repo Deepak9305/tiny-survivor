@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { BossId } from '../../types';
 import { SharedResources, addMesh } from '../core/SharedResources';
 
 export function createShadowMage(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
@@ -102,7 +103,7 @@ function addEyes(root: THREE.Group, resources: SharedResources, color: number, y
   }
 }
 
-export function createEnemyModel(kind: string, color: number, resources: SharedResources): THREE.Group {
+export function createEnemyModel(kind: string, color: number, resources: SharedResources, worldId = 1): THREE.Group {
   const root = new THREE.Group();
   root.name = `enemy-${kind}`;
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
@@ -110,6 +111,7 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
   const bodyMaterial = resources.standardMaterial(`enemy-body-${color}`, color, { roughness: 0.82 });
   const darkMaterial = resources.standardMaterial(`enemy-dark-${dark}`, dark, { roughness: 0.9 });
   const boneMaterial = resources.standardMaterial('enemy-bone', 0xb8c7d3, { roughness: 0.9 });
+  const worldAccent = worldId === 2 ? 0xb875df : worldId === 3 ? 0x9ce7ff : worldId === 4 ? 0xff5e55 : 0x5ddcff;
 
   if (kind === 'bat') {
     const body = addMesh(root, resources.ico('enemy-bat-body'), bodyMaterial);
@@ -206,7 +208,35 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
     sword.scale.set(0.08, 0.72, 0.08);
     sword.position.set(0.55, 0.66, 0.02);
     sword.rotation.z = -0.35;
-    root.userData.parts = { torso, head, jaw, sword };
+    const arms: THREE.Object3D[] = [];
+    for (const x of [-0.38, 0.38]) {
+      const arm = addMesh(root, resources.cylinder('enemy-skeleton-arm'), boneMaterial);
+      arm.scale.set(0.09, 0.52, 0.09);
+      arm.position.set(x, 0.72, 0.02);
+      arm.rotation.z = x < 0 ? -0.34 : 0.34;
+      arms.push(arm);
+    }
+    const legs: THREE.Object3D[] = [];
+    for (const x of [-0.2, 0.2]) {
+      const leg = addMesh(root, resources.cylinder('enemy-skeleton-leg'), boneMaterial);
+      leg.scale.set(0.1, 0.45, 0.1);
+      leg.position.set(x, 0.18, 0.02);
+      leg.rotation.z = x < 0 ? -0.1 : 0.1;
+      legs.push(leg);
+    }
+    const shield = addMesh(root, resources.cylinder('enemy-skeleton-shield'), resources.standardMaterial('enemy-skeleton-shield', 0x46637c, { metalness: 0.36, roughness: 0.5 }));
+    shield.scale.set(0.36, 0.1, 0.36);
+    shield.position.set(-0.58, 0.62, 0.14);
+    shield.rotation.x = Math.PI / 2;
+    root.userData.parts = { torso, head, jaw, sword, arms, legs, shield };
+  }
+
+  if (worldId !== 1 && (kind === 'skeleton' || kind === 'ghost' || kind === 'knight')) {
+    const rune = addMesh(root, resources.torus(`enemy-world-rune-${kind}-${worldId}`), resources.basicMaterial(`enemy-world-rune-${kind}-${worldId}`, worldAccent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
+    rune.scale.setScalar(kind === 'knight' ? 0.48 : 0.34);
+    rune.rotation.x = Math.PI / 2;
+    rune.position.y = kind === 'ghost' ? 0.32 : 0.12;
+    root.userData.parts = { ...(root.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>), rune };
   }
 
   return root;
@@ -223,7 +253,12 @@ export function addEliteAccent(root: THREE.Group, resources: SharedResources): T
   return ring;
 }
 
-export function createBossModel(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+export function createBossModel(bossId: BossId = 'skeleton-king', resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  if (bossId !== 'skeleton-king') return createAlternativeBossModel(bossId, resources);
+  return createSkeletonKingModel(resources);
+}
+
+function createSkeletonKingModel(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
   const root = new THREE.Group();
   root.name = 'skeleton-king';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
@@ -275,4 +310,114 @@ export function createBossModel(resources: SharedResources): { root: THREE.Group
   hilt.rotation.z = -0.4;
   root.userData.parts = { armor, chest, cape, skull, sword, crown: crownMaterial };
   return { root, aura, shadow };
+}
+
+function createAlternativeBossModel(bossId: Exclude<BossId, 'skeleton-king'>, resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  const palette = {
+    'forest-witch': { aura: 0x9df18e, body: 0x253d38, accent: 0xb875df, core: 0x8ff0aa },
+    'frost-golem': { aura: 0x77ddff, body: 0x5e829e, accent: 0xb9f4ff, core: 0x75e8ff },
+    'demon-lord': { aura: 0xff5f4f, body: 0x3b172a, accent: 0xffa34f, core: 0xff663f },
+  }[bossId];
+  const root = new THREE.Group();
+  root.name = bossId;
+  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+  const shadow = new THREE.Mesh(resources.plane(`boss-shadow-${bossId}`, 1, 1), resources.basicMaterial(`boss-shadow-${bossId}`, 0x010207, { transparent: true, opacity: 0.72 }));
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(2.3, 1.18, 1);
+  shadow.position.y = 0.02;
+  root.add(shadow);
+  const aura = addMesh(root, resources.ring(`boss-aura-${bossId}`, 1.15, 1.34), resources.basicMaterial(`boss-aura-${bossId}`, palette.aura, { transparent: true, opacity: 0.54, side: THREE.DoubleSide }));
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = 0.04;
+
+  if (bossId === 'forest-witch') {
+    const cloak = addMesh(root, resources.cone('witch-cloak'), resources.standardMaterial('witch-cloak', palette.body, { roughness: 0.92 }));
+    cloak.scale.set(1.28, 1.75, 0.86);
+    cloak.position.y = 1.08;
+    const hood = addMesh(root, resources.cone('witch-hood'), resources.standardMaterial('witch-hood', 0x121c2d, { roughness: 0.86 }));
+    hood.scale.set(0.9, 0.9, 0.86);
+    hood.position.y = 2.18;
+    const antlers: THREE.Object3D[] = [];
+    for (const x of [-0.54, 0.54]) {
+      const antler = addMesh(root, resources.cone('witch-antler'), resources.standardMaterial('witch-antler', 0x76543e, { roughness: 0.96 }));
+      antler.scale.set(0.15, 1.05, 0.15);
+      antler.position.set(x, 2.9, 0);
+      antler.rotation.z = x < 0 ? -0.32 : 0.32;
+      antlers.push(antler);
+    }
+    const staff = addMesh(root, resources.cylinder('witch-staff'), resources.standardMaterial('witch-staff', 0x5f3b3d, { roughness: 0.94 }));
+    staff.scale.set(0.1, 1.85, 0.1);
+    staff.position.set(1.18, 1.28, 0.04);
+    staff.rotation.z = -0.2;
+    const core = addMesh(root, resources.octa('witch-core'), resources.standardMaterial('witch-core', palette.core, { emissive: palette.accent, emissiveIntensity: 1.5, roughness: 0.3 }));
+    core.scale.setScalar(0.38);
+    core.position.set(0, 1.28, 0.62);
+    addBossEyes(root, resources, palette.accent, 2.18);
+    root.userData.parts = { cloak, hood, antlers, staff, core };
+  } else if (bossId === 'frost-golem') {
+    const body = addMesh(root, resources.ico('golem-body'), resources.standardMaterial('golem-body', palette.body, { roughness: 0.62, metalness: 0.12 }));
+    body.scale.set(1.45, 1.62, 1.08);
+    body.position.y = 1.28;
+    const shoulders: THREE.Object3D[] = [];
+    for (const x of [-1.1, 1.1]) {
+      const shoulder = addMesh(root, resources.ico('golem-shoulder'), resources.standardMaterial('golem-shoulder', 0x769bb4, { roughness: 0.56, metalness: 0.1 }));
+      shoulder.scale.set(0.64, 0.78, 0.65);
+      shoulder.position.set(x, 1.75, 0);
+      shoulders.push(shoulder);
+    }
+    const arms: THREE.Object3D[] = [];
+    for (const x of [-1.15, 1.15]) {
+      const arm = addMesh(root, resources.cylinder('golem-arm'), resources.standardMaterial('golem-arm', 0x466b88, { roughness: 0.7 }));
+      arm.scale.set(0.42, 1.22, 0.42);
+      arm.position.set(x, 0.83, 0);
+      arm.rotation.z = x < 0 ? -0.18 : 0.18;
+      arms.push(arm);
+    }
+    const core = addMesh(root, resources.octa('golem-core'), resources.standardMaterial('golem-core', palette.core, { emissive: palette.core, emissiveIntensity: 1.65, roughness: 0.24, metalness: 0.12 }));
+    core.scale.setScalar(0.48);
+    core.position.set(0, 1.42, 0.72);
+    const crown = addMesh(root, resources.octa('golem-crown'), resources.standardMaterial('golem-crown', palette.accent, { emissive: palette.core, emissiveIntensity: 0.7, roughness: 0.38 }));
+    crown.scale.set(0.58, 0.42, 0.5);
+    crown.position.y = 2.52;
+    root.userData.parts = { body, shoulders, arms, core, weapon: crown };
+  } else {
+    const armor = addMesh(root, resources.ico('demon-lord-armor'), resources.standardMaterial('demon-lord-armor', palette.body, { metalness: 0.34, roughness: 0.66 }));
+    armor.scale.set(1.45, 1.54, 1.05);
+    armor.position.y = 1.28;
+    const horns: THREE.Object3D[] = [];
+    for (const x of [-0.62, 0.62]) {
+      const horn = addMesh(root, resources.cone('demon-lord-horn'), resources.standardMaterial('demon-lord-horn', 0x6f2c3a, { roughness: 0.82 }));
+      horn.scale.set(0.28, 1.18, 0.28);
+      horn.position.set(x, 2.82, 0.02);
+      horn.rotation.z = x < 0 ? -0.32 : 0.32;
+      horns.push(horn);
+    }
+    const wings: THREE.Object3D[] = [];
+    for (const x of [-1.24, 1.24]) {
+      const wing = addMesh(root, resources.cone('demon-lord-wing'), resources.standardMaterial('demon-lord-wing', 0x251326, { roughness: 0.9 }));
+      wing.scale.set(1.25, 1.5, 0.18);
+      wing.position.set(x, 1.82, -0.26);
+      wing.rotation.z = x < 0 ? -0.34 : 0.34;
+      wings.push(wing);
+    }
+    const weapon = addMesh(root, resources.box('demon-lord-weapon'), resources.standardMaterial('demon-lord-weapon', palette.accent, { emissive: palette.core, emissiveIntensity: 0.9, metalness: 0.4, roughness: 0.3 }));
+    weapon.scale.set(0.2, 1.92, 0.14);
+    weapon.position.set(1.58, 1.25, 0.08);
+    weapon.rotation.z = -0.44;
+    const core = addMesh(root, resources.octa('demon-lord-core'), resources.standardMaterial('demon-lord-core', palette.core, { emissive: palette.core, emissiveIntensity: 1.75, roughness: 0.25 }));
+    core.scale.setScalar(0.44);
+    core.position.set(0, 1.46, 0.78);
+    addBossEyes(root, resources, palette.accent, 2.25);
+    root.userData.parts = { armor, horns, wings, weapon, core };
+  }
+  return { root, aura, shadow };
+}
+
+function addBossEyes(root: THREE.Group, resources: SharedResources, color: number, y: number): void {
+  const material = resources.basicMaterial(`boss-alt-eyes-${color}`, color);
+  for (const x of [-0.32, 0.32]) {
+    const eye = addMesh(root, resources.sphere('boss-alt-eye'), material);
+    eye.scale.set(0.12, 0.08, 0.04);
+    eye.position.set(x, y, 0.68);
+  }
 }

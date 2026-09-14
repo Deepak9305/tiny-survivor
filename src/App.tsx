@@ -11,6 +11,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { MissionsScreen } from './screens/MissionsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ShopScreen } from './screens/ShopScreen';
+import { BestiaryScreen } from './screens/BestiaryScreen';
 import { SplashScreen } from './screens/SplashScreen';
 import { StageClearScreen } from './screens/StageClearScreen';
 import { StageDetailScreen } from './screens/StageDetailScreen';
@@ -18,7 +19,7 @@ import { UpgradesScreen } from './screens/UpgradesScreen';
 import { WorldMapScreen } from './screens/WorldMapScreen';
 import { ScreenTransition } from './components/ScreenTransition';
 import { getActiveThreeGame } from './game3d/ThreeGame';
-import type { MissionProgress, RunResult, SaveData, Screen, Settings } from './types';
+import type { BossId, EnemyKind, MissionProgress, RunResult, SaveData, Screen, Settings } from './types';
 
 function localDate(): string { const date = new Date(); return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`; }
 
@@ -26,7 +27,7 @@ function createDailyMissions(): MissionProgress[] {
   return [
     { id: 'daily-kills', title: 'Defeat 500 enemies', target: 500, progress: 0, reward: 100, claimed: false },
     { id: 'daily-survive', title: 'Survive for 10 minutes', target: 600, progress: 0, reward: 150, claimed: false },
-    { id: 'daily-clear', title: 'Clear stage 1-5', target: 1, progress: 0, reward: 200, claimed: false },
+    { id: 'daily-clear', title: 'Clear a boss stage', target: 1, progress: 0, reward: 200, claimed: false },
   ];
 }
 
@@ -36,6 +37,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState('1-1');
   const [lastResult, setLastResult] = useState<RunResult | undefined>();
+  const [selectedBestiaryId, setSelectedBestiaryId] = useState<string>('skeleton');
   const [runKey, setRunKey] = useState(0);
 
   useEffect(() => {
@@ -90,8 +92,9 @@ export default function App() {
     const completedStages = [...new Set([...save.completedStages, result.stageId])];
     const next = Math.min(20, stageNumber(result.stageId) + 1);
     const best = save.bestStageTimes[result.stageId];
+    const codex = mergeCodexProgress(save, result);
     const nextSave = normalizeSave({
-      ...save,
+      ...codex,
       coins: save.coins + result.coins,
       gems: save.gems + (firstClear ? stage.firstClearReward : 0),
       highestUnlockedStage: Math.max(save.highestUnlockedStage, next),
@@ -101,7 +104,7 @@ export default function App() {
       totalKills: save.totalKills + result.kills,
       totalBossKills: save.totalBossKills + result.bossKills,
       totalPlayTime: save.totalPlayTime + result.time,
-      missions: save.missions.map((mission) => mission.id === 'daily-clear' ? { ...mission, progress: Math.min(mission.target, mission.progress + (stage.stageNumber === 5 ? 1 : 0)) } : mission),
+      missions: updateMissionProgress(save.missions, result, stage),
     });
     setSave(nextSave);
     void saveGame(nextSave);
@@ -110,7 +113,8 @@ export default function App() {
   }, [save]);
 
   const handleGameOver = useCallback((result: RunResult) => {
-    const nextSave = normalizeSave({ ...save, coins: save.coins + result.coins, totalRuns: save.totalRuns + 1, totalDeaths: save.totalDeaths + 1, totalKills: save.totalKills + result.kills, totalPlayTime: save.totalPlayTime + result.time });
+    const stage = getStage(result.stageId);
+    const nextSave = normalizeSave({ ...mergeCodexProgress(save, result), coins: save.coins + result.coins, totalRuns: save.totalRuns + 1, totalDeaths: save.totalDeaths + 1, totalKills: save.totalKills + result.kills, totalPlayTime: save.totalPlayTime + result.time, missions: updateMissionProgress(save.missions, result, stage) });
     setSave(nextSave);
     void saveGame(nextSave);
   }, [save]);
@@ -135,6 +139,16 @@ export default function App() {
 
   const handleSettings = useCallback((settings: Settings) => persist({ ...save, settings }), [persist, save]);
 
+  const handleFreeChest = useCallback(async (): Promise<boolean> => {
+    if (save.freeChestClaimedDate === localDate()) return false;
+    const earned = await AdService.showRewarded('free-chest');
+    if (!earned) return false;
+    persist({ ...save, coins: save.coins + 120, freeChestClaimedDate: localDate() });
+    return true;
+  }, [persist, save]);
+
+  const handleBestiarySelect = useCallback((id: string) => { setSelectedBestiaryId(id); setScreen('bestiary'); }, []);
+
   const navigate = useCallback((next: Screen) => {
     if (next === 'home') setSelectedStageId(getCurrentStage(save).id);
     setScreen(next);
@@ -149,14 +163,15 @@ export default function App() {
   switch (screen) {
     case 'home': view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
     case 'map': view = <WorldMapScreen save={save} onBack={sharedBack} onSelect={(id) => { setSelectedStageId(id); setScreen('stage'); }} />; break;
-    case 'stage': view = <StageDetailScreen stageId={selectedStageId} save={save} onBack={() => setScreen('map')} onStart={() => startStage(selectedStageId)} />; break;
+    case 'stage': view = <StageDetailScreen stageId={selectedStageId} save={save} onBack={() => setScreen('map')} onStart={() => startStage(selectedStageId)} onBestiary={handleBestiarySelect} />; break;
+    case 'bestiary': view = <BestiaryScreen save={save} initialId={selectedBestiaryId} onBack={sharedBack} onSelect={setSelectedBestiaryId} />; break;
     case 'heroes': view = <HeroesScreen save={save} onBack={sharedBack} onSelect={handleHeroSelect} />; break;
     case 'upgrades': view = <UpgradesScreen save={save} onBack={sharedBack} onUpgrade={handleUpgrade} />; break;
     case 'missions': view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />; break;
-    case 'shop': view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={() => persist({ ...save, coins: save.coins + 120 })} />; break;
+    case 'shop': view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={handleFreeChest} />; break;
     case 'settings': view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />; break;
     case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getStage(lastResult.stageId).id === '1-5' ? '2-1' : getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
-    case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} />; break;
+    case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} onBestiary={() => handleBestiarySelect('skeleton')} />; break;
     default: view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
   }
   return <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>;
@@ -166,4 +181,25 @@ function getNextStageId(stageId: string): string {
   const [world, stage] = stageId.split('-').map(Number);
   if (stage >= 5) return `${Math.min(4, world + 1)}-1`;
   return `${world}-${stage + 1}`;
+}
+
+function mergeCodexProgress(save: SaveData, result: RunResult): SaveData {
+  const enemyKillCounts = { ...save.enemyKillCounts };
+  for (const [kind, count] of Object.entries(result.enemyKillsByKind ?? {})) enemyKillCounts[kind] = (enemyKillCounts[kind] ?? 0) + Math.max(0, count);
+  const bossKillCounts = { ...save.bossKillCounts };
+  for (const [bossId, count] of Object.entries(result.bossKillsById ?? {})) bossKillCounts[bossId] = (bossKillCounts[bossId] ?? 0) + Math.max(0, count);
+  return {
+    ...save,
+    discoveredEnemies: [...new Set([...save.discoveredEnemies, ...(result.encounteredEnemies ?? [])])] as EnemyKind[],
+    enemyKillCounts,
+    discoveredBosses: [...new Set([...save.discoveredBosses, ...(result.encounteredBosses ?? [])])] as BossId[],
+    bossKillCounts,
+  };
+}
+
+function updateMissionProgress(missions: MissionProgress[], result: RunResult, stage: ReturnType<typeof getStage>): MissionProgress[] {
+  return missions.map((mission) => {
+    const increment = mission.id === 'daily-kills' ? result.kills : mission.id === 'daily-survive' ? Math.floor(result.time) : mission.id === 'daily-clear' ? (stage.bossStage ? 1 : 0) : 0;
+    return increment > 0 ? { ...mission, progress: Math.min(mission.target, mission.progress + increment) } : mission;
+  });
 }

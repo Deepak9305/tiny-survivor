@@ -1,18 +1,16 @@
-import { BOSS_BALANCE } from '../../data/balance';
-
-export type BossAttack = 'slam' | 'bone-ring' | 'summon' | 'charge';
+import { getBossDefinition } from '../../data/bosses';
+import type { BossAttack, BossId, EnemyKind } from '../../types';
 
 export interface BossHooks {
   getPlayerPosition: () => { x: number; y: number };
   getBossPosition: () => { x: number; y: number };
   setBossPosition: (x: number, y: number) => void;
-  spawnSummon: () => void;
+  spawnSummon: (kind: EnemyKind) => void;
   telegraphAttack: (attack: BossAttack, x: number, y: number) => void;
   executeAttack: (attack: BossAttack, x: number, y: number) => void;
 }
-
 export interface BossState {
-  id: string;
+  id: BossId;
   name: string;
   hp: number;
   maxHp: number;
@@ -21,32 +19,39 @@ export interface BossState {
 
 export class BossSystem {
   private state?: BossState;
-  private attackTimer = 4;
+  private attackTimer = 3.8;
   private pendingAttack = 0;
   private pendingAttackType?: BossAttack;
+  private attackCursor = 0;
   private dead = false;
 
   constructor(private readonly hooks: BossHooks) {}
 
-  spawnBoss(id: string): void {
-    this.state = { id, name: BOSS_BALANCE.name, hp: BOSS_BALANCE.maxHp, maxHp: BOSS_BALANCE.maxHp, phase: 1 };
+  spawnBoss(id: BossId): void {
+    const definition = getBossDefinition(id) ?? getBossDefinition('skeleton-king');
+    if (!definition) return;
+    this.state = { id: definition.id, name: definition.name, hp: definition.hp, maxHp: definition.hp, phase: 1 };
     this.attackTimer = 3.8;
     this.pendingAttack = 0;
     this.pendingAttackType = undefined;
+    this.attackCursor = 0;
     this.dead = false;
   }
 
   isActive(): boolean { return Boolean(this.state && !this.dead); }
   getState(): BossState | undefined { return this.state ? { ...this.state } : undefined; }
+  getDefinition() { return this.state ? getBossDefinition(this.state.id) : undefined; }
 
   updateBoss(delta: number): void {
     if (!this.state || this.dead) return;
+    const definition = getBossDefinition(this.state.id);
+    if (!definition) return;
     const boss = this.hooks.getBossPosition();
     const player = this.hooks.getPlayerPosition();
     const dx = player.x - boss.x;
     const dy = player.y - boss.y;
     const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-    if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * BOSS_BALANCE.speed * delta, boss.y + (dy / distance) * BOSS_BALANCE.speed * delta);
+    if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * definition.speed * delta, boss.y + (dy / distance) * definition.speed * delta);
     this.attackTimer -= delta;
     if (this.pendingAttack > 0) {
       this.pendingAttack -= delta;
@@ -54,9 +59,9 @@ export class BossSystem {
         const position = this.hooks.getBossPosition();
         const attack = this.pendingAttackType ?? this.chooseBossAttack();
         this.hooks.executeAttack(attack, position.x, position.y);
-        if (attack === 'summon') this.hooks.spawnSummon();
+        if (attack === 'summon' || attack === 'summon-imps') this.hooks.spawnSummon(definition.summonKind);
         this.pendingAttackType = undefined;
-        this.attackTimer = this.state.phase === 2 ? 3.1 : 4.4;
+        this.attackTimer = this.state.phase === 2 ? 2.65 : 4.1;
       }
     } else if (this.attackTimer <= 0) {
       const position = this.hooks.getBossPosition();
@@ -67,14 +72,19 @@ export class BossSystem {
   }
 
   chooseBossAttack(): BossAttack {
-    const attacks: BossAttack[] = this.state?.phase === 2 ? ['slam', 'bone-ring', 'summon', 'charge'] : ['slam', 'bone-ring', 'summon'];
-    return attacks[Math.floor(Math.random() * attacks.length)];
+    const definition = this.getDefinition();
+    if (!definition) return 'slam';
+    const attacks = this.state?.phase === 2 ? definition.attackSet : definition.attackSet.slice(0, Math.max(2, definition.attackSet.length - 1));
+    const attack = attacks[this.attackCursor % attacks.length] ?? definition.attackSet[0];
+    this.attackCursor += 1;
+    return attack;
   }
 
   damageBoss(amount: number): boolean {
     if (!this.state || this.dead) return false;
     this.state.hp = Math.max(0, this.state.hp - Math.max(1, amount));
-    if (this.state.hp <= this.state.maxHp * 0.5) this.state.phase = 2;
+    const definition = getBossDefinition(this.state.id);
+    if (definition && this.state.hp <= this.state.maxHp * definition.phaseThreshold) this.state.phase = 2;
     if (this.state.hp <= 0) return this.killBoss();
     return false;
   }

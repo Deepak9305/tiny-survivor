@@ -3,6 +3,7 @@ export type Screen =
   | 'home'
   | 'map'
   | 'stage'
+  | 'bestiary'
   | 'heroes'
   | 'upgrades'
   | 'missions'
@@ -26,6 +27,58 @@ export type EnemyKind =
 
 export type WeaponId = 'magic-bolt' | 'fire-orb' | 'orbiting-blades' | 'chain-lightning';
 export type PassiveId = 'power' | 'vitality' | 'swift-boots' | 'magnet' | 'focus' | 'luck' | 'growth' | 'armor';
+export type DamageType = 'arcane' | 'fire' | 'physical' | 'lightning';
+export type BossId = 'skeleton-king' | 'forest-witch' | 'frost-golem' | 'demon-lord';
+export type BossAttack =
+  | 'slam'
+  | 'bone-ring'
+  | 'summon'
+  | 'charge'
+  | 'thorn-circle'
+  | 'spirit-volley'
+  | 'blink'
+  | 'ground-slam'
+  | 'ice-shard-fan'
+  | 'frost-zones'
+  | 'fire-wave'
+  | 'meteor'
+  | 'summon-imps'
+  | 'demon-charge';
+
+export interface BiomeTheme {
+  background: number;
+  fog: number;
+  ground: number;
+  groundDeep: number;
+  groundDetail: number;
+  prop: number;
+  propAlt: number;
+  accent: number;
+  moon: number;
+  warm: number;
+  keyLight: number;
+  fillLight: number;
+}
+
+export type WorldMapProfile = 'graveyard' | 'forest' | 'frozen' | 'castle';
+
+export interface StageDifficulty {
+  enemyHpMultiplier: number;
+  enemyDamageMultiplier: number;
+  densityMultiplier: number;
+  eliteMultiplier: number;
+}
+
+export interface WorldDefinition {
+  id: number;
+  name: string;
+  subtitle: string;
+  mapSeed: number;
+  theme: BiomeTheme;
+  enemyPool: EnemyKind[];
+  bossId: BossId;
+  mapProfile: WorldMapProfile;
+}
 
 export interface Settings {
   music: boolean;
@@ -52,6 +105,10 @@ export interface SaveData {
   totalDeaths: number;
   totalBossKills: number;
   totalPlayTime: number;
+  discoveredEnemies: EnemyKind[];
+  enemyKillCounts: Record<string, number>;
+  discoveredBosses: BossId[];
+  bossKillCounts: Record<string, number>;
   missions: MissionProgress[];
   missionDate: string;
   achievements: Record<string, number>;
@@ -61,6 +118,7 @@ export interface SaveData {
   endlessBestKills: number;
   ownedCosmetics: string[];
   selectedCosmetics: Record<string, string>;
+  freeChestClaimedDate: string;
   lastPlayedTimestamp: number;
 }
 
@@ -116,18 +174,26 @@ export interface RunResult {
   coins: number;
   xpCollected: number;
   highestLevel: number;
+  enemyKillsByKind?: Record<string, number>;
+  encounteredEnemies?: EnemyKind[];
+  bossesDefeated?: BossId[];
+  bossKillsById?: Record<string, number>;
+  encounteredBosses?: BossId[];
   revived?: boolean;
 }
 
 export interface StageDefinition {
   id: string;
   worldId: number;
+  mapSeed: number;
   stageNumber: number;
   name: string;
   biome: string;
   duration: number;
-  bossId: string;
-  bossName: string;
+  bossStage: boolean;
+  bossId?: BossId;
+  bossName?: string;
+  difficulty: StageDifficulty;
   recommendedPower: number;
   coinReward: number;
   firstClearReward: number;

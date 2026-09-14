@@ -10,19 +10,21 @@ export class EnemyProjectile3D {
   x: number;
   y: number;
   readonly velocity: THREE.Vector2;
+  readonly damage: number;
   age = 0;
   active = true;
 
-  constructor(parent: THREE.Object3D, x: number, y: number, angle: number, speed: number, resources: SharedResources) {
+  constructor(parent: THREE.Object3D, x: number, y: number, angle: number, speed: number, resources: SharedResources, damage = 13, color = 0xff6372) {
     this.x = x;
     this.y = y;
+    this.damage = damage;
     this.velocity = new THREE.Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed);
     this.group = new THREE.Group();
     this.group.name = this.id;
-    const bolt = addMesh(this.group, resources.octa('enemy-projectile'), resources.standardMaterial('enemy-projectile', 0xff7684, { emissive: 0xaa1c48, emissiveIntensity: 1.2, roughness: 0.35 }));
+    const bolt = addMesh(this.group, resources.octa('enemy-projectile'), resources.standardMaterial(`enemy-projectile-${color}`, color, { emissive: color, emissiveIntensity: 1.2, roughness: 0.35 }));
     bolt.scale.setScalar(0.2);
     bolt.position.y = 0.48;
-    const trail = addMesh(this.group, resources.cone('enemy-projectile-trail'), resources.basicMaterial('enemy-projectile-trail', 0xff6372, { transparent: true, opacity: 0.38 }));
+    const trail = addMesh(this.group, resources.cone('enemy-projectile-trail'), resources.basicMaterial(`enemy-projectile-trail-${color}`, color, { transparent: true, opacity: 0.38 }));
     trail.scale.set(0.09, 0.36, 0.09);
     trail.position.set(0, 0.48, 0.22);
     trail.rotation.x = Math.PI / 2;

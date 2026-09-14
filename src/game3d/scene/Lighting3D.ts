@@ -8,7 +8,11 @@ export function createLighting(scene: THREE.Scene, stage: StageDefinition, lowPe
   hemisphere.name = 'moonlight-hemisphere';
   scene.add(hemisphere);
 
-  const key = new THREE.DirectionalLight(theme.keyLight, lowPerformanceMode ? 1.25 : 1.65);
+  const ambient = new THREE.AmbientLight(theme.fillLight, lowPerformanceMode ? 0.26 : 0.4);
+  ambient.name = 'soft-world-fill';
+  scene.add(ambient);
+
+  const key = new THREE.DirectionalLight(theme.keyLight, lowPerformanceMode ? 1.45 : 1.95);
   key.name = 'moonlight-key';
   key.position.set(-8, 18, 10);
   scene.add(key);

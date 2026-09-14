@@ -23,6 +23,7 @@ export class Player3D {
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
   private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
+  private readonly baseCharacterScale = 1.2;
   private movement = new THREE.Vector2();
   private invulnerableUntil = 0;
   private visualTime = 0;
@@ -94,7 +95,7 @@ export class Player3D {
     this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * (moving ? 8 : 4.8))) * 0.045;
     this.hitFlash = Math.max(0, this.hitFlash - delta);
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
-    this.character.scale.setScalar((this.hitFlash > 0 ? 1.055 : 1) * revivePop);
+    this.character.scale.setScalar(this.baseCharacterScale * (this.hitFlash > 0 ? 1.055 : 1) * revivePop);
   }
 
   setMovementVector(x: number, y: number): void {
