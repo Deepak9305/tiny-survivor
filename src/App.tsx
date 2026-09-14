@@ -20,7 +20,8 @@ import { UpgradesScreen } from './screens/UpgradesScreen';
 import { WorldMapScreen } from './screens/WorldMapScreen';
 import { ScreenTransition } from './components/ScreenTransition';
 import { getActiveThreeGame } from './game3d/ThreeGame';
-import type { BossId, EnemyKind, MissionProgress, RunResult, SaveData, Screen, Settings } from './types';
+import { getAbilitiesUnlockedByStageClear } from './data/abilities';
+import type { AbilityId, BossId, EnemyKind, MissionProgress, RunResult, SaveData, Screen, Settings } from './types';
 
 function localDate(): string { const date = new Date(); return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`; }
 
@@ -51,6 +52,7 @@ export default function App() {
   const [lastResult, setLastResult] = useState<RunResult | undefined>();
   const [selectedBestiaryId, setSelectedBestiaryId] = useState<string>('skeleton');
   const [runKey, setRunKey] = useState(0);
+  const [newlyUnlockedAbilities, setNewlyUnlockedAbilities] = useState<AbilityId[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +111,9 @@ export default function App() {
     const stage = getStage(result.stageId);
     const firstClear = !save.completedStages.includes(result.stageId);
     const completedStages = [...new Set([...save.completedStages, result.stageId])];
+    const newlyUnlocked = getAbilitiesUnlockedByStageClear(result.stageId, save.unlockedAbilities || []);
+    setNewlyUnlockedAbilities(newlyUnlocked);
+    const unlockedAbilities = [...new Set([...(save.unlockedAbilities || []), ...newlyUnlocked])];
     const next = Math.min(20, stageNumber(result.stageId) + 1);
     const best = save.bestStageTimes[result.stageId];
     const codex = mergeCodexProgress(save, result);
@@ -118,6 +123,7 @@ export default function App() {
       gems: save.gems + (firstClear ? stage.firstClearReward : 0),
       highestUnlockedStage: Math.max(save.highestUnlockedStage, next),
       completedStages,
+      unlockedAbilities,
       bestStageTimes: { ...save.bestStageTimes, [result.stageId]: best ? Math.min(best, result.time) : result.time },
       totalRuns: save.totalRuns + 1,
       totalKills: save.totalKills + result.kills,
@@ -193,7 +199,7 @@ export default function App() {
     case 'missions': view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />; break;
     case 'shop': view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={handleFreeChest} />; break;
     case 'settings': view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />; break;
-    case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
+    case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} newlyUnlockedAbilities={newlyUnlockedAbilities} onNext={() => startStage(getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
     case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} onBestiary={() => handleBestiarySelect('skeleton')} />; break;
     default: view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
   }

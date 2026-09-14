@@ -57,6 +57,8 @@ export interface WeaponHooks {
 export class WeaponSystem {
   private readonly levels = new Map<WeaponId, number>();
   private readonly cooldowns = new Map<WeaponId, number>();
+  private primaryHitCounter = 0;
+  private chainFallbackTimer = 0;
 
   constructor(private readonly hooks: WeaponHooks) {
     this.levels.set('magic-bolt', 1);
@@ -89,69 +91,98 @@ export class WeaponSystem {
     return Object.fromEntries(this.levels.entries());
   }
 
-  canEvolve(id: WeaponId, passiveLevels: Record<string, number>): boolean {
-    return this.getWeaponLevel(id) >= 5 && (passiveLevels.focus ?? 0) >= 5;
-  }
-
-  evolveWeapon(id: WeaponId): boolean {
-    if (!this.isWeaponMaxed(id)) return false;
-    return true;
-  }
-
   update(delta: number): void {
     const isAiming = this.hooks.isAimActive();
 
-    for (const [id, level] of this.levels) {
-      const isPassiveAuto = id === 'orbiting-blades';
-
-      // Directional weapons fire ONLY while aiming
-      if (!isPassiveAuto && !isAiming) {
-        continue;
+    // 1. Primary: Magic Bolt (fires continuously according to cooldown only while actively aiming)
+    const boltCooldown = (this.cooldowns.get('magic-bolt') ?? 0) - delta;
+    if (boltCooldown <= 0) {
+      if (isAiming) {
+        this.triggerMagicBolt();
+        const level = this.getWeaponLevel('magic-bolt');
+        const base = WEAPON_BALANCE['magic-bolt'].cooldown * this.hooks.getCooldownMultiplier();
+        this.cooldowns.set('magic-bolt', Math.max(0.12, base * (level >= 4 ? 0.82 : level >= 2 ? 0.92 : 1)));
+      } else {
+        this.cooldowns.set('magic-bolt', 0);
       }
+    } else {
+      this.cooldowns.set('magic-bolt', boltCooldown);
+    }
 
-      const next = (this.cooldowns.get(id) ?? 0) - delta;
-      if (next > 0) {
-        this.cooldowns.set(id, next);
-        continue;
+    // 2. Auto Weapon: Orbiting Blades (periodic auto damage around player)
+    if (this.hasWeapon('orbiting-blades')) {
+      const bladesCooldown = (this.cooldowns.get('orbiting-blades') ?? 0) - delta;
+      if (bladesCooldown <= 0) {
+        const level = this.getWeaponLevel('orbiting-blades');
+        const damage =
+          WEAPON_BALANCE['orbiting-blades'].baseDamage *
+          this.hooks.getDamageMultiplier() *
+          (1 + (level - 1) * 0.25);
+        const player = this.hooks.getPlayerPosition();
+        this.hooks.dealOrbitDamage(
+          player.x,
+          player.y,
+          52 + level * 6,
+          damage * 0.65,
+          WEAPON_BALANCE['orbiting-blades'].damageType
+        );
+        const base = WEAPON_BALANCE['orbiting-blades'].cooldown * this.hooks.getCooldownMultiplier();
+        this.cooldowns.set('orbiting-blades', Math.max(0.2, base));
+      } else {
+        this.cooldowns.set('orbiting-blades', bladesCooldown);
       }
+    }
 
-      this.triggerWeaponAttack(id);
-      const base = WEAPON_BALANCE[id].cooldown * this.hooks.getCooldownMultiplier();
-      this.cooldowns.set(
-        id,
-        Math.max(0.12, base * (level >= 4 ? 0.82 : level >= 2 ? 0.92 : 1))
-      );
+    // 3. Auto Weapon: Chain Lightning fallback proc in case player hits are spaced out
+    if (this.hasWeapon('chain-lightning')) {
+      this.chainFallbackTimer += delta;
+      const level = this.getWeaponLevel('chain-lightning');
+      const fallbackThreshold = Math.max(2.4, 4.8 - level * 0.4);
+      if (this.chainFallbackTimer >= fallbackThreshold) {
+        this.chainFallbackTimer = 0;
+        const player = this.hooks.getPlayerPosition();
+        const nearby = this.hooks.findTargetsInRadius(player.x, player.y, 320);
+        if (nearby.length > 0) {
+          const firstTarget = nearby[0];
+          this.triggerChainLightningAt(firstTarget.x, firstTarget.y, firstTarget.id);
+        }
+      }
     }
   }
 
-  triggerWeaponAttack(id: WeaponId): void {
-    const level = this.getWeaponLevel(id);
+  /**
+   * Called whenever a primary Magic Bolt impacts an enemy.
+   * Procs Chain Lightning after required hits!
+   */
+  onPrimaryHit(targetX: number, targetY: number, targetId?: string): void {
+    if (!this.hasWeapon('chain-lightning')) return;
+    this.primaryHitCounter += 1;
+    const level = this.getWeaponLevel('chain-lightning');
+    // Baseline: 6 hits, reduced per level to 5, 4, 3, 2
+    const requiredHits = Math.max(2, 7 - level);
+    if (this.primaryHitCounter >= requiredHits) {
+      this.primaryHitCounter = 0;
+      this.chainFallbackTimer = 0;
+      this.triggerChainLightningAt(targetX, targetY, targetId);
+    }
+  }
+
+  private triggerMagicBolt(): void {
+    const level = this.getWeaponLevel('magic-bolt');
     const damage =
-      WEAPON_BALANCE[id].baseDamage *
+      WEAPON_BALANCE['magic-bolt'].baseDamage *
       this.hooks.getDamageMultiplier() *
-      (1 + (level - 1) * 0.23);
+      (1 + (level - 1) * 0.25);
     const player = this.hooks.getPlayerPosition();
 
-    // Orbiting Blades: Fully automatic close-range shield
-    if (id === 'orbiting-blades') {
-      this.hooks.dealOrbitDamage(
-        player.x,
-        player.y,
-        50 + level * 5,
-        damage * 0.65,
-        WEAPON_BALANCE[id].damageType
-      );
-      return;
-    }
-
     const rawAim = this.hooks.getAimVector();
-    const aimLen = Math.sqrt(rawAim.x * rawAim.x + rawAim.y * rawAim.y);
+    const aimLen = Math.hypot(rawAim.x, rawAim.y);
     if (aimLen < 0.1) return;
 
     let dirX = rawAim.x / aimLen;
     let dirY = rawAim.y / aimLen;
 
-    // Optional mild aim assist (cone ~10 degrees = 0.175 rad) to nudge trajectory
+    // Mild aim assist (cone ~10 degrees = 0.175 rad) to nudge trajectory
     const assist = this.hooks.findAimAssistTarget(
       player.x,
       player.y,
@@ -167,77 +198,60 @@ export class WeaponSystem {
       let diff = targetAngle - aimAngle;
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      const nudgedAngle = aimAngle + diff * 0.45;
+      const nudgedAngle = aimAngle + diff * 0.42;
       dirX = Math.cos(nudgedAngle);
       dirY = Math.sin(nudgedAngle);
     }
 
-    if (id === 'magic-bolt') {
-      const count = level >= 3 ? 2 : 1;
-      const pierce = level >= 5 ? 2 : level >= 4 ? 1 : 0;
-      for (let index = 0; index < count; index += 1) {
-        const spreadAngle = count === 2 ? (index === 0 ? -0.1 : 0.1) : 0;
-        this.hooks.fireProjectile({
-          weaponId: id,
-          direction: { x: dirX, y: dirY },
-          angle: spreadAngle,
-          damage,
-          speed: 380,
-          radius: 7,
-          pierce,
-          color: WEAPON_BALANCE[id].color,
-          damageType: WEAPON_BALANCE[id].damageType,
-        });
-      }
-      return;
-    }
-
-    if (id === 'fire-orb') {
+    const count = level >= 3 ? 2 : 1;
+    const pierce = level >= 5 ? 2 : level >= 4 ? 1 : 0;
+    for (let index = 0; index < count; index += 1) {
+      const spreadAngle = count === 2 ? (index === 0 ? -0.1 : 0.1) : 0;
       this.hooks.fireProjectile({
-        weaponId: id,
+        weaponId: 'magic-bolt',
         direction: { x: dirX, y: dirY },
+        angle: spreadAngle,
         damage,
-        speed: 230,
-        radius: 12,
-        pierce: level >= 5 ? 1 : 0,
-        color: WEAPON_BALANCE[id].color,
-        damageType: WEAPON_BALANCE[id].damageType,
-        explosive: true,
+        speed: 380,
+        radius: 7,
+        pierce,
+        color: WEAPON_BALANCE['magic-bolt'].color,
+        damageType: WEAPON_BALANCE['magic-bolt'].damageType,
       });
-      return;
     }
+  }
 
-    if (id === 'chain-lightning') {
-      // Chain Lightning finds first enemy inside aim cone (~26 degrees = 0.45 rad)
-      const target = this.hooks.findAimAssistTarget(
-        player.x,
-        player.y,
-        dirX,
-        dirY,
-        0.45,
-        440
+  private triggerChainLightningAt(originX: number, originY: number, initialTargetId?: string): void {
+    const level = this.getWeaponLevel('chain-lightning');
+    const damage =
+      WEAPON_BALANCE['chain-lightning'].baseDamage *
+      this.hooks.getDamageMultiplier() *
+      (1 + (level - 1) * 0.25);
+
+    const chainCount = level >= 5 ? 5 : level >= 4 ? 4 : level >= 2 ? 3 : 2;
+    const chainRadius = 200 + level * 20;
+
+    const initialPoint: TargetPoint = {
+      id: initialTargetId ?? 'origin',
+      x: originX,
+      y: originY,
+    };
+
+    const nearby = this.hooks
+      .findTargetsInRadius(originX, originY, chainRadius)
+      .filter((t) => t.id !== initialPoint.id);
+
+    const targets: TargetPoint[] = [initialPoint, ...nearby].slice(0, chainCount);
+
+    for (const chainTarget of targets) {
+      this.hooks.dealAreaDamage(
+        chainTarget.x,
+        chainTarget.y,
+        26,
+        damage,
+        WEAPON_BALANCE['chain-lightning'].color,
+        WEAPON_BALANCE['chain-lightning'].damageType
       );
-
-      if (!target) return; // Do not fire if no enemy in aim cone!
-
-      const chainCount = level >= 4 ? 4 : level >= 2 ? 3 : 2;
-      const targets = [
-        target,
-        ...this.hooks
-          .findTargetsInRadius(target.x, target.y, 190)
-          .filter((t) => t.id !== target.id),
-      ].slice(0, chainCount);
-
-      for (const chainTarget of targets) {
-        this.hooks.dealAreaDamage(
-          chainTarget.x,
-          chainTarget.y,
-          24,
-          damage,
-          WEAPON_BALANCE[id].color,
-          WEAPON_BALANCE[id].damageType
-        );
-      }
     }
   }
 }

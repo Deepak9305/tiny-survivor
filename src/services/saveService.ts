@@ -1,8 +1,9 @@
 import { Preferences } from '@capacitor/preferences';
-import type { BossId, EnemyKind, MissionProgress, SaveData, Settings } from '../types';
+import type { AbilityId, BossId, EnemyKind, MissionProgress, SaveData, Settings } from '../types';
+import { ALL_ABILITY_IDS, isAbilityMilestoneCleared } from '../data/abilities';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
-const SAVE_SCHEMA_VERSION = 3;
+const SAVE_SCHEMA_VERSION = 4;
 
 export const DEFAULT_SETTINGS: Settings = {
   music: true,
@@ -22,6 +23,7 @@ export const DEFAULT_SAVE: SaveData = {
   gems: 36,
   highestUnlockedStage: 1,
   completedStages: [],
+  unlockedAbilities: [],
   bestStageTimes: {},
   selectedHero: 'shadow',
   heroesUnlocked: ['shadow'],
@@ -84,14 +86,32 @@ export function normalizeSave(raw: unknown): SaveData {
   const settings = data.settings && typeof data.settings === 'object' ? data.settings as Partial<Settings> : {};
   const completedStages = Array.isArray(data.completedStages) ? data.completedStages.filter((id): id is string => typeof id === 'string') : [];
   const heroesUnlocked = Array.isArray(data.heroesUnlocked) ? data.heroesUnlocked.filter((id): id is string => typeof id === 'string') : ['shadow'];
+  const highestUnlockedStage = Math.min(20, Math.max(1, validInteger(data.highestUnlockedStage, 1, 1)));
+
+  // Preserve any previously unlocked abilities
+  const explicitUnlocked = Array.isArray(data.unlockedAbilities)
+    ? data.unlockedAbilities.filter((id): id is AbilityId => ALL_ABILITY_IDS.includes(id as AbilityId))
+    : [];
+
+  // Migration backfill for existing saves based on completed stage milestones
+  const inferredUnlocked: AbilityId[] = [];
+  for (const abilityId of ALL_ABILITY_IDS) {
+    if (isAbilityMilestoneCleared(abilityId, completedStages, highestUnlockedStage)) {
+      inferredUnlocked.push(abilityId);
+    }
+  }
+
+  const unlockedAbilities = [...new Set([...explicitUnlocked, ...inferredUnlocked])];
+
   return {
     ...DEFAULT_SAVE,
     ...data,
     schemaVersion: SAVE_SCHEMA_VERSION,
     coins: validInteger(data.coins, DEFAULT_SAVE.coins),
     gems: validInteger(data.gems, DEFAULT_SAVE.gems),
-    highestUnlockedStage: Math.min(20, Math.max(1, validInteger(data.highestUnlockedStage, 1, 1))),
+    highestUnlockedStage,
     completedStages: [...new Set(completedStages)],
+    unlockedAbilities,
     bestStageTimes: data.bestStageTimes && typeof data.bestStageTimes === 'object' ? data.bestStageTimes : {},
     selectedHero: typeof data.selectedHero === 'string' && heroesUnlocked.includes(data.selectedHero) ? data.selectedHero : 'shadow',
     heroesUnlocked: heroesUnlocked.includes('shadow') ? [...new Set(heroesUnlocked)] : ['shadow', ...heroesUnlocked],

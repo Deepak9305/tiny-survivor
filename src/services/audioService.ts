@@ -28,7 +28,11 @@ export type SfxId =
   | 'imp-fuse'
   | 'imp-explode'
   | 'skeleton-slash'
-  | 'demon-slash';
+  | 'demon-slash'
+  | 'ability-fireball'
+  | 'ability-freeze'
+  | 'ability-beam'
+  | 'ability-heal';
 
 interface SfxOptions {
   volume?: number;
@@ -416,6 +420,10 @@ const DEFINITIONS: Record<
   'imp-explode': { frequency: 140, endFrequency: 45, duration: 0.36, volume: 0.14, type: 'sawtooth', harmony: 280 },
   'skeleton-slash': { frequency: 290, endFrequency: 130, duration: 0.15, volume: 0.075, type: 'triangle' },
   'demon-slash': { frequency: 220, endFrequency: 90, duration: 0.22, volume: 0.095, type: 'sawtooth' },
+  'ability-fireball': { frequency: 160, endFrequency: 75, duration: 0.28, volume: 0.12, type: 'sawtooth', harmony: 240 },
+  'ability-freeze': { frequency: 950, endFrequency: 1420, duration: 0.32, volume: 0.11, type: 'sine', harmony: 1900 },
+  'ability-beam': { frequency: 480, endFrequency: 960, duration: 0.38, volume: 0.13, type: 'triangle', harmony: 720 },
+  'ability-heal': { frequency: 330, endFrequency: 660, duration: 0.42, volume: 0.10, type: 'sine', harmony: 990 },
 };
 
 function definitionFor(id: SfxId) {

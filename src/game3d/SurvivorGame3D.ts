@@ -3,9 +3,11 @@ import { PLAYER_BALANCE, WEAPON_BALANCE } from '../data/balance';
 import { getBossDefinition } from '../data/bosses';
 import { getMonsterDefinition } from '../data/monsters';
 import { generateUpgradeChoices } from '../data/upgrades';
-import type { BossAttack, BossId, DamageType, EnemyKind, GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId } from '../types';
+import type { BossAttack, BossId, DamageType, EnemyKind, GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId, AbilityId } from '../types';
+import { ALL_ABILITY_IDS } from '../data/abilities';
 import { HapticsService } from '../services/hapticsService';
 import { audioService } from '../services/audioService';
+import { AbilitySystem } from '../game/systems/AbilitySystem';
 import { BossSystem } from '../game/systems/BossSystem';
 import { calculateDamage } from '../game/systems/DamageSystem';
 import { EnemySpawner } from '../game/systems/EnemySpawner';
@@ -59,6 +61,7 @@ export class SurvivorGame3D {
   private player!: Player3D;
   private xpSystem = new XPSystem();
   private weaponSystem!: WeaponSystem;
+  private abilitySystem!: AbilitySystem;
   private enemySpawner!: EnemySpawner;
   private bossSystem!: BossSystem;
   private runController!: RunController;
@@ -116,7 +119,14 @@ export class SurvivorGame3D {
     this.effects = new CombatEffects3D(this.effectsRoot, this.resources, save.settings.reducedEffects || this.lowPerformanceMode);
     this.damageText = new DamageText3D(this.effectsRoot, this.lowPerformanceMode);
     this.telegraphs = new Telegraph3D(this.effectsRoot, this.resources);
-    this.input = new InputController(() => this.pauseFromBackground());
+    this.input = new InputController(
+      () => this.pauseFromBackground(),
+      (slot) => {
+        const ids: AbilityId[] = ['fireball', 'freeze', 'heal', 'arcane-beam'];
+        const abilityId = ids[slot - 1];
+        if (abilityId) this.activateAbility(abilityId);
+      }
+    );
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.parent);
     this.renderer.domElement.addEventListener('webglcontextlost', this.handleContextLost, false);
@@ -135,9 +145,20 @@ export class SurvivorGame3D {
   setMovementVector(x: number, y: number): void { this.input.setMovementVector(x, y); }
   setAimVector(x: number, y: number): void { this.input.setAimVector(x, y); }
 
+  activateAbility(id: AbilityId): boolean {
+    if (this.isRunPaused || this.isFinished || this.levelUpOpen) return false;
+    const aim = this.input.getAimVector();
+    const lastAim = this.input.getLastAimVector();
+    const isAiming = this.input.isAimActive();
+    const aimDir = isAiming && Math.hypot(aim.x, aim.y) > 0.08 ? aim : lastAim;
+    return this.abilitySystem.activate(id, aimDir);
+  }
+
   selectUpgrade(id: string): void {
     if (!this.levelUpOpen || this.isFinished) return;
-    if (id in this.weaponSystem.getLevels() || ['magic-bolt', 'fire-orb', 'orbiting-blades', 'chain-lightning'].includes(id)) {
+    if (ALL_ABILITY_IDS.includes(id as AbilityId)) {
+      this.abilitySystem.upgradeAbility(id as AbilityId);
+    } else if (id in this.weaponSystem.getLevels() || ['magic-bolt', 'orbiting-blades', 'chain-lightning'].includes(id)) {
       const weaponId = id as WeaponId;
       if (this.weaponSystem.getWeaponLevel(weaponId) < 5) this.weaponSystem.upgradeWeapon(weaponId);
     } else {
@@ -150,7 +171,7 @@ export class SurvivorGame3D {
     if (this.xpSystem.checkLevelUp()) {
       this.levelUpOpen = true;
       audioService.playSFX('upgrade');
-      this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, 3));
+      this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, this.abilitySystem.getLevels(), this.save.unlockedAbilities, 3));
       return;
     }
     audioService.restoreMusicVolume();
@@ -229,6 +250,8 @@ export class SurvivorGame3D {
       aliveEnemies: this.enemies.length,
       weaponLevels: this.weaponSystem?.getLevels() ?? { 'magic-bolt': 1 },
       passiveLevels: { ...this.passiveLevels },
+      abilityLevels: this.abilitySystem?.getLevels() ?? {},
+      abilities: this.abilitySystem?.getSnapshot() ?? [],
       boss: bossState ? { name: bossState.name, hp: bossState.hp, maxHp: bossState.maxHp, phase: bossState.phase } : undefined,
     };
   }
@@ -328,6 +351,18 @@ export class SurvivorGame3D {
       getDamageMultiplier: () => this.player.stats.damageMultiplier,
       getCooldownMultiplier: () => this.player.stats.cooldownMultiplier,
     });
+    this.abilitySystem = new AbilitySystem({
+      onFireball: (dirX, dirY, level) => this.triggerFireball(dirX, dirY, level),
+      onFreeze: (level) => this.triggerFreeze(level),
+      onHealTick: (amount, isFinished) => this.triggerHealTick(amount, isFinished),
+      onArcaneBeam: (dirX, dirY, level) => this.triggerArcaneBeam(dirX, dirY, level),
+      getCooldownMultiplier: () => this.player.stats.cooldownMultiplier,
+      getPlayerHP: () => ({
+        current: this.player.stats.currentHP,
+        max: this.player.stats.maxHP,
+      }),
+    });
+    this.abilitySystem.setUnlockedAbilities(this.save.unlockedAbilities || []);
     this.enemySpawner = new EnemySpawner({
       getPlayerPosition: () => this.player.getPosition(),
       getWorldSize: () => ({ width: WORLD_WIDTH, height: WORLD_HEIGHT }),
@@ -380,6 +415,7 @@ export class SurvivorGame3D {
     if (this.isFinished) return;
     this.lastLightningPoint = undefined;
     this.weaponSystem.update(delta);
+    this.abilitySystem.update(delta, this.isRunPaused || this.levelUpOpen);
     this.updateProjectiles(delta);
     this.updateEnemyProjectiles(delta);
     this.updatePickups(delta);
@@ -601,6 +637,13 @@ export class SurvivorGame3D {
         const dy = projectile.y - this.boss.y;
         if (Math.sqrt(dx * dx + dy * dy) < 42 + projectile.spec.radius) {
           this.damageBoss(projectile.spec.damage, projectile.spec.damageType);
+          if (projectile.spec.weaponId === 'magic-bolt') {
+            this.weaponSystem.onPrimaryHit(this.boss.x, this.boss.y, 'boss');
+          }
+          if (projectile.spec.explosive) {
+            this.dealAreaDamage(projectile.x, projectile.y, 88, projectile.spec.damage * 0.72, projectile.spec.color, projectile.spec.damageType);
+            this.effects.explosion(projectile.x, projectile.y, 1.4, projectile.spec.color);
+          }
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
           audioService.playSFX('hit', { pitch: 0.82 });
           hit = true;
@@ -613,7 +656,13 @@ export class SurvivorGame3D {
           const dy = projectile.y - enemy.y;
           if (Math.sqrt(dx * dx + dy * dy) > enemy.radius + projectile.spec.radius + 2) continue;
           this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color, projectile.spec.damageType, projectile.x, projectile.y);
-          if (projectile.spec.explosive) this.dealAreaDamage(projectile.x, projectile.y, 68, projectile.spec.damage * 0.64, projectile.spec.color, projectile.spec.damageType);
+          if (projectile.spec.weaponId === 'magic-bolt') {
+            this.weaponSystem.onPrimaryHit(enemy.x, enemy.y, enemy.id);
+          }
+          if (projectile.spec.explosive) {
+            this.dealAreaDamage(projectile.x, projectile.y, 88, projectile.spec.damage * 0.72, projectile.spec.color, projectile.spec.damageType);
+            this.effects.explosion(projectile.x, projectile.y, 1.4, projectile.spec.color);
+          }
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
           audioService.playSFX('hit', { pitch: projectile.spec.explosive ? 0.76 : 1, throttle: 0.08 });
           hit = true;
@@ -694,6 +743,96 @@ export class SurvivorGame3D {
     if (this.gameTime - this.lastOrbitDamage < 0.52) return;
     this.lastOrbitDamage = this.gameTime;
     this.dealAreaDamage(x, y, radius, damage, 0xb8d8ff, damageType);
+  }
+
+  private triggerFireball(dirX: number, dirY: number, level: number): void {
+    this.player.triggerAttack();
+    audioService.playSFX('ability-fireball');
+    const damage = 64 * this.player.stats.damageMultiplier * (1 + (level - 1) * 0.32);
+    const speed = 250;
+    const radius = 13 + (level - 1) * 2;
+    const count = level >= 5 ? 2 : 1;
+
+    for (let i = 0; i < count; i++) {
+      const spreadAngle = count === 2 ? (i === 0 ? -0.14 : 0.14) : 0;
+      this.fireProjectile({
+        weaponId: 'fire-orb',
+        direction: { x: dirX, y: dirY },
+        angle: spreadAngle,
+        damage,
+        speed,
+        radius,
+        pierce: 0,
+        color: 0xff6b35,
+        damageType: 'fire',
+        explosive: true,
+      });
+    }
+  }
+
+  private triggerFreeze(level: number): void {
+    audioService.playSFX('ability-freeze');
+    const radius = 160 + (level - 1) * 35;
+    const duration = 2.4 + (level - 1) * 0.45;
+    this.effects.freezeRing(this.player.x, this.player.y, radius * 0.024);
+    this.cameraController.triggerShake(0.1, 0.16);
+
+    const enemies = this.spatialGrid.queryRadius(this.player.x, this.player.y, radius);
+    for (const enemy of enemies) {
+      if (!this.enemies.includes(enemy)) continue;
+      enemy.applyFreeze(duration, this.gameTime);
+      if (level >= 5) {
+        this.damageEnemy(enemy, 38 * this.player.stats.damageMultiplier, 0x5ddcff, 'arcane', this.player.x, this.player.y);
+      }
+    }
+
+    if (this.bossSpawned && this.bossSystem?.isActive() && this.boss) {
+      const dist = Math.hypot(this.boss.x - this.player.x, this.boss.y - this.player.y);
+      if (dist <= radius + 30) {
+        this.damageBoss(42 * this.player.stats.damageMultiplier, 'arcane');
+      }
+    }
+  }
+
+  private triggerHealTick(amount: number, isFinished: boolean): void {
+    if (this.isFinished || this.player.stats.currentHP <= 0) return;
+    this.player.heal(amount);
+    this.spawnDamageNumber(this.player.x, this.player.y - 28, Math.round(amount), false, 0x48e076);
+    this.effects.healPulse(this.player.x, this.player.y);
+    audioService.playSFX('ability-heal', { throttle: 0.35 });
+    this.callbacks.onSnapshot(this.getSnapshot());
+  }
+
+  private triggerArcaneBeam(dirX: number, dirY: number, level: number): void {
+    this.player.triggerAttack();
+    audioService.playSFX('ability-beam');
+    const pX = this.player.x;
+    const pY = this.player.y;
+    const range = 520 + (level - 1) * 60;
+    const beamWidth = 24 + (level - 1) * 6;
+    const endX = pX + dirX * range;
+    const endY = pY + dirY * range;
+
+    this.effects.arcaneBeamEffect(pX, pY, endX, endY, 0xa87aff);
+    this.cameraController.triggerShake(0.14, 0.22);
+
+    const damage = 88 * this.player.stats.damageMultiplier * (1 + (level - 1) * 0.32);
+
+    for (const enemy of [...this.enemies]) {
+      const dist = distToSegment(enemy.x, enemy.y, pX, pY, endX, endY);
+      if (dist <= enemy.radius + beamWidth / 2) {
+        this.damageEnemy(enemy, damage, 0xa87aff, 'arcane', pX, pY);
+        this.effects.burst(enemy.x, enemy.y, 0xa87aff, true);
+      }
+    }
+
+    if (this.bossSpawned && this.bossSystem?.isActive() && this.boss) {
+      const dist = distToSegment(this.boss.x, this.boss.y, pX, pY, endX, endY);
+      if (dist <= 40 + beamWidth / 2) {
+        this.damageBoss(damage * 1.25, 'arcane');
+        this.effects.burst(this.boss.x, this.boss.y, 0xa87aff, true);
+      }
+    }
   }
 
   private updateOrbitVisuals(): void {
@@ -786,7 +925,15 @@ export class SurvivorGame3D {
     audioService.duckMusic(0.38, 60);
     this.runController.pauseRun();
     this.callbacks.onPaused(true);
-    this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, 3));
+    this.callbacks.onLevelUp(
+      generateUpgradeChoices(
+        this.weaponSystem.getLevels(),
+        this.passiveLevels,
+        this.abilitySystem.getLevels(),
+        this.save.unlockedAbilities,
+        3
+      )
+    );
   }
 
   private applyPassive(id: string, level: number): void {
@@ -1042,4 +1189,14 @@ function disposeScene(scene: THREE.Scene): void {
       }
     }
   });
+}
+
+function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }

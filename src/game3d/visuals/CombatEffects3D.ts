@@ -199,6 +199,52 @@ export class CombatEffects3D {
     this.burst(toX, toY, color, false);
   }
 
+  freezeRing(x: number, y: number, radius = 2.4): void {
+    this.ring(x, y, radius * 1.25, 0x5ddcff);
+    this.ring(x, y, radius * 0.7, 0xffffff);
+    this.burst(x, y, 0x88e6ff, true);
+    this.burst(x, y, 0xffffff, false);
+  }
+
+  arcaneBeamEffect(fromX: number, fromY: number, toX: number, toY: number, color = 0xa87aff): void {
+    const start = logicalToWorld(fromX, fromY);
+    const end = logicalToWorld(toX, toY);
+    const distance = start.distanceTo(end);
+    const group = new THREE.Group();
+
+    const beamGeom = this.resources.cylinder('arcane-beam-geom');
+    const outerMat = this.resources.basicMaterial(`beam-outer-${color}`, color, {
+      transparent: true,
+      opacity: 0.88,
+    });
+    const coreMat = this.resources.basicMaterial('beam-core-white', 0xffffff, {
+      transparent: true,
+      opacity: 0.95,
+    });
+
+    const outerMesh = addMesh(group, beamGeom, outerMat);
+    outerMesh.scale.set(0.56, distance, 0.56);
+    const coreMesh = addMesh(group, beamGeom, coreMat);
+    coreMesh.scale.set(0.24, distance, 0.24);
+
+    outerMesh.userData.baseOpacity = 0.88;
+    coreMesh.userData.baseOpacity = 0.95;
+
+    const mid = start.clone().lerp(end, 0.5);
+    group.position.set(mid.x, 0.72, mid.z);
+    group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+
+    this.parent.add(group);
+    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.18 : 0.28, kind: 'lightning' });
+
+    this.burst(toX, toY, color, true);
+  }
+
+  healPulse(x: number, y: number): void {
+    this.ring(x, y, 0.95, 0x48e076);
+    this.burst(x, y, 0x76f59b, false);
+  }
+
   update(delta: number): void {
     // Update active effects (rings, lightning beams, death corpses)
     for (let index = this.effects.length - 1; index >= 0; index -= 1) {

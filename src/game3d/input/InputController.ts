@@ -7,9 +7,14 @@ export class InputController {
   private readonly lastAimVector = new THREE.Vector2(1, 0);
   private aimActive = false;
   private readonly onBackground: () => void;
+  private readonly onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void;
 
-  constructor(onBackground: () => void) {
+  constructor(
+    onBackground: () => void,
+    onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void
+  ) {
     this.onBackground = onBackground;
+    this.onAbilityKey = onAbilityKey;
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', this.handleBlur);
@@ -94,6 +99,27 @@ export class InputController {
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
+    if (key === '1') {
+      this.onAbilityKey?.(1);
+      event.preventDefault();
+      return;
+    }
+    if (key === '2') {
+      this.onAbilityKey?.(2);
+      event.preventDefault();
+      return;
+    }
+    if (key === '3') {
+      this.onAbilityKey?.(3);
+      event.preventDefault();
+      return;
+    }
+    if (key === '4') {
+      this.onAbilityKey?.(4);
+      event.preventDefault();
+      return;
+    }
+
     if (
       [
         'w',

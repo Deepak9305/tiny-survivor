@@ -46,9 +46,11 @@ export class Enemy3D implements SpatialEntity {
   private readonly healthBar: THREE.Group;
   private readonly telegraphGroup: THREE.Group;
   private readonly telegraphMesh: THREE.Mesh;
+  private readonly frostMesh: THREE.Mesh;
   private hp: number;
   private slowMultiplier = 1;
   private slowUntil = 0;
+  private freezeUntil = 0;
   private phaseTime: number;
   private hitPulse = 0;
   private healthBarLife = 0;
@@ -116,6 +118,23 @@ export class Enemy3D implements SpatialEntity {
     this.telegraphMesh.rotation.x = -Math.PI / 2;
     this.group.add(this.telegraphGroup);
 
+    // Frost crystal overlay for freeze state
+    this.frostMesh = addMesh(
+      this.group,
+      resources.octa('enemy-frost-crystal'),
+      resources.standardMaterial('enemy-frost-mat', 0xa8f0ff, {
+        transparent: true,
+        opacity: 0.68,
+        roughness: 0.15,
+        metalness: 0.25,
+        emissive: 0x3ac8ff,
+        emissiveIntensity: 0.85,
+      })
+    );
+    this.frostMesh.scale.set(visualScale * 1.15, visualScale * 1.35, visualScale * 1.15);
+    this.frostMesh.position.set(0, 0.72 * visualScale, 0);
+    this.frostMesh.visible = false;
+
     this.healthBar = createHealthBar(resources, elite);
     this.healthBar.position.set(0, 1.72 * visualScale, 0.42 * visualScale);
     this.healthFill = this.healthBar.children[1] as THREE.Mesh;
@@ -167,6 +186,15 @@ export class Enemy3D implements SpatialEntity {
     this.attackCooldown = Math.max(0, this.attackCooldown - delta);
     this.hitPulse = Math.max(0, this.hitPulse - delta);
     this.healthBarLife = Math.max(0, this.healthBarLife - delta);
+
+    // Freeze check: hold position, pause state execution, display frost overlay
+    if (now < this.freezeUntil) {
+      this.frostMesh.visible = true;
+      this.frostMesh.rotation.y += delta * 1.8;
+      this.syncPosition();
+      return undefined;
+    }
+    this.frostMesh.visible = false;
 
     // If enemy is far, use lightweight straight pursuit without expensive attack states
     if (distance > 340 && this.state === 'approach') {
@@ -625,6 +653,12 @@ export class Enemy3D implements SpatialEntity {
   applySlow(multiplier: number, duration: number, now: number): void {
     this.slowMultiplier = Math.min(this.slowMultiplier, multiplier);
     this.slowUntil = Math.max(this.slowUntil, now + duration);
+  }
+
+  applyFreeze(duration: number, now: number, postSlowDuration = 2.2): void {
+    const effectiveDuration = this.elite ? duration * 0.5 : duration;
+    this.freezeUntil = Math.max(this.freezeUntil, now + effectiveDuration);
+    this.applySlow(0.55, effectiveDuration + postSlowDuration, now);
   }
 
   damage(amount: number): boolean {

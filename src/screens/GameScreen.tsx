@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Swords, Target, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { TwinStickControls } from '../components/TwinStickControls';
+import { AbilityControls } from '../components/AbilityControls';
 import { StagePreloadScreen } from '../components/StagePreloadScreen';
 import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
@@ -179,12 +180,16 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
         )}
         {tutorialVisible && (
           <div className="game-tip game-tip--twin-stick">
-            LEFT STICK — MOVE &middot; RIGHT STICK — AIM &middot; WEAPONS FIRE AUTOMATICALLY
+            LEFT STICK — MOVE &middot; RIGHT STICK — AIM &middot; TAP SPECIAL ABILITIES
           </div>
         )}
       </div>
 
       <TwinStickControls disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
+      <AbilityControls
+        abilities={snapshot.abilities}
+        disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)}
+      />
 
       {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
 
@@ -203,6 +208,9 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
               <div className="pause-build__items">
                 {Object.entries(snapshot.weaponLevels).map(([id, level]) => (
                   <span key={id}>{id.replaceAll('-', ' ')} <strong>&middot; Lv.{level}</strong></span>
+                ))}
+                {Object.entries(snapshot.abilityLevels ?? {}).map(([id, level]) => (
+                  <span key={id} className="pause-build__item--ability">{id.replaceAll('-', ' ')} <strong>&middot; Lv.{level}</strong></span>
                 ))}
               </div>
             </div>

@@ -25,7 +25,8 @@ export type EnemyKind =
   | 'demon'
   | 'imp';
 
-export type WeaponId = 'magic-bolt' | 'fire-orb' | 'orbiting-blades' | 'chain-lightning';
+export type AbilityId = 'fireball' | 'freeze' | 'heal' | 'arcane-beam';
+export type WeaponId = 'magic-bolt' | 'orbiting-blades' | 'chain-lightning' | 'fire-orb';
 export type PassiveId = 'power' | 'vitality' | 'swift-boots' | 'magnet' | 'focus' | 'luck' | 'growth' | 'armor';
 export type DamageType = 'arcane' | 'fire' | 'physical' | 'lightning';
 export type BossId = 'skeleton-king' | 'forest-witch' | 'frost-golem' | 'demon-lord';
@@ -98,6 +99,7 @@ export interface SaveData {
   gems: number;
   highestUnlockedStage: number;
   completedStages: string[];
+  unlockedAbilities: AbilityId[];
   bestStageTimes: Record<string, number>;
   selectedHero: string;
   heroesUnlocked: string[];
@@ -133,6 +135,16 @@ export interface MissionProgress {
   claimed: boolean;
 }
 
+export interface AbilityStateSnapshot {
+  id: AbilityId;
+  unlocked: boolean;
+  level: number;
+  cooldownRemaining: number;
+  cooldownDuration: number;
+  active: boolean;
+  activeRemaining: number;
+}
+
 export interface GameSnapshot {
   time: number;
   duration: number;
@@ -147,6 +159,8 @@ export interface GameSnapshot {
   aliveEnemies: number;
   weaponLevels: Record<string, number>;
   passiveLevels: Record<string, number>;
+  abilityLevels?: Record<string, number>;
+  abilities?: AbilityStateSnapshot[];
   boss?: {
     name: string;
     hp: number;
@@ -161,7 +175,7 @@ export interface UpgradeChoice {
   description: string;
   nextEffect: string;
   icon: string;
-  kind: 'weapon' | 'passive';
+  kind: 'weapon' | 'passive' | 'ability';
   rarity: Rarity;
   level: number;
 }

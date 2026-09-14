@@ -1,18 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Award, Coins, Home, Play, RotateCw, Skull, Sparkles, Star, Timer } from 'lucide-react';
+import { Coins, Home, Play, RotateCw, Skull, Sparkles, Star, Timer } from 'lucide-react';
 import { formatTime } from './GameOverScreen';
-import type { RunResult } from '../types';
+import { ABILITY_DEFINITIONS } from '../data/abilities';
+import type { AbilityId, RunResult } from '../types';
 
 interface StageClearScreenProps {
   result: RunResult;
+  newlyUnlockedAbilities?: AbilityId[];
   onNext: () => void;
   onReplay: () => void;
   onHome: () => void;
 }
 
-export function StageClearScreen({ result, onNext, onReplay, onHome }: StageClearScreenProps) {
+export function StageClearScreen({
+  result,
+  newlyUnlockedAbilities = [],
+  onNext,
+  onReplay,
+  onHome,
+}: StageClearScreenProps) {
   const [coinsCount, setCoinsCount] = useState(0);
   const isFinalCampaign = result.stageId === '4-5';
+  const unlockedAbilityId = newlyUnlockedAbilities[0];
+  const unlockedAbility = unlockedAbilityId ? ABILITY_DEFINITIONS[unlockedAbilityId] : undefined;
 
   useEffect(() => {
     const started = performance.now();
@@ -40,6 +50,19 @@ export function StageClearScreen({ result, onNext, onReplay, onHome }: StageClea
           <span className="eyebrow victory-eyebrow">VICTORY ACHIEVED</span>
           <h1 className="stage-clear-title">STAGE CLEAR</h1>
           <p className="stage-clear-sub">The darkness recedes before your power.</p>
+
+          {unlockedAbility && (
+            <div className={`stage-clear-ability-reward ability-reward--${unlockedAbility.id}`}>
+              <div className="ability-reward__badge">NEW ABILITY UNLOCKED</div>
+              <div className="ability-reward__content">
+                <div className="ability-reward__icon" aria-hidden="true">{unlockedAbility.icon}</div>
+                <div className="ability-reward__details">
+                  <strong className="ability-reward__name">{unlockedAbility.name}</strong>
+                  <span className="ability-reward__desc">{unlockedAbility.description}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right ~55%: Stats & CTAs */}
