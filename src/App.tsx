@@ -32,10 +32,12 @@ function createDailyMissions(): MissionProgress[] {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('splash');
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const initialScreenParam = searchParams?.get('screen') as Screen | null;
+  const [screen, setScreen] = useState<Screen>(initialScreenParam || 'splash');
   const [save, setSave] = useState<SaveData>(DEFAULT_SAVE);
   const [ready, setReady] = useState(false);
-  const [selectedStageId, setSelectedStageId] = useState('1-1');
+  const [selectedStageId, setSelectedStageId] = useState(searchParams?.get('stage') || '1-1');
   const [lastResult, setLastResult] = useState<RunResult | undefined>();
   const [selectedBestiaryId, setSelectedBestiaryId] = useState<string>('skeleton');
   const [runKey, setRunKey] = useState(0);
@@ -46,13 +48,20 @@ export default function App() {
       if (!mounted) return;
       const withDaily = loaded.missionDate === localDate() ? loaded : normalizeSave({ ...loaded, missionDate: localDate(), missions: createDailyMissions() });
       setSave(withDaily);
-      setSelectedStageId(getCurrentStage(withDaily).id);
+      if (searchParams?.get('stage')) {
+        setSelectedStageId(searchParams.get('stage')!);
+      } else {
+        setSelectedStageId(getCurrentStage(withDaily).id);
+      }
+      if (initialScreenParam) {
+        setScreen(initialScreenParam);
+      }
       setReady(true);
       void saveGame(withDaily);
       void AdService.initialize();
     });
     return () => { mounted = false; };
-  }, []);
+  }, [initialScreenParam, searchParams]);
 
   const handleNativeBack = useCallback(() => {
     if (screen === 'game') {

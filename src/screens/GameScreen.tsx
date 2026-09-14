@@ -113,17 +113,34 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     {rendererError && <div className="game-renderer-error" role="alert"><div className="game-renderer-error__icon"><Shield size={22} /></div><strong>3D ARENA PAUSED</strong><p>{rendererError}</p><button type="button" onClick={onHome}>RETURN HOME</button></div>}
     <div className="game-ui">
       <div className="game-topbar">
-        <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
-          <div className="game-health__labels"><span><Heart size={14} fill="currentColor" /> HP</span><strong>{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</strong></div>
-          <div className="game-health__track"><i style={{ width: `${hpPercent}%` }} /></div>
+        <div className="game-player-hud">
+          <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
+            <div className="game-health__icon" aria-hidden="true"><Heart size={15} fill="currentColor" /></div>
+            <div className="game-health__track">
+              <i style={{ width: `${hpPercent}%` }} />
+              <span className="game-health__value">{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</span>
+            </div>
+          </div>
+          <div className="game-level-xp">
+            <span className="game-level-text">Lv. {snapshot.level}</span>
+            <div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div>
+          </div>
         </div>
-        <div className="game-timer"><span>{stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div>
+        <div className="game-timer">
+          <span className="game-stage-title">Stage {stage.id.includes('-') ? stage.id.split('-')[1] : stage.id}</span>
+          <strong className="game-stage-time">{formatRunTime(snapshot.time)}</strong>
+        </div>
         <div className="game-actions">
-          <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}><Skull size={15} /><strong>{snapshot.kills.toLocaleString()}</strong></div>
+          <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}>
+            <Skull size={18} />
+            <div className="game-kills__text">
+              <span className="game-kills__label">Kills</span>
+              <strong className="game-kills__num">{snapshot.kills.toLocaleString()}</strong>
+            </div>
+          </div>
           <button className="game-pause" onClick={() => { audioService.playUISound(paused ? 'confirm' : 'tap'); if (paused) getActiveThreeGame()?.resumeRun(); else getActiveThreeGame()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
         </div>
       </div>
-      <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
       {snapshot.boss && <div className="boss-hud"><div><span><Shield size={13} /> {snapshot.boss.name}</span><strong>PHASE {snapshot.boss.phase}</strong></div><div className="boss-hud__track"><i style={{ width: `${Math.max(0, snapshot.boss.hp / snapshot.boss.maxHp * 100)}%` }} /></div></div>}
       {warning && stage.bossStage && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName ?? 'World boss'} enters the arena</small></div>}
       {tutorialVisible && <div className="game-tip">MOVE WITH JOYSTICK <span aria-hidden="true">&middot;</span> AUTO ATTACK</div>}

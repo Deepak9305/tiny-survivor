@@ -23,7 +23,7 @@ export class Player3D {
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
   private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
-  private readonly baseCharacterScale = 1.55;
+  private readonly baseCharacterScale = 0.92;
   private movement = new THREE.Vector2();
   private invulnerableUntil = 0;
   private visualTime = 0;
@@ -67,8 +67,8 @@ export class Player3D {
     const length = this.movement.length();
     if (length > 0.02) {
       const direction = this.movement.clone().normalize();
-      this.x = THREE.MathUtils.clamp(this.x + direction.x * this.stats.moveSpeed * delta, 34, worldWidth - 34);
-      this.y = THREE.MathUtils.clamp(this.y + direction.y * this.stats.moveSpeed * delta, 76, worldHeight - 34);
+      this.x = THREE.MathUtils.clamp(this.x + direction.x * this.stats.moveSpeed * delta, 48, worldWidth - 48);
+      this.y = THREE.MathUtils.clamp(this.y + direction.y * this.stats.moveSpeed * delta, 64, worldHeight - 64);
       this.direction = Math.atan2(direction.x, direction.y);
     }
     this.syncPosition();

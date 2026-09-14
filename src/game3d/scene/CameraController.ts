@@ -16,14 +16,38 @@ export class CameraController {
   private pullbackAmount = 0;
   private readonly reducedEffects: boolean;
   private readonly screenShakeEnabled: boolean;
+  private isOverviewDebug = false;
 
   constructor(lowPerformanceMode: boolean, reducedEffects = false, screenShakeEnabled = true) {
     this.reducedEffects = reducedEffects || lowPerformanceMode;
     this.screenShakeEnabled = screenShakeEnabled;
-    this.camera = new THREE.PerspectiveCamera(46, 9 / 16, 0.1, 95);
-    this.camera.position.set(0, 9.8, 9.4);
-    this.currentLookAt.set(0, 0, -1.6);
+    this.camera = new THREE.PerspectiveCamera(43, 9 / 16, 0.1, 110);
+    this.camera.position.set(0, 12.8, 10.8);
+    this.currentLookAt.set(0, 0, -1.4);
     this.camera.lookAt(this.currentLookAt);
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('debugCam') === 'map') {
+        this.isOverviewDebug = true;
+      }
+      (window as unknown as { __toggleDebugMapCam?: () => void }).__toggleDebugMapCam = () => {
+        this.isOverviewDebug = !this.isOverviewDebug;
+      };
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyM') {
+          this.isOverviewDebug = !this.isOverviewDebug;
+        }
+      });
+    }
+  }
+
+  toggleOverviewDebug(): void {
+    this.isOverviewDebug = !this.isOverviewDebug;
+  }
+
+  setOverviewDebug(enabled: boolean): void {
+    this.isOverviewDebug = enabled;
   }
 
   resize(width: number, height: number): void {
@@ -48,19 +72,30 @@ export class CameraController {
   }
 
   update(delta: number, playerX: number, playerY: number, movement = new THREE.Vector2(), enabled = true): void {
+    if (this.isOverviewDebug) {
+      // Full Map Overview Debug View: high overhead perspective showing entire arena
+      this.desiredPosition.set(0, 45, 0.05);
+      this.desiredLookAt.set(0, 0, 0);
+      this.camera.position.lerp(this.desiredPosition, 0.18);
+      this.currentLookAt.lerp(this.desiredLookAt, 0.18);
+      this.camera.lookAt(this.currentLookAt);
+      return;
+    }
+
     const player = logicalToWorld(playerX, playerY);
-    const lead = movement.clone().clampLength(0, 1).multiplyScalar(24);
-    const horizontalMargin = Math.min(ARENA_WIDTH * 0.32, 4.2);
-    const depthMargin = Math.min(ARENA_DEPTH * 0.28, 6.0);
-    const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.018, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
-    // Keep hero framed at approximately 58-62% down the viewport with rich forward visibility
-    const lookZ = THREE.MathUtils.clamp(player.z - 1.6 + lead.y * 0.015, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
+    const lead = movement.clone().clampLength(0, 1).multiplyScalar(22);
+    // Margins ensure camera doesn't pan past the outer fortress walls
+    const horizontalMargin = Math.min(ARENA_WIDTH * 0.28, 4.2);
+    const depthMargin = Math.min(ARENA_DEPTH * 0.26, 7.2);
+    const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.015, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
+    // Keep hero framed at approximately 57-60% down the viewport with generous forward reaction visibility
+    const lookZ = THREE.MathUtils.clamp(player.z - 1.4 + lead.y * 0.012, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
     this.desiredLookAt.set(lookX, 0, lookZ);
     const pullbackProgress = this.pullbackDuration > 0 ? this.pullbackTime / this.pullbackDuration : 0;
     const pullback = this.pullbackAmount * Math.sin(Math.min(1, pullbackProgress) * Math.PI);
-    this.desiredPosition.set(lookX, 9.8 + pullback * 0.65, lookZ + 9.4 + pullback * 0.85);
+    this.desiredPosition.set(lookX, 12.8 + pullback * 0.7, lookZ + 10.8 + pullback * 0.85);
 
-    const follow = 1 - Math.pow(0.0005, Math.max(delta, 0.001));
+    const follow = 1 - Math.pow(0.0004, Math.max(delta, 0.001));
     this.camera.position.lerp(this.desiredPosition, Math.min(1, follow * (enabled ? 1 : 0.32)));
     this.currentLookAt.lerp(this.desiredLookAt, Math.min(1, follow));
 
