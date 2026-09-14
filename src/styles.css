@@ -717,3 +717,258 @@ main { min-height: 100svh; width: min(100%, 540px); margin: 0 auto; overflow: hi
 @media (max-width: 380px) {
   .enemy-preview { min-height: 89px; }.enemy-preview strong { font-size: 11px; }.bestiary-list { max-height: 240px; }.creature-preview-3d { height: 158px; }.bestiary-detail__heading h2 { font-size: 22px; }
 }
+
+/* 3D Hero Preview & Showcase */
+.home-hero-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-preview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.hero-showcase__preview3d {
+  width: 100%;
+  height: 230px;
+  overflow: hidden;
+  border-radius: 16px;
+  position: relative;
+  background: radial-gradient(circle at 50% 40%, rgba(18, 52, 78, .6), rgba(4, 12, 22, .95));
+}
+.heroes-screen-3d {
+  width: 100%;
+  height: 100%;
+}
+
+/* World Map Single-World Presentation */
+.map-screen {
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+.map-header-badge {
+  display: flex;
+  align-items: center;
+  color: #9ce7ff;
+}
+.map-world-view {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 20px;
+  background: radial-gradient(circle at 50% 25%, rgba(20, 60, 95, 0.45), rgba(4, 10, 18, 0.96));
+  overflow: hidden;
+}
+.map-world-view--world-1 {
+  background: radial-gradient(circle at 50% 25%, rgba(22, 68, 105, 0.5), rgba(4, 10, 18, 0.97));
+}
+.map-world-view--world-2 {
+  background: radial-gradient(circle at 50% 25%, rgba(18, 55, 70, 0.5), rgba(5, 12, 20, 0.97));
+}
+.map-world-view--world-3 {
+  background: radial-gradient(circle at 50% 25%, rgba(35, 75, 115, 0.5), rgba(4, 11, 22, 0.97));
+}
+.map-world-view--world-4 {
+  background: radial-gradient(circle at 50% 25%, rgba(85, 25, 35, 0.5), rgba(12, 5, 14, 0.97));
+}
+.map-arrow {
+  position: absolute;
+  top: 42%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(8, 26, 44, 0.75);
+  color: #79dfff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+.map-arrow:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.map-arrow--left { left: 12px; }
+.map-arrow--right { right: 12px; }
+.map-stage-trail {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  margin: auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-trail-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.map-nodes-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  padding: 0 10px;
+}
+.map-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.map-node:active {
+  transform: scale(0.94);
+}
+.map-node__circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(110, 195, 235, 0.5);
+  background: radial-gradient(circle at 35% 30%, #174263, #0b1e32);
+  color: #e5f8ff;
+  font: 800 17px/1 'Barlow Condensed', sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.map-node.is-current .map-node__circle {
+  border-color: #ffd24d;
+  background: radial-gradient(circle at 35% 30%, #523715, #1f1406);
+  color: #fff2b2;
+  box-shadow: 0 0 16px rgba(255, 210, 77, 0.45);
+}
+.map-node.is-complete .map-node__circle {
+  border-color: #4bd77e;
+  color: #79f7a7;
+}
+.map-node.is-boss-node .map-node__circle {
+  width: 52px;
+  height: 52px;
+  border-color: #ff5e6c;
+  background: radial-gradient(circle at 35% 30%, #681822, #26080d);
+  color: #ff9da5;
+  box-shadow: 0 0 20px rgba(255, 74, 90, 0.45);
+}
+.map-node__label {
+  font: 800 11px/1 'Barlow Condensed', sans-serif;
+  color: #8daec0;
+  letter-spacing: 0.8px;
+}
+.map-node.is-boss-node .map-node__label {
+  color: #ff8591;
+  font-weight: 900;
+}
+.map-progress-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(10, 32, 52, 0.7);
+  border: 1px solid rgba(120, 200, 255, 0.25);
+  color: #d6f2ff;
+  font: 800 11px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+}
+.map-progress-pill svg {
+  color: var(--gold);
+}
+.map-world-carousel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.map-world-card {
+  height: 78px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 160, 200, 0.22);
+  background: rgba(7, 22, 36, 0.75);
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+.map-world-card.is-selected {
+  border-color: #55d5ff;
+  box-shadow: 0 0 14px rgba(85, 213, 255, 0.3);
+}
+.map-world-card.is-locked {
+  filter: brightness(0.6);
+}
+.map-world-card__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 4px;
+}
+.map-world-card__name {
+  font: 800 11px/1 'Barlow Condensed', sans-serif;
+  color: #c4e8f8;
+  letter-spacing: 0.6px;
+}
+.map-world-card__lock {
+  color: #7b96a5;
+}
+
+/* Stage Detail Rewards */
+.stage-reward-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(113, 177, 213, 0.16);
+}
+.stage-reward-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(6, 22, 38, 0.6);
+  border: 1px solid rgba(113, 177, 213, 0.18);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.stage-reward-label {
+  font: 800 9px/1 'Barlow Condensed', sans-serif;
+  color: #7a9cb0;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.stage-reward-val {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stage-reward-val strong {
+  font: 800 16px/1 'Barlow Condensed', sans-serif;
+  color: #effaff;
+}
+.text-gold { color: var(--gold); }
+.text-blue { color: var(--blue); }
+

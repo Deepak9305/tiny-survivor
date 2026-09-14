@@ -154,7 +154,7 @@ export default function App() {
     setScreen(next);
   }, [save]);
 
-  if (screen === 'splash') return <SplashScreen onDone={() => setScreen(ready ? 'home' : 'home')} />;
+  if (screen === 'splash') return <SplashScreen ready={ready} onDone={() => setScreen('home')} />;
 
   const sharedBack = () => setScreen('home');
   const stage = getStage(selectedStageId);
@@ -170,7 +170,7 @@ export default function App() {
     case 'missions': view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />; break;
     case 'shop': view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={handleFreeChest} />; break;
     case 'settings': view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />; break;
-    case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getStage(lastResult.stageId).id === '1-5' ? '2-1' : getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
+    case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
     case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} onBestiary={() => handleBestiarySelect('skeleton')} />; break;
     default: view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
   }
@@ -179,7 +179,8 @@ export default function App() {
 
 function getNextStageId(stageId: string): string {
   const [world, stage] = stageId.split('-').map(Number);
-  if (stage >= 5) return `${Math.min(4, world + 1)}-1`;
+  if (world >= 4 && stage >= 5) return '4-5';
+  if (stage >= 5) return `${world + 1}-1`;
   return `${world}-${stage + 1}`;
 }
 

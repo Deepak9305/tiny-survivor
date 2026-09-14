@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { VirtualJoystick } from '../components/VirtualJoystick';
+import { StagePreloadScreen } from '../components/StagePreloadScreen';
+import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
 import { audioService } from '../services/audioService';
 import { GameOverScreen } from './GameOverScreen';
@@ -23,26 +25,60 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
   const [rendererError, setRendererError] = useState<string | undefined>();
   const [reviveLoading, setReviveLoading] = useState(false);
   const [reviveMessage, setReviveMessage] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [preloadProgress, setPreloadProgress] = useState(15);
   const warningTimer = useRef<number | undefined>(undefined);
   const hitTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (!gameRoot.current) return;
-    audioService.initialize();
-    audioService.setMusicEnabled(save.settings.music);
-    audioService.setSfxEnabled(save.settings.soundEffects);
-    audioService.playMusic('run');
-    mountThreeGame(gameRoot.current, stage, save, {
-      onSnapshot: setSnapshot,
-      onLevelUp: setUpgradeChoices,
-      onGameOver: (result) => { setGameOver(result); onGameOver(result); },
-      onStageClear,
-      onPaused: setPaused,
-      onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
-      onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
-      onRendererError: setRendererError,
-    });
-    return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); if (hitTimer.current) window.clearTimeout(hitTimer.current); audioService.stopMusic(); destroyThreeGame(); };
+    let mounted = true;
+    let cleanupGame: (() => void) | undefined;
+
+    void (async () => {
+      // Preload assets for this stage
+      await modelRegistry.preloadStage(stage, save.selectedHero, (loaded, total) => {
+        if (!mounted) return;
+        const pct = Math.max(15, Math.min(95, Math.round((loaded / Math.max(1, total)) * 100)));
+        setPreloadProgress(pct);
+      });
+
+      if (!mounted) return;
+      setPreloadProgress(100);
+
+      // Brief polish pause before entering arena
+      await new Promise((resolve) => setTimeout(resolve, 280));
+      if (!mounted) return;
+      setIsLoading(false);
+
+      if (!gameRoot.current) return;
+      audioService.initialize();
+      audioService.setMusicEnabled(save.settings.music);
+      audioService.setSfxEnabled(save.settings.soundEffects);
+      audioService.playMusic('run');
+
+      mountThreeGame(gameRoot.current, stage, save, {
+        onSnapshot: setSnapshot,
+        onLevelUp: setUpgradeChoices,
+        onGameOver: (result) => { setGameOver(result); onGameOver(result); },
+        onStageClear,
+        onPaused: setPaused,
+        onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
+        onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
+        onRendererError: setRendererError,
+      });
+
+      cleanupGame = () => {
+        if (warningTimer.current) window.clearTimeout(warningTimer.current);
+        if (hitTimer.current) window.clearTimeout(hitTimer.current);
+        audioService.stopMusic();
+        destroyThreeGame();
+      };
+    })();
+
+    return () => {
+      mounted = false;
+      cleanupGame?.();
+    };
   }, [save.settings.music, save.settings.soundEffects, stage.id]);
 
   useEffect(() => {
@@ -69,8 +105,11 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
   const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
   const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
 
-  return <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}`}><div ref={gameRoot} className="three-root" />
-    {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
+  return (
+    <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}`}>
+      <div ref={gameRoot} className="three-root" />
+      {isLoading && <StagePreloadScreen stage={stage} progress={preloadProgress} />}
+      {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
     {rendererError && <div className="game-renderer-error" role="alert"><div className="game-renderer-error__icon"><Shield size={22} /></div><strong>3D ARENA PAUSED</strong><p>{rendererError}</p><button type="button" onClick={onHome}>RETURN HOME</button></div>}
     <div className="game-ui">
       <div className="game-topbar">
@@ -91,9 +130,10 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     </div>
     <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
     {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
-    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__codex" onClick={onBestiary}><BookOpen size={16} /> MONSTER CODEX</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
+    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> QUIT RUN</button></div></div>}
     {gameOver && <GameOverScreen result={gameOver} onRevive={revive} reviveLoading={reviveLoading} reviveMessage={reviveMessage} onRetry={onRetry} onHome={onHome} />}
-  </main>;
+  </main>
+  );
 }
 
 function LevelUpOverlay({ choices, onChoose }: { choices: UpgradeChoice[]; onChoose: (choice: UpgradeChoice) => void }) {

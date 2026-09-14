@@ -10,6 +10,10 @@ export class XPPickup3D {
   y: number;
   speed = 40;
 
+  private magnetTime = 0;
+  private isMagnetized = false;
+  private initialScale: number;
+
   constructor(id: string, parent: THREE.Object3D, x: number, y: number, value: number, resources: SharedResources) {
     this.id = id;
     this.x = x;
@@ -17,10 +21,31 @@ export class XPPickup3D {
     this.value = value;
     this.group = new THREE.Group();
     this.group.name = id;
+
+    // Small: blue, Medium: cyan, Large: purple
     const color = value > 30 ? 0xc58cff : value > 15 ? 0x5de7ff : 0x4aafff;
-    const gem = addMesh(this.group, resources.octa('xp-gem'), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.35, roughness: 0.3, metalness: 0.12 }));
-    gem.scale.setScalar(value > 30 ? 0.22 : value > 15 ? 0.18 : 0.14);
+    const innerColor = value > 30 ? 0xffffff : value > 15 ? 0xd6f7ff : 0xb8e6ff;
+    const baseScale = value > 30 ? 0.26 : value > 15 ? 0.2 : 0.15;
+    this.initialScale = baseScale;
+
+    // Main faceted gem
+    const gem = addMesh(this.group, resources.octa(`xp-gem-${color}`), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.2 }));
+    gem.scale.set(baseScale * 0.9, baseScale * 1.4, baseScale * 0.9);
     gem.position.y = 0.2;
+
+    // Glowing core shard
+    const core = addMesh(this.group, resources.octa(`xp-core-${color}`), resources.basicMaterial(`xp-core-${innerColor}`, innerColor, { transparent: true, opacity: 0.85 }));
+    core.scale.set(baseScale * 0.45, baseScale * 0.8, baseScale * 0.45);
+    core.position.y = 0.2;
+
+    // Subtle floating halo ring for medium & large crystals
+    if (value > 15) {
+      const halo = addMesh(this.group, resources.torus(`xp-halo-${color}`), resources.basicMaterial(`xp-halo-mat-${color}`, color, { transparent: true, opacity: 0.6 }));
+      halo.scale.setScalar(baseScale * 1.25);
+      halo.position.y = 0.2;
+      halo.rotation.x = Math.PI / 2;
+    }
+
     parent.add(this.group);
     this.syncPosition();
   }
@@ -29,15 +54,31 @@ export class XPPickup3D {
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+
+    let arcY = 0;
     if (distance < pickupRadius) {
-      this.speed = Math.min(640, this.speed + delta * 840);
+      this.isMagnetized = true;
+      this.magnetTime += delta;
+      this.speed = Math.min(780, this.speed + delta * 920);
       this.x += (dx / distance) * this.speed * delta;
       this.y += (dy / distance) * this.speed * delta;
+      
+      // Arc upward slightly as it accelerates
+      arcY = Math.sin(Math.min(Math.PI, this.magnetTime * 5)) * 0.4;
+      
+      // Shrink into hero when very close
+      if (distance < 50) {
+        const shrinkFactor = Math.max(0.2, distance / 50);
+        this.group.scale.setScalar(shrinkFactor);
+      }
+    } else {
+      this.group.scale.setScalar(1);
     }
+
     this.syncPosition();
-    this.group.rotation.y += delta * 3.4;
-    this.group.position.y = 0.12 + Math.sin(now * 7 + this.value) * 0.06;
-    return distance < 22;
+    this.group.rotation.y += delta * (this.isMagnetized ? 6.5 : 3.4);
+    this.group.position.y = 0.15 + arcY + Math.sin(now * 7 + this.value) * 0.05;
+    return distance < 24;
   }
 
   destroy(): void { this.group.removeFromParent(); }

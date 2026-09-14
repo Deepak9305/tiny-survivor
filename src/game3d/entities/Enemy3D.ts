@@ -28,7 +28,7 @@ export class Enemy3D implements SpatialEntity {
   private hitPulse = 0;
   private healthBarLife = 0;
   private readonly baseVisualScale: number;
-  private readonly baseModelScale = 1.14;
+  private readonly baseModelScale = 1.32;
 
   constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1) {
     const balance = ENEMY_BALANCE[kind];

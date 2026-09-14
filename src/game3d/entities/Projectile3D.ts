@@ -27,19 +27,49 @@ export class Projectile3D {
     this.velocity.set(Math.cos(targetAngle), Math.sin(targetAngle)).multiplyScalar(spec.speed);
     const isFire = spec.weaponId === 'fire-orb';
     const isChain = spec.weaponId === 'chain-lightning';
-    const orb = addMesh(this.group, isFire ? resources.ico('fire-projectile') : resources.octa('magic-projectile'), resources.standardMaterial(`projectile-${spec.weaponId}`, spec.color, { emissive: spec.color, emissiveIntensity: isFire ? 1.15 : 1.6, roughness: 0.32 }));
-    orb.scale.setScalar((spec.radius / 6) * (isFire ? 0.32 : 0.18));
-    orb.position.y = isFire ? 0.68 : 0.72;
+
     if (isFire) {
-      const ring = addMesh(this.group, resources.torus('fire-projectile-ring'), resources.basicMaterial('fire-projectile-ring', 0xffc15f, { transparent: true, opacity: 0.85 }));
-      ring.scale.setScalar(0.34);
-      ring.position.y = 0.68;
-      ring.rotation.x = Math.PI / 2;
-    } else if (!isChain) {
-      const trail = addMesh(this.group, resources.cone('magic-projectile-trail'), resources.basicMaterial('magic-projectile-trail', spec.color, { transparent: true, opacity: 0.38 }));
-      trail.scale.set(0.12, 0.58, 0.12);
-      trail.position.set(-0.08, 0.7, 0.16);
+      // Fire Orb: White-hot core + Fiery orange shell + Red outer flame halo
+      const core = addMesh(this.group, resources.ico('fire-proj-core'), resources.standardMaterial('fire-core-mat', 0xffffff, { emissive: 0xffe0a0, emissiveIntensity: 2.2, roughness: 0.1 }));
+      core.scale.setScalar(0.24);
+      core.position.y = 0.68;
+
+      const shell = addMesh(this.group, resources.octa('fire-proj-shell'), resources.standardMaterial('fire-shell-mat', 0xff7711, { emissive: 0xff5500, emissiveIntensity: 1.8, roughness: 0.35, transparent: true, opacity: 0.9 }));
+      shell.scale.setScalar(0.42);
+      shell.position.y = 0.68;
+
+      const outerRing = addMesh(this.group, resources.torus('fire-proj-ring'), resources.basicMaterial('fire-ring-mat', 0xffaa22, { transparent: true, opacity: 0.85 }));
+      outerRing.scale.setScalar(0.46);
+      outerRing.position.y = 0.68;
+      outerRing.rotation.x = Math.PI / 2;
+
+      const flameTail = addMesh(this.group, resources.cone('fire-proj-tail'), resources.basicMaterial('fire-tail-mat', 0xff3300, { transparent: true, opacity: 0.65 }));
+      flameTail.scale.set(0.22, 0.65, 0.22);
+      flameTail.position.set(-0.12, 0.68, 0.28);
+      flameTail.rotation.x = Math.PI / 2;
+    } else if (isChain) {
+      // Chain Lightning node
+      const core = addMesh(this.group, resources.octa('lightning-node'), resources.standardMaterial('lightning-node-mat', 0xffffff, { emissive: 0x6ee0ff, emissiveIntensity: 2.4, roughness: 0.1 }));
+      core.scale.setScalar(0.22);
+      core.position.y = 0.72;
+    } else {
+      // Magic Bolt: White center + Cyan shell + Blue trail sparks
+      const core = addMesh(this.group, resources.ico('magic-core'), resources.standardMaterial('magic-core-mat', 0xffffff, { emissive: 0xd0f4ff, emissiveIntensity: 2.4, roughness: 0.1 }));
+      core.scale.setScalar(0.18);
+      core.position.y = 0.72;
+
+      const shell = addMesh(this.group, resources.octa('magic-shell'), resources.standardMaterial('magic-shell-mat', 0x2ae2ff, { emissive: 0x00c4ff, emissiveIntensity: 1.8, roughness: 0.2, transparent: true, opacity: 0.88 }));
+      shell.scale.setScalar(0.32);
+      shell.position.y = 0.72;
+
+      const trail = addMesh(this.group, resources.cone('magic-trail'), resources.basicMaterial('magic-trail-mat', 0x0099ff, { transparent: true, opacity: 0.55 }));
+      trail.scale.set(0.16, 0.72, 0.16);
+      trail.position.set(0, 0.72, 0.32);
       trail.rotation.x = Math.PI / 2;
+
+      const glowRing = addMesh(this.group, resources.torus('magic-ring'), resources.basicMaterial('magic-ring-mat', 0x7ae8ff, { transparent: true, opacity: 0.7 }));
+      glowRing.scale.setScalar(0.26);
+      glowRing.position.y = 0.72;
     }
     parent.add(this.group);
     this.syncPosition();

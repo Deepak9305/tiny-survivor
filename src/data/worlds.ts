@@ -19,20 +19,20 @@ const world = (
 
 export const WORLD_DEFINITIONS: WorldDefinition[] = [
   world(1, 'Graveyard', 'Where the first night begins', {
-    background: 0x05172b, fog: 0x0a2035, ground: 0x123653, groundDeep: 0x081d30, groundDetail: 0x28536b,
-    prop: 0x334e67, propAlt: 0x58748b, accent: 0x70d8f5, moon: 0xbbeaff, warm: 0xffbf5a, keyLight: 0xb8e5ff, fillLight: 0x35678e,
+    background: 0x07111e, fog: 0x0c1b2c, ground: 0x14202d, groundDeep: 0x0a121b, groundDetail: 0x223244,
+    prop: 0x3d4e60, propAlt: 0x5a7086, accent: 0x4bdcff, moon: 0xc8f0ff, warm: 0xffb347, keyLight: 0xa8e2ff, fillLight: 0x1f3448,
   }, ['skeleton', 'bat', 'slime', 'ghost', 'archer', 'knight', 'imp'], 'skeleton-king', 'graveyard'),
   world(2, 'Haunted Forest', 'Whispers between the pines', {
-    background: 0x061a18, fog: 0x0a2824, ground: 0x0c2826, groundDeep: 0x071b1a, groundDetail: 0x1c4a3f,
-    prop: 0x1b493b, propAlt: 0x326b4c, accent: 0x81e2ae, moon: 0xb9ffe1, warm: 0xffc768, keyLight: 0xb8f5d1, fillLight: 0x245e4c,
+    background: 0x08131d, fog: 0x0d1f2b, ground: 0x112128, groundDeep: 0x091418, groundDetail: 0x1e363a,
+    prop: 0x2e4242, propAlt: 0x48645e, accent: 0xa855f7, moon: 0x99e8ff, warm: 0xffaa44, keyLight: 0x88e2ff, fillLight: 0x1a2d3b,
   }, ['skeleton', 'bat', 'slime', 'ghost', 'archer', 'demon'], 'forest-witch', 'forest'),
   world(3, 'Frozen Ruins', 'Cold stone, colder things', {
-    background: 0x081b31, fog: 0x102a43, ground: 0x173554, groundDeep: 0x0c223a, groundDetail: 0x345c7b,
-    prop: 0x5f8eaa, propAlt: 0x9bc9db, accent: 0x9ce7ff, moon: 0xd4f7ff, warm: 0x8bdcff, keyLight: 0xbdeaff, fillLight: 0x325b85,
+    background: 0x071526, fog: 0x0e2238, ground: 0x13273c, groundDeep: 0x091829, groundDetail: 0x284768,
+    prop: 0x527796, propAlt: 0x7da5c6, accent: 0x6be5ff, moon: 0xe0f7ff, warm: 0x7ae2ff, keyLight: 0xbfeaff, fillLight: 0x223e5a,
   }, ['ghost', 'slime', 'archer', 'knight', 'demon', 'bat'], 'frost-golem', 'frozen'),
   world(4, 'Demon Castle', 'The last light fades here', {
-    background: 0x1c0e1b, fog: 0x321426, ground: 0x301928, groundDeep: 0x1b101e, groundDetail: 0x5e2b36,
-    prop: 0x622d3e, propAlt: 0x9b4350, accent: 0xff9c63, moon: 0xffd295, warm: 0xff784d, keyLight: 0xffc09a, fillLight: 0x6b2637,
+    background: 0x130a16, fog: 0x220e20, ground: 0x24141e, groundDeep: 0x12080f, groundDetail: 0x461a29,
+    prop: 0x4e2230, propAlt: 0x7a3045, accent: 0xff4838, moon: 0xffaa66, warm: 0xff6a22, keyLight: 0xff9966, fillLight: 0x42101e,
   }, ['knight', 'demon', 'imp', 'archer', 'skeleton', 'ghost'], 'demon-lord', 'castle'),
 ];
 

@@ -79,27 +79,46 @@ export class CombatEffects3D {
     this.burst(x, y, 0xff5b66, true);
   }
 
+  explosion(x: number, y: number, radius = 1.2, color = 0xff6622): void {
+    // Ground flash ring
+    this.ring(x, y, radius * 1.3, color);
+    this.ring(x, y, radius * 0.7, 0xfff0aa);
+    // Fiery spark burst
+    this.burst(x, y, color, true);
+    this.burst(x, y, 0xffe259, false);
+  }
+
   lightning(fromX: number, fromY: number, toX: number, toY: number, color: number): void {
     const start = logicalToWorld(fromX, fromY);
     const end = logicalToWorld(toX, toY);
     const distance = start.distanceTo(end);
-    const segments = Math.max(3, Math.min(7, Math.ceil(distance * 1.5)));
+    const segments = Math.max(4, Math.min(8, Math.ceil(distance * 1.8)));
     const points: THREE.Vector3[] = [];
     for (let index = 0; index <= segments; index += 1) {
       const progress = index / segments;
-      const jitter = index === 0 || index === segments ? 0 : 0.13;
+      const jitter = index === 0 || index === segments ? 0 : 0.18;
       points.push(new THREE.Vector3(
         THREE.MathUtils.lerp(start.x, end.x, progress) + (Math.random() - 0.5) * jitter,
-        0.78 + (Math.random() - 0.5) * 0.08,
+        0.78 + (Math.random() - 0.5) * 0.12,
         THREE.MathUtils.lerp(start.z, end.z, progress) + (Math.random() - 0.5) * jitter,
       ));
     }
     const group = new THREE.Group();
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
-    group.add(new THREE.Line(geometry, material));
+    
+    // Outer colored glow line
+    const outerMaterial = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, linewidth: 2 });
+    group.add(new THREE.Line(geometry, outerMaterial));
+
+    // Inner bright white-hot core line
+    const innerMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false });
+    group.add(new THREE.Line(geometry.clone(), innerMaterial));
+
     this.parent.add(group);
-    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.1 : 0.15, kind: 'lightning' });
+    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.12 : 0.18, kind: 'lightning' });
+    
+    // Impact spark at target
+    this.burst(toX, toY, color, false);
   }
 
   update(delta: number): void {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { BossId } from '../../types';
 import { SharedResources, addMesh } from '../core/SharedResources';
+import { modelRegistry, type ModelAssetId } from '../assets/ModelRegistry';
 
 export function createShadowMage(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
   const root = new THREE.Group();
@@ -12,18 +13,39 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
     resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
   );
   shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(0.82, 0.42, 1);
+  shadow.scale.set(0.95, 0.5, 1);
   shadow.position.y = 0.018;
   root.add(shadow);
 
   const aura = new THREE.Mesh(
-    resources.ring('hero-aura', 0.72, 0.78),
-    resources.basicMaterial('hero-aura', 0x4bdcff, { transparent: true, opacity: 0.62, side: THREE.DoubleSide }),
+    resources.ring('hero-aura', 0.76, 0.84),
+    resources.basicMaterial('hero-aura', 0x4bdcff, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
   );
   aura.rotation.x = -Math.PI / 2;
   aura.position.y = 0.04;
   root.add(aura);
 
+  // Try production GLB first
+  const glbModel = modelRegistry.cloneLoadedModel('hero:shadow');
+  if (glbModel) {
+    glbModel.name = 'hero-glb-body';
+    root.add(glbModel);
+    // Find animated nodes if present
+    let staff: THREE.Object3D | undefined;
+    let crystal: THREE.Object3D | undefined;
+    let crystalHalo: THREE.Object3D | undefined;
+    let scarfTail: THREE.Object3D | undefined;
+    glbModel.traverse((node) => {
+      if (node.name.includes('staff') || (!staff && node instanceof THREE.Group && node.position.x > 0.3)) staff = node;
+      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.OctahedronGeometry) crystal = node;
+      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.TorusGeometry && node.position.y > 1.2) crystalHalo = node;
+      if (node.name.includes('scarf') || (!scarfTail && node instanceof THREE.Mesh && node.position.z < -0.2)) scarfTail = node;
+    });
+    root.userData.parts = { staff, crystal, crystalHalo, scarfTail };
+    return { root, aura, shadow };
+  }
+
+  // Fallback Procedural Model
   const body = addMesh(root, resources.cylinder('hero-body'), resources.standardMaterial('hero-body', 0x2456a2, { roughness: 0.65 }));
   body.scale.set(0.72, 0.86, 0.56);
   body.position.y = 0.72;
@@ -104,6 +126,42 @@ function addEyes(root: THREE.Group, resources: SharedResources, color: number, y
 }
 
 export function createEnemyModel(kind: string, color: number, resources: SharedResources, worldId = 1): THREE.Group {
+  const worldAccent = worldId === 2 ? 0xb875df : worldId === 3 ? 0x9ce7ff : worldId === 4 ? 0xff5e55 : 0x5ddcff;
+
+  // Try production GLB first
+  const glbModel = modelRegistry.cloneLoadedModel(`enemy:${kind}` as ModelAssetId);
+  if (glbModel) {
+    const root = new THREE.Group();
+    root.name = `enemy-${kind}`;
+    root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+    root.add(glbModel);
+
+    // Find animated nodes for bat wings, slime body, etc.
+    const wings: THREE.Object3D[] = [];
+    const tails: THREE.Object3D[] = [];
+    glbModel.traverse((node) => {
+      if (node.name.includes('wing') || (kind === 'bat' && node instanceof THREE.Group && Math.abs(node.position.x) > 0.1)) {
+        wings.push(node);
+      }
+      if (kind === 'ghost' && node instanceof THREE.Mesh && node.position.y < 0.5) {
+        tails.push(node);
+      }
+    });
+    root.userData.parts = { body: glbModel, wings: wings.length ? wings : undefined, tails: tails.length ? tails : undefined };
+
+    // World skin accent ring
+    if (worldId !== 1 && (kind === 'skeleton' || kind === 'ghost' || kind === 'knight')) {
+      const rune = addMesh(root, resources.torus(`enemy-world-rune-${kind}-${worldId}`), resources.basicMaterial(`enemy-world-rune-${kind}-${worldId}`, worldAccent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
+      rune.scale.setScalar(kind === 'knight' ? 0.48 : 0.34);
+      rune.rotation.x = Math.PI / 2;
+      rune.position.y = kind === 'ghost' ? 0.32 : 0.12;
+      root.userData.parts.rune = rune;
+    }
+
+    return root;
+  }
+
+  // Fallback Procedural Model
   const root = new THREE.Group();
   root.name = `enemy-${kind}`;
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
@@ -111,7 +169,6 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
   const bodyMaterial = resources.standardMaterial(`enemy-body-${color}`, color, { roughness: 0.82 });
   const darkMaterial = resources.standardMaterial(`enemy-dark-${dark}`, dark, { roughness: 0.9 });
   const boneMaterial = resources.standardMaterial('enemy-bone', 0xb8c7d3, { roughness: 0.9 });
-  const worldAccent = worldId === 2 ? 0xb875df : worldId === 3 ? 0x9ce7ff : worldId === 4 ? 0xff5e55 : 0x5ddcff;
 
   if (kind === 'bat') {
     const body = addMesh(root, resources.ico('enemy-bat-body'), bodyMaterial);
@@ -254,6 +311,65 @@ export function addEliteAccent(root: THREE.Group, resources: SharedResources): T
 }
 
 export function createBossModel(bossId: BossId = 'skeleton-king', resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  // Try production GLB first
+  const glbModel = modelRegistry.cloneLoadedModel(`boss:${bossId}` as ModelAssetId);
+  if (glbModel) {
+    const root = new THREE.Group();
+    root.name = `boss-${bossId}`;
+    root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+
+    // Imposing Boss Scale (2.8 - 3.2x common enemies)
+    glbModel.scale.setScalar(1.35);
+    root.add(glbModel);
+
+    const auraColor = bossId === 'skeleton-king'
+      ? 0xff3b4e
+      : bossId === 'forest-witch'
+      ? 0xa855f7
+      : bossId === 'frost-golem'
+      ? 0x55ddff
+      : 0xff5522;
+
+    const shadow = new THREE.Mesh(
+      resources.plane(`boss-shadow-${bossId}`, 1, 1),
+      resources.basicMaterial(`boss-shadow-${bossId}`, 0x010207, { transparent: true, opacity: 0.72 })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.scale.set(2.4, 1.25, 1);
+    shadow.position.y = 0.02;
+    root.add(shadow);
+
+    const aura = addMesh(
+      root,
+      resources.ring(`boss-aura-${bossId}`, 1.2, 1.4),
+      resources.basicMaterial(`boss-aura-${bossId}`, auraColor, { transparent: true, opacity: 0.58, side: THREE.DoubleSide })
+    );
+    aura.rotation.x = -Math.PI / 2;
+    aura.position.y = 0.04;
+
+    // Detect parts for animation
+    let sword: THREE.Object3D | undefined;
+    let weapon: THREE.Object3D | undefined;
+    let core: THREE.Object3D | undefined;
+    const wings: THREE.Object3D[] = [];
+
+    glbModel.traverse((node) => {
+      if (node.name.includes('sword') || (!sword && node instanceof THREE.Group && node.position.x > 0.8)) sword = node;
+      if (node.name.includes('blade') || node.name.includes('weapon')) weapon = node;
+      if (node.name.includes('core') || (node instanceof THREE.Mesh && node.geometry instanceof THREE.OctahedronGeometry && node.position.y > 1.0)) core = node;
+      if (node.name.includes('wing') || (node instanceof THREE.Group && Math.abs(node.position.x) > 0.6 && node.position.z < 0)) wings.push(node);
+    });
+
+    root.userData.parts = {
+      sword: sword ?? weapon,
+      weapon: weapon ?? sword,
+      core,
+      wings: wings.length ? wings : undefined,
+    };
+
+    return { root, aura, shadow };
+  }
+
   if (bossId !== 'skeleton-king') return createAlternativeBossModel(bossId, resources);
   return createSkeletonKingModel(resources);
 }

@@ -20,9 +20,9 @@ export class CameraController {
   constructor(lowPerformanceMode: boolean, reducedEffects = false, screenShakeEnabled = true) {
     this.reducedEffects = reducedEffects || lowPerformanceMode;
     this.screenShakeEnabled = screenShakeEnabled;
-    this.camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 90);
-    this.camera.position.set(0, 15, 14);
-    this.currentLookAt.set(0, 0, -2);
+    this.camera = new THREE.PerspectiveCamera(45, 9 / 16, 0.1, 90);
+    this.camera.position.set(0, 12.8, 11.8);
+    this.currentLookAt.set(0, 0, -1.8);
     this.camera.lookAt(this.currentLookAt);
   }
 
@@ -49,15 +49,16 @@ export class CameraController {
 
   update(delta: number, playerX: number, playerY: number, movement = new THREE.Vector2(), enabled = true): void {
     const player = logicalToWorld(playerX, playerY);
-    const lead = movement.clone().clampLength(0, 1).multiplyScalar(34);
-    const horizontalMargin = Math.min(ARENA_WIDTH * 0.32, 4.4);
-    const depthMargin = Math.min(ARENA_DEPTH * 0.28, 6.3);
-    const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.025, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
-    const lookZ = THREE.MathUtils.clamp(player.z - 3.25 + lead.y * 0.018, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
+    const lead = movement.clone().clampLength(0, 1).multiplyScalar(28);
+    const horizontalMargin = Math.min(ARENA_WIDTH * 0.32, 4.2);
+    const depthMargin = Math.min(ARENA_DEPTH * 0.28, 6.0);
+    const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.02, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
+    // Keep hero framed at approximately 58-62% down the viewport
+    const lookZ = THREE.MathUtils.clamp(player.z - 2.2 + lead.y * 0.015, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
     this.desiredLookAt.set(lookX, 0, lookZ);
     const pullbackProgress = this.pullbackDuration > 0 ? this.pullbackTime / this.pullbackDuration : 0;
     const pullback = this.pullbackAmount * Math.sin(Math.min(1, pullbackProgress) * Math.PI);
-    this.desiredPosition.set(lookX + 1.2, 15.5 + pullback * 0.8, lookZ + 14.5 + pullback * 1.1);
+    this.desiredPosition.set(lookX + 0.8, 12.8 + pullback * 0.7, lookZ + 11.8 + pullback * 0.9);
 
     const follow = 1 - Math.pow(0.0005, Math.max(delta, 0.001));
     this.camera.position.lerp(this.desiredPosition, Math.min(1, follow * (enabled ? 1 : 0.32)));

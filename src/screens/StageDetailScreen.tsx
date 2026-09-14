@@ -16,19 +16,28 @@ export function StageDetailScreen({ stageId, save, onBack, onStart, onBestiary }
   const duration = `${Math.floor(stage.duration / 60)}:${String(stage.duration % 60).padStart(2, '0')}`;
   const boss = stage.bossId ? BOSS_DEFINITIONS[stage.bossId] : undefined;
   return <main className="stage-detail-screen">
-    <ScreenHeader title={`WORLD ${stage.worldId} · STAGE ${stage.stageNumber}`} onBack={onBack} />
+    <ScreenHeader title={`${stage.id} ${stage.name}`} onBack={onBack} />
     <section className={`stage-art stage-art--world-${stage.worldId}`}>
       <div className="stage-art__shade" />
       <div className="stage-art__topline"><span className="eyebrow">WORLD {stage.worldId} · {world?.name ?? stage.biome}</span><span className="stage-art__tag">{stage.bossStage ? 'BOSS STAGE' : 'ADVENTURE'}</span></div>
-      <div className="stage-art__copy"><span className="stage-art__number">{stage.id}</span><h1>{stage.name}</h1><p>{stage.description}</p></div>
+      <div className="stage-art__copy"><h1>{stage.name}</h1><p>{stage.description}</p></div>
       {boss && <button type="button" className="stage-art__boss" onClick={() => onBestiary(boss.id)}><Skull size={15} /> WORLD BOSS · {boss.name.toUpperCase()} <ArrowRight size={14} /></button>}
     </section>
     <section className="stage-info-card">
       <div className="stage-info-card__stats"><span><Clock3 size={15} /><small>SURVIVAL</small><strong>{duration}</strong></span><span><Shield size={15} /><small>POWER</small><strong>{stage.recommendedPower || '—'}</strong></span><span><Star size={15} fill="currentColor" /><small>BEST</small><strong>{best ? `${Math.floor(best / 60)}:${String(Math.floor(best % 60)).padStart(2, '0')}` : '—'}</strong></span></div>
-      <div className="stage-info-card__enemies"><div className="stage-section-heading"><h3>Possible enemies</h3><button type="button" onClick={() => onBestiary(stage.enemies[0])}><BookOpen size={14} /> CODEX</button></div><div className="enemy-previews">{stage.enemies.map((enemy) => <button type="button" className="enemy-preview" key={enemy} onClick={() => onBestiary(enemy)}><span className={`creature-thumb creature-thumb--${enemy}`}><CreatureIcon kind={enemy} /></span><strong>{getMonsterDefinition(enemy).name}</strong><small>{save.discoveredEnemies.includes(enemy) ? 'DISCOVERED' : 'VIEW CODEX'}</small></button>)}</div></div>
-      <div className="stage-reward"><span><Coins size={17} /> CLEAR REWARDS</span><div className="stage-reward__items"><strong>+{stage.coinReward}<small> COINS</small></strong><strong><Gem size={15} /> {firstClearClaimed ? 'CLAIMED' : `+${stage.firstClearReward}`}<small> {firstClearClaimed ? 'FIRST CLEAR' : 'FIRST CLEAR GEMS'}</small></strong></div></div>
+      <div className="stage-info-card__enemies"><div className="stage-section-heading"><h3>Enemies</h3><button type="button" onClick={() => onBestiary(stage.enemies[0])}><BookOpen size={14} /> CODEX</button></div><div className="enemy-previews">{stage.enemies.map((enemy) => <button type="button" className="enemy-preview" key={enemy} onClick={() => onBestiary(enemy)}><span className={`creature-thumb creature-thumb--${enemy}`}><CreatureIcon kind={enemy} /></span><strong>{getMonsterDefinition(enemy).name}</strong><small>{save.discoveredEnemies.includes(enemy) ? 'DISCOVERED' : 'CODEX'}</small></button>)}</div></div>
+      <div className="stage-reward-row">
+        <div className="stage-reward-box">
+          <span className="stage-reward-label">Rewards</span>
+          <div className="stage-reward-val"><Coins size={18} className="text-gold" /><strong>+{stage.coinReward}</strong></div>
+        </div>
+        <div className="stage-reward-box">
+          <span className="stage-reward-label">Recommended Power</span>
+          <div className="stage-reward-val"><Swords size={18} className="text-blue" /><strong>{stage.recommendedPower}</strong></div>
+        </div>
+      </div>
     </section>
-    <div className="stage-detail__cta"><PrimaryButton variant="gold" wide onClick={onStart}><Swords size={18} /> START RUN <ArrowRight size={18} /></PrimaryButton></div>
+    <div className="stage-detail__cta"><PrimaryButton variant="gold" wide onClick={onStart}><Swords size={18} /> START</PrimaryButton></div>
   </main>;
 }
 
