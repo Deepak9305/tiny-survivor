@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Clock, Coins, Crosshair, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Swords, Target, Zap } from 'lucide-react';
+import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Swords, Target, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { VirtualJoystick } from '../components/VirtualJoystick';
 import { StagePreloadScreen } from '../components/StagePreloadScreen';
@@ -37,6 +37,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     void (async () => {
       // Preload assets for this stage
       await modelRegistry.preloadStage(stage, save.selectedHero, (loaded, total) => {
+        if (!mounted) return;
         const pct = Math.max(15, Math.min(95, Math.round((loaded / Math.max(1, total)) * 100)));
         setPreloadProgress(pct);
       });
@@ -44,10 +45,12 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       if (!mounted) return;
       setPreloadProgress(100);
 
-      await new Promise((resolve) => setTimeout(resolve, 260));
-      if (!mounted || !gameRoot.current) return;
+      // Brief polish pause before entering arena
+      await new Promise((resolve) => setTimeout(resolve, 280));
+      if (!mounted) return;
       setIsLoading(false);
 
+      if (!gameRoot.current) return;
       audioService.initialize();
       audioService.setMusicEnabled(save.settings.music);
       audioService.setSfxEnabled(save.settings.soundEffects);
@@ -99,163 +102,37 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     setReviveLoading(false);
   };
 
-  const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, (snapshot.hp / snapshot.maxHp) * 100)) : 0;
-  const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, (snapshot.xp / snapshot.xpRequired) * 100) : 0;
-  const mainWeaponLevel = snapshot.weaponLevels['magic-bolt'] ?? 1;
+  const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
+  const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
 
   return (
     <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}`}>
       <div ref={gameRoot} className="three-root" />
       {isLoading && <StagePreloadScreen stage={stage} progress={preloadProgress} />}
       {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
-      {rendererError && (
-        <div className="game-renderer-error" role="alert">
-          <div className="game-renderer-error__icon"><Shield size={22} /></div>
-          <strong>3D ARENA PAUSED</strong>
-          <p>{rendererError}</p>
-          <button type="button" onClick={onHome}>RETURN HOME</button>
+    {rendererError && <div className="game-renderer-error" role="alert"><div className="game-renderer-error__icon"><Shield size={22} /></div><strong>3D ARENA PAUSED</strong><p>{rendererError}</p><button type="button" onClick={onHome}>RETURN HOME</button></div>}
+    <div className="game-ui">
+      <div className="game-topbar">
+        <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
+          <div className="game-health__labels"><span><Heart size={14} fill="currentColor" /> HP</span><strong>{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</strong></div>
+          <div className="game-health__track"><i style={{ width: `${hpPercent}%` }} /></div>
         </div>
-      )}
-
-      {/* Survivor.io Mobile HUD */}
-      <div className="game-ui">
-        {/* Top Controls & Counters */}
-        <div className="survivor-topbar">
-          {/* Pause Button */}
-          <button
-            type="button"
-            className="survivor-pause-btn"
-            onClick={() => {
-              audioService.playUISound(paused ? 'confirm' : 'tap');
-              if (paused) getActiveThreeGame()?.resumeRun();
-              else getActiveThreeGame()?.pauseRun();
-            }}
-            aria-label={paused ? 'Resume run' : 'Pause run'}
-          >
-            {paused ? <Play size={20} fill="currentColor" /> : <Pause size={20} fill="currentColor" />}
-          </button>
-
-          {/* Yellow Stopwatch Timer */}
-          <div className="survivor-timer-pill">
-            <Clock size={16} className="survivor-timer-icon" />
-            <strong className="survivor-timer-val">{formatRunTime(snapshot.time)}</strong>
-          </div>
-
-          {/* Wave Timeline Progress Bar with Skull */}
-          <div className="survivor-wave-bar">
-            <div
-              className="survivor-wave-fill"
-              style={{ width: `${Math.min(100, (snapshot.time / stage.duration) * 100)}%` }}
-            />
-            <span className="survivor-wave-skull">
-              <Skull size={13} />
-            </span>
-          </div>
-
-          {/* Coins & Kills Stack */}
-          <div className="survivor-stats-stack">
-            <div className="survivor-stat-pill survivor-stat-pill--coin">
-              <Coins size={14} className="text-gold" />
-              <span>{(save.coins + snapshot.coins).toLocaleString()}</span>
-            </div>
-            <div className="survivor-stat-pill survivor-stat-pill--kill">
-              <Skull size={13} className="text-white" />
-              <span>{snapshot.kills.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* EXP Bar: Full-Width with Purple Level Badge */}
-        <div className="survivor-exp-container">
-          <div className="survivor-level-badge">
-            <span>{snapshot.level}</span>
-          </div>
-          <div className="survivor-exp-track">
-            <span className="survivor-exp-label">EXP</span>
-            <div className="survivor-exp-fill" style={{ width: `${xpPercent}%` }}>
-              <div className="survivor-exp-shine" />
-            </div>
-          </div>
-        </div>
-
-        {/* Boss Warning HUD if active */}
-        {snapshot.boss && (
-          <div className="boss-hud">
-            <div>
-              <span><Shield size={13} /> {snapshot.boss.name}</span>
-              <strong>PHASE {snapshot.boss.phase}</strong>
-            </div>
-            <div className="boss-hud__track">
-              <i style={{ width: `${Math.max(0, (snapshot.boss.hp / snapshot.boss.maxHp) * 100)}%` }} />
-            </div>
-          </div>
-        )}
-
-        {/* Boss Warning Banner */}
-        {warning && stage.bossStage && (
-          <div className="boss-warning" role="status">
-            <span className="boss-warning__skull"><Skull size={27} /></span>
-            <strong>BOSS</strong>
-            <strong>APPROACHING</strong>
-            <small>{stage.bossName ?? 'World boss'} enters the arena</small>
-          </div>
-        )}
-
-        {tutorialVisible && (
-          <div className="game-tip">DRAG TO MOVE · WEAPONS AUTO-FIRE</div>
-        )}
-
-        {/* Bottom Left Weapon Card (Survivor.io style) */}
-        <div className="survivor-weapon-card">
-          <div className="survivor-weapon-level-col">
-            <strong className="survivor-weapon-level">{mainWeaponLevel}</strong>
-            <span className="survivor-weapon-ammo">∞</span>
-          </div>
-          <div className="survivor-weapon-icon">
-            <Crosshair size={26} />
-          </div>
-          <div className="survivor-weapon-pips">
-            {Array.from({ length: 5 }, (_, i) => (
-              <span key={i} className={`survivor-wpn-pip ${i < mainWeaponLevel ? 'is-filled' : ''}`} />
-            ))}
-          </div>
+        <div className="game-timer"><span>{stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div>
+        <div className="game-actions">
+          <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}><Skull size={15} /><strong>{snapshot.kills.toLocaleString()}</strong></div>
+          <button className="game-pause" onClick={() => { audioService.playUISound(paused ? 'confirm' : 'tap'); if (paused) getActiveThreeGame()?.resumeRun(); else getActiveThreeGame()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
         </div>
       </div>
-
-      <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
-      {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
-      {paused && !upgradeChoices && !gameOver && (
-        <div className="pause-overlay">
-          <div className="pause-card">
-            <div className="pause-card__icon"><Pause size={22} /></div>
-            <span className="eyebrow">RUN PAUSED</span>
-            <h1>Catch your breath.</h1>
-            <div className="pause-build">
-              <span>LV {snapshot.level}</span>
-              <span>{snapshot.kills.toLocaleString()} KILLS</span>
-              <span>{formatRunTime(snapshot.time)}</span>
-            </div>
-            <div className="pause-build__items">
-              {Object.entries(snapshot.weaponLevels).map(([id, level]) => (
-                <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>
-              ))}
-            </div>
-            <button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button>
-            <button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> QUIT RUN</button>
-          </div>
-        </div>
-      )}
-      {gameOver && (
-        <GameOverScreen
-          result={gameOver}
-          onRevive={revive}
-          reviveLoading={reviveLoading}
-          reviveMessage={reviveMessage}
-          onRetry={onRetry}
-          onHome={onHome}
-        />
-      )}
-    </main>
+      <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
+      {snapshot.boss && <div className="boss-hud"><div><span><Shield size={13} /> {snapshot.boss.name}</span><strong>PHASE {snapshot.boss.phase}</strong></div><div className="boss-hud__track"><i style={{ width: `${Math.max(0, snapshot.boss.hp / snapshot.boss.maxHp * 100)}%` }} /></div></div>}
+      {warning && stage.bossStage && <div className="boss-warning" role="status"><span className="boss-warning__skull"><Skull size={27} /></span><strong>BOSS</strong><strong>APPROACHING</strong><small>{stage.bossName ?? 'World boss'} enters the arena</small></div>}
+      {tutorialVisible && <div className="game-tip">MOVE WITH JOYSTICK <span aria-hidden="true">&middot;</span> AUTO ATTACK</div>}
+    </div>
+    <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
+    {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
+    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> QUIT RUN</button></div></div>}
+    {gameOver && <GameOverScreen result={gameOver} onRevive={revive} reviveLoading={reviveLoading} reviveMessage={reviveMessage} onRetry={onRetry} onHome={onHome} />}
+  </main>
   );
 }
 

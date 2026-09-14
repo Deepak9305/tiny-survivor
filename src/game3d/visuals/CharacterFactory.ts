@@ -5,326 +5,299 @@ import { modelRegistry, type ModelAssetId } from '../assets/ModelRegistry';
 
 export function createShadowMage(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
   const root = new THREE.Group();
-  root.name = 'survivor-hero';
+  root.name = 'shadow-mage';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
 
-  // Contact shadow
   const shadow = new THREE.Mesh(
     resources.plane('hero-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x050c14, { transparent: true, opacity: 0.65 }),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
   );
   shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(1.05, 0.62, 1);
-  shadow.position.y = 0.015;
+  shadow.scale.set(0.95, 0.5, 1);
+  shadow.position.y = 0.018;
   root.add(shadow);
 
-  // Dash / aura ring
   const aura = new THREE.Mesh(
-    resources.ring('hero-aura', 0.82, 0.92),
-    resources.basicMaterial('hero-aura', 0x38e5ff, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }),
+    resources.ring('hero-aura', 0.76, 0.84),
+    resources.basicMaterial('hero-aura', 0x4bdcff, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.03;
+  aura.position.y = 0.04;
   root.add(aura);
 
-  // --- Chibi Cartoon Survivor Hero (Survivor.io Style) ---
-
-  // 1. Boots
-  const bootMat = resources.standardMaterial('hero-boot-mat', 0x221a14, { roughness: 0.85 });
-  for (const x of [-0.22, 0.22]) {
-    const boot = addMesh(root, resources.box('hero-boot'), bootMat);
-    boot.scale.set(0.24, 0.2, 0.38);
-    boot.position.set(x, 0.12, 0.04);
+  // Try production GLB first
+  const glbModel = modelRegistry.cloneLoadedModel('hero:shadow');
+  if (glbModel) {
+    glbModel.name = 'hero-glb-body';
+    root.add(glbModel);
+    // Find animated nodes if present
+    let staff: THREE.Object3D | undefined;
+    let crystal: THREE.Object3D | undefined;
+    let crystalHalo: THREE.Object3D | undefined;
+    let scarfTail: THREE.Object3D | undefined;
+    glbModel.traverse((node) => {
+      if (node.name.includes('staff') || (!staff && node instanceof THREE.Group && node.position.x > 0.3)) staff = node;
+      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.OctahedronGeometry) crystal = node;
+      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.TorusGeometry && node.position.y > 1.2) crystalHalo = node;
+      if (node.name.includes('scarf') || (!scarfTail && node instanceof THREE.Mesh && node.position.z < -0.2)) scarfTail = node;
+    });
+    root.userData.parts = { staff, crystal, crystalHalo, scarfTail };
+    return { root, aura, shadow };
   }
 
-  // 2. Legs / Denim Jeans
-  const jeansMat = resources.standardMaterial('hero-jeans-mat', 0x32475e, { roughness: 0.8 });
-  for (const x of [-0.2, 0.2]) {
-    const leg = addMesh(root, resources.cylinder('hero-leg'), jeansMat);
-    leg.scale.set(0.18, 0.42, 0.18);
-    leg.position.set(x, 0.36, 0.02);
+  // Fallback Procedural Model
+  const body = addMesh(root, resources.cylinder('hero-body'), resources.standardMaterial('hero-body', 0x2456a2, { roughness: 0.65 }));
+  body.scale.set(0.72, 0.86, 0.56);
+  body.position.y = 0.72;
+
+  const cloak = addMesh(root, resources.cone('hero-cloak'), resources.standardMaterial('hero-cloak', 0x142d62, { roughness: 0.9 }));
+  cloak.scale.set(0.86, 1.18, 0.7);
+  cloak.position.y = 0.62;
+
+  const hood = addMesh(root, resources.cone('hero-hood'), resources.standardMaterial('hero-hood', 0x0b142a, { roughness: 0.86 }));
+  hood.scale.set(0.86, 0.92, 0.82);
+  hood.position.y = 1.34;
+  const hoodRim = addMesh(root, resources.torus('hero-hood-rim'), resources.standardMaterial('hero-hood-rim', 0x1b4c78, { metalness: 0.16, roughness: 0.64 }));
+  hoodRim.scale.set(0.47, 0.22, 0.32);
+  hoodRim.position.set(0, 1.2, 0.2);
+  hoodRim.rotation.x = Math.PI / 2;
+
+  const face = addMesh(root, resources.ico('hero-face'), resources.standardMaterial('hero-face', 0x121c32, { roughness: 0.72 }));
+  face.scale.set(0.58, 0.56, 0.45);
+  face.position.set(0, 1.29, 0.08);
+
+  const eyeMaterial = resources.basicMaterial('hero-eyes', 0x86efff, { transparent: true, opacity: 0.98 });
+  for (const x of [-0.19, 0.19]) {
+    const eye = addMesh(root, resources.sphere('hero-eye'), eyeMaterial);
+    eye.scale.set(0.075, 0.045, 0.03);
+    eye.position.set(x, 1.36, 0.48);
   }
 
-  // 3. Pelvis & Belt
-  const belt = addMesh(root, resources.box('hero-belt'), resources.standardMaterial('hero-belt-mat', 0x1b1f24, { roughness: 0.7 }));
-  belt.scale.set(0.64, 0.12, 0.44);
-  belt.position.set(0, 0.58, 0.02);
-  const buckle = addMesh(root, resources.box('hero-buckle'), resources.standardMaterial('hero-buckle-mat', 0xf0b832, { metalness: 0.6, roughness: 0.3 }));
-  buckle.scale.set(0.16, 0.09, 0.06);
-  buckle.position.set(0, 0.58, 0.24);
+  const scarf = addMesh(root, resources.box('hero-scarf'), resources.standardMaterial('hero-scarf', 0xd64e61, { roughness: 0.8 }));
+  scarf.scale.set(0.72, 0.11, 0.32);
+  scarf.position.set(0.12, 1.04, 0.32);
+  scarf.rotation.y = -0.2;
+  const scarfTail = addMesh(root, resources.box('hero-scarf-tail'), resources.standardMaterial('hero-scarf-tail', 0xa9344e, { roughness: 0.82 }));
+  scarfTail.scale.set(0.13, 0.08, 0.62);
+  scarfTail.position.set(-0.39, 1.02, -0.1);
+  scarfTail.rotation.x = -0.22;
 
-  // 4. Torso: White Shirt + Brown Tactical Vest
-  const shirt = addMesh(root, resources.box('hero-shirt'), resources.standardMaterial('hero-shirt-mat', 0xf0f4f9, { roughness: 0.75 }));
-  shirt.scale.set(0.68, 0.62, 0.48);
-  shirt.position.set(0, 0.88, 0.02);
-
-  const vest = addMesh(root, resources.box('hero-vest'), resources.standardMaterial('hero-vest-mat', 0x7c4929, { roughness: 0.7 }));
-  vest.scale.set(0.72, 0.58, 0.52);
-  vest.position.set(0, 0.88, 0.01);
-
-  // Vest Pockets & Straps
-  const vestStrapMat = resources.standardMaterial('hero-vest-strap', 0x543019, { roughness: 0.8 });
-  for (const x of [-0.22, 0.22]) {
-    const pocket = addMesh(root, resources.box('hero-vest-pocket'), vestStrapMat);
-    pocket.scale.set(0.18, 0.18, 0.08);
-    pocket.position.set(x, 0.78, 0.25);
-  }
-
-  // 5. Head: Chibi Rounded Head, Peach Skin
-  const skinMat = resources.standardMaterial('hero-skin-mat', 0xfcd8bd, { roughness: 0.65 });
-  const head = addMesh(root, resources.ico('hero-head'), skinMat);
-  head.scale.set(0.68, 0.66, 0.64);
-  head.position.set(0, 1.44, 0.04);
-
-  // 6. Styled Brown Hair + Cowlick Swoop
-  const hairMat = resources.standardMaterial('hero-hair-mat', 0x522e1b, { roughness: 0.85 });
-  const hairTop = addMesh(root, resources.ico('hero-hair-top'), hairMat);
-  hairTop.scale.set(0.72, 0.44, 0.68);
-  hairTop.position.set(0, 1.74, 0.01);
-
-  const hairSwoop = addMesh(root, resources.cone('hero-hair-swoop'), hairMat);
-  hairSwoop.scale.set(0.24, 0.38, 0.24);
-  hairSwoop.position.set(0.12, 1.86, 0.28);
-  hairSwoop.rotation.set(-0.35, 0.2, -0.4);
-
-  // 7. Red/Ginger Full Beard & Mustache
-  const beardMat = resources.standardMaterial('hero-beard-mat', 0xc54a24, { roughness: 0.88 });
-  const beard = addMesh(root, resources.box('hero-beard'), beardMat);
-  beard.scale.set(0.58, 0.34, 0.46);
-  beard.position.set(0, 1.25, 0.22);
-
-  const mustache = addMesh(root, resources.box('hero-mustache'), beardMat);
-  mustache.scale.set(0.42, 0.12, 0.14);
-  mustache.position.set(0, 1.39, 0.37);
-
-  // 8. Cyan Glasses
-  const glassesMat = resources.standardMaterial('hero-glasses-mat', 0x00d4ff, { emissive: 0x0099cc, emissiveIntensity: 0.6, roughness: 0.3 });
-  const glassesBridge = addMesh(root, resources.box('hero-glasses-bridge'), glassesMat);
-  glassesBridge.scale.set(0.14, 0.04, 0.04);
-  glassesBridge.position.set(0, 1.51, 0.36);
-
-  for (const x of [-0.18, 0.18]) {
-    const rim = addMesh(root, resources.torus('hero-glass-rim'), glassesMat);
-    rim.scale.setScalar(0.12);
-    rim.position.set(x, 1.51, 0.35);
-
-    // Dark eyes inside glasses
-    const pupil = addMesh(root, resources.sphere('hero-pupil'), resources.basicMaterial('hero-pupil-mat', 0x111e2e));
-    pupil.scale.set(0.06, 0.06, 0.03);
-    pupil.position.set(x, 1.51, 0.34);
-  }
-
-  // 9. Arms: Rolled White Sleeves + Peach Forearms
+  const armMaterial = resources.standardMaterial('hero-arms', 0x1a3e7d, { roughness: 0.7 });
   const arms: THREE.Object3D[] = [];
-  const armGroupLeft = new THREE.Group();
-  armGroupLeft.position.set(-0.46, 0.98, 0.04);
-  const leftSleeve = addMesh(armGroupLeft, resources.cylinder('hero-sleeve-l'), resources.standardMaterial('hero-shirt-mat', 0xf0f4f9, { roughness: 0.75 }));
-  leftSleeve.scale.set(0.18, 0.32, 0.18);
-  leftSleeve.position.set(0, -0.06, 0.05);
-  leftSleeve.rotation.x = -Math.PI / 4;
-  const leftForearm = addMesh(armGroupLeft, resources.cylinder('hero-forearm-l'), skinMat);
-  leftForearm.scale.set(0.14, 0.38, 0.14);
-  leftForearm.position.set(0.12, -0.15, 0.28);
-  leftForearm.rotation.x = -Math.PI / 2.2;
-  root.add(armGroupLeft);
-  arms.push(armGroupLeft);
+  for (const x of [-0.48, 0.48]) {
+    const arm = addMesh(root, resources.cylinder('hero-arm'), armMaterial);
+    arm.scale.set(0.16, 0.58, 0.16);
+    arm.position.set(x, 0.82, 0.02);
+    arm.rotation.z = x < 0 ? -0.32 : 0.32;
+    arms.push(arm);
+  }
 
-  const armGroupRight = new THREE.Group();
-  armGroupRight.position.set(0.46, 0.98, 0.04);
-  const rightSleeve = addMesh(armGroupRight, resources.cylinder('hero-sleeve-r'), resources.standardMaterial('hero-shirt-mat', 0xf0f4f9, { roughness: 0.75 }));
-  rightSleeve.scale.set(0.18, 0.32, 0.18);
-  rightSleeve.position.set(0, -0.06, 0.05);
-  rightSleeve.rotation.x = -Math.PI / 4;
-  const rightForearm = addMesh(armGroupRight, resources.cylinder('hero-forearm-r'), skinMat);
-  rightForearm.scale.set(0.14, 0.38, 0.14);
-  rightForearm.position.set(-0.12, -0.15, 0.28);
-  rightForearm.rotation.x = -Math.PI / 2.2;
-  root.add(armGroupRight);
-  arms.push(armGroupRight);
+  const bootMaterial = resources.standardMaterial('hero-boots', 0x0b162a, { roughness: 0.86 });
+  for (const x of [-0.25, 0.25]) {
+    const boot = addMesh(root, resources.box('hero-boot'), bootMaterial);
+    boot.scale.set(0.28, 0.22, 0.4);
+    boot.position.set(x, 0.23, 0.08);
+  }
 
-  // 10. Futuristic Sci-Fi Blaster Rifle (Survivor.io Style)
-  const blaster = new THREE.Group();
-  blaster.name = 'hero-blaster';
-  blaster.position.set(0.08, 0.88, 0.44);
+  const staff = addMesh(root, resources.cylinder('hero-staff'), resources.standardMaterial('hero-staff', 0x563c33, { roughness: 0.95 }));
+  staff.scale.set(0.055, 1.35, 0.055);
+  staff.position.set(0.66, 0.72, 0.08);
+  staff.rotation.z = -0.28;
+  const crystal = addMesh(root, resources.octa('hero-crystal'), resources.standardMaterial('hero-crystal', 0x58dcff, { emissive: 0x198dc7, emissiveIntensity: 1.5, roughness: 0.35, metalness: 0.18 }));
+  crystal.scale.setScalar(0.26);
+  crystal.position.set(0.84, 1.46, 0.08);
+  const crystalHalo = addMesh(root, resources.torus('hero-crystal-halo'), resources.basicMaterial('hero-crystal-halo', 0x58dcff, { transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
+  crystalHalo.scale.setScalar(0.23);
+  crystalHalo.position.copy(crystal.position);
+  crystalHalo.rotation.x = Math.PI / 2;
 
-  // Blaster Body (Steel Blue)
-  const blasterBody = addMesh(blaster, resources.box('blaster-body'), resources.standardMaterial('blaster-body-mat', 0x4a7396, { metalness: 0.4, roughness: 0.35 }));
-  blasterBody.scale.set(0.24, 0.22, 0.62);
-
-  // Blaster Barrel (Dark Graphite)
-  const blasterBarrel = addMesh(blaster, resources.cylinder('blaster-barrel'), resources.standardMaterial('blaster-barrel-mat', 0x242a32, { metalness: 0.6, roughness: 0.25 }));
-  blasterBarrel.scale.set(0.08, 0.45, 0.08);
-  blasterBarrel.position.set(0, 0.02, 0.42);
-  blasterBarrel.rotation.x = Math.PI / 2;
-
-  // Glowing Orange Energy Rails & Muzzle
-  const plasmaMat = resources.standardMaterial('blaster-plasma-mat', 0xff6600, { emissive: 0xff4400, emissiveIntensity: 2.2, roughness: 0.2 });
-  const blasterMuzzle = addMesh(blaster, resources.torus('blaster-muzzle'), plasmaMat);
-  blasterMuzzle.scale.setScalar(0.09);
-  blasterMuzzle.position.set(0, 0.02, 0.64);
-
-  const blasterRailTop = addMesh(blaster, resources.box('blaster-rail'), plasmaMat);
-  blasterRailTop.scale.set(0.14, 0.05, 0.4);
-  blasterRailTop.position.set(0, 0.14, 0.06);
-
-  // Holographic Scope
-  const scopeMat = resources.standardMaterial('blaster-scope-mat', 0x38e5ff, { emissive: 0x00c8ff, emissiveIntensity: 1.8, transparent: true, opacity: 0.85 });
-  const scope = addMesh(blaster, resources.box('blaster-scope'), scopeMat);
-  scope.scale.set(0.1, 0.1, 0.16);
-  scope.position.set(0, 0.22, -0.06);
-
-  root.add(blaster);
-
-  root.userData.parts = {
-    head,
-    hairTop,
-    hairSwoop,
-    arms,
-    blaster,
-    staff: blaster, // fallback compat
-    crystal: blasterMuzzle,
-  };
+  root.userData.parts = { body, cloak, hood, hoodRim, scarf, scarfTail, arms, staff, crystal, crystalHalo };
 
   return { root, aura, shadow };
 }
 
 function addEyes(root: THREE.Group, resources: SharedResources, color: number, y = 1.08): void {
-  // Vibrant Glowing Zombie Eyes (Neon Pink/Magenta)
-  const eyeMat = resources.standardMaterial(`zombie-pink-eyes-${color}`, color, {
-    emissive: color,
-    emissiveIntensity: 2.5,
-    roughness: 0.1,
-  });
-  for (const x of [-0.17, 0.17]) {
-    const eye = addMesh(root, resources.sphere('zombie-eye'), eyeMat);
-    eye.scale.set(0.095, 0.095, 0.05);
-    eye.position.set(x, y, 0.44);
+  const material = resources.basicMaterial(`enemy-eyes-${color}`, color);
+  for (const x of [-0.16, 0.16]) {
+    const eye = addMesh(root, resources.sphere('enemy-eye'), material);
+    eye.scale.set(0.08, 0.05, 0.035);
+    eye.position.set(x, y, 0.46);
   }
 }
 
-export function createEnemyModel(kind: string, _color: number, resources: SharedResources, _worldId = 1): THREE.Group {
-  const root = new THREE.Group();
-  root.name = `zombie-${kind}`;
-  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+export function createEnemyModel(kind: string, color: number, resources: SharedResources, worldId = 1): THREE.Group {
+  const worldAccent = worldId === 2 ? 0xb875df : worldId === 3 ? 0x9ce7ff : worldId === 4 ? 0xff5e55 : 0x5ddcff;
 
-  // Survivor.io Zombie Palette:
-  // Teal/Cyan Zombie Skin, glowing neon-pink eyes, dark ragged clothes, yellow construction hard hats
-  const tealSkinColor = 0x3ea3b6;
-  const zombieSkinMat = resources.standardMaterial('zombie-skin-teal', tealSkinColor, { roughness: 0.72 });
-  const zombieShirtMat = resources.standardMaterial('zombie-shirt-navy', 0x2b3848, { roughness: 0.85 });
-  const zombiePantsMat = resources.standardMaterial('zombie-pants-dark', 0x1b2532, { roughness: 0.9 });
-  const pinkEyeColor = 0xff1665;
+  // Try production GLB first
+  const glbModel = modelRegistry.cloneLoadedModel(`enemy:${kind}` as ModelAssetId);
+  if (glbModel) {
+    const root = new THREE.Group();
+    root.name = `enemy-${kind}`;
+    root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+    root.add(glbModel);
 
-  if (kind === 'slime') {
-    // Toxic Sludge Zombie Crawler
-    const body = addMesh(root, resources.sphere('zombie-slime-body'), resources.standardMaterial('zombie-slime-mat', 0x2cb894, { emissive: 0x0f5c46, emissiveIntensity: 0.8, roughness: 0.4 }));
-    body.scale.set(0.85, 0.58, 0.75);
-    body.position.y = 0.42;
-    root.userData.parts = { body };
-    addEyes(root, resources, pinkEyeColor, 0.52);
+    // Find animated nodes for bat wings, slime body, etc.
+    const wings: THREE.Object3D[] = [];
+    const tails: THREE.Object3D[] = [];
+    glbModel.traverse((node) => {
+      if (node.name.includes('wing') || (kind === 'bat' && node instanceof THREE.Group && Math.abs(node.position.x) > 0.1)) {
+        wings.push(node);
+      }
+      if (kind === 'ghost' && node instanceof THREE.Mesh && node.position.y < 0.5) {
+        tails.push(node);
+      }
+    });
+    root.userData.parts = { body: glbModel, wings: wings.length ? wings : undefined, tails: tails.length ? tails : undefined };
+
+    // World skin accent ring
+    if (worldId !== 1 && (kind === 'skeleton' || kind === 'ghost' || kind === 'knight')) {
+      const rune = addMesh(root, resources.torus(`enemy-world-rune-${kind}-${worldId}`), resources.basicMaterial(`enemy-world-rune-${kind}-${worldId}`, worldAccent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
+      rune.scale.setScalar(kind === 'knight' ? 0.48 : 0.34);
+      rune.rotation.x = Math.PI / 2;
+      rune.position.y = kind === 'ghost' ? 0.32 : 0.12;
+      root.userData.parts.rune = rune;
+    }
+
     return root;
   }
 
+  // Fallback Procedural Model
+  const root = new THREE.Group();
+  root.name = `enemy-${kind}`;
+  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+  const dark = new THREE.Color(color).multiplyScalar(0.52).getHex();
+  const bodyMaterial = resources.standardMaterial(`enemy-body-${color}`, color, { roughness: 0.82 });
+  const darkMaterial = resources.standardMaterial(`enemy-dark-${dark}`, dark, { roughness: 0.9 });
+  const boneMaterial = resources.standardMaterial('enemy-bone', 0xb8c7d3, { roughness: 0.9 });
+
   if (kind === 'bat') {
-    // Flying Infected Drone/Bat
-    const body = addMesh(root, resources.ico('zombie-bat-body'), resources.standardMaterial('zombie-bat-mat', 0x324458, { roughness: 0.7 }));
-    body.scale.set(0.44, 0.34, 0.52);
-    body.position.y = 0.82;
+    const body = addMesh(root, resources.ico('enemy-bat-body'), bodyMaterial);
+    body.scale.set(0.42, 0.32, 0.55);
+    body.position.y = 0.75;
     const wings: THREE.Object3D[] = [];
     for (const x of [-0.55, 0.55]) {
-      const wing = addMesh(root, resources.cone('zombie-bat-wing'), resources.standardMaterial('zombie-bat-wing-mat', 0x1b2532, { roughness: 0.8 }));
-      wing.scale.set(0.72, 0.12, 0.48);
-      wing.position.set(x, 0.84, 0);
-      wing.rotation.z = x < 0 ? -0.25 : 0.25;
+      const wing = addMesh(root, resources.cone('enemy-bat-wing'), darkMaterial);
+      wing.scale.set(0.75, 0.12, 0.52);
+      wing.position.set(x, 0.78, 0);
+      wing.rotation.z = x < 0 ? -0.22 : 0.22;
       wings.push(wing);
     }
     root.userData.parts = { body, wings };
-    addEyes(root, resources, pinkEyeColor, 0.86);
-    return root;
-  }
-
-  // --- Core Zombie Horde Model (Survivor.io Style) ---
-  const isHelmetZombie = kind === 'knight' || kind === 'archer';
-  const isBrute = kind === 'demon' || kind === 'imp';
-
-  // 1. Legs & Shoes
-  for (const x of [-0.18, 0.18]) {
-    const leg = addMesh(root, resources.cylinder('zombie-leg'), zombiePantsMat);
-    leg.scale.set(isBrute ? 0.18 : 0.13, 0.48, isBrute ? 0.18 : 0.13);
-    leg.position.set(x, 0.24, 0);
-  }
-
-  // 2. Torso (Ragged Shirt)
-  const torso = addMesh(root, resources.cylinder('zombie-torso'), zombieShirtMat);
-  torso.scale.set(isBrute ? 0.68 : 0.48, 0.72, isBrute ? 0.54 : 0.38);
-  torso.position.y = 0.68;
-
-  // 3. Head (Teal Skin)
-  const head = addMesh(root, resources.ico('zombie-head'), zombieSkinMat);
-  head.scale.set(isBrute ? 0.62 : 0.52, isBrute ? 0.58 : 0.48, isBrute ? 0.56 : 0.46);
-  head.position.y = 1.28;
-
-  // 4. Comical Open Zombie Mouth
-  const mouth = addMesh(root, resources.box('zombie-mouth'), resources.basicMaterial('zombie-mouth-mat', 0x111922));
-  mouth.scale.set(0.32, 0.14, 0.12);
-  mouth.position.set(0, 1.15, 0.38);
-
-  // Tiny jagged teeth
-  const teeth = addMesh(root, resources.box('zombie-teeth'), resources.basicMaterial('zombie-teeth-mat', 0xf0f0f0));
-  teeth.scale.set(0.24, 0.04, 0.08);
-  teeth.position.set(0, 1.2, 0.42);
-
-  // 5. Glowing Neon-Pink Eyes (Hallmark of Survivor.io)
-  addEyes(root, resources, pinkEyeColor, 1.34);
-
-  // 6. Messy Hair Tuft OR Yellow Construction Hard Hat
-  if (isHelmetZombie) {
-    // Yellow Construction Helmet (Safety Hard Hat)
-    const helmetMat = resources.standardMaterial('zombie-helmet-mat', 0xfec526, {
-      roughness: 0.35,
-      metalness: 0.1,
-    });
-    const helmetCap = addMesh(root, resources.sphere('zombie-helmet-cap'), helmetMat);
-    helmetCap.scale.set(0.58, 0.38, 0.56);
-    helmetCap.position.set(0, 1.54, 0.02);
-
-    const helmetBrim = addMesh(root, resources.torus('zombie-helmet-brim'), helmetMat);
-    helmetBrim.scale.set(0.38, 0.38, 0.15);
-    helmetBrim.position.set(0, 1.45, 0.04);
-    helmetBrim.rotation.x = Math.PI / 2;
+    addEyes(root, resources, 0xffd86d, 0.82);
+  } else if (kind === 'slime') {
+    const body = addMesh(root, resources.sphere('enemy-slime-body'), bodyMaterial);
+    body.scale.set(0.82, 0.62, 0.72);
+    body.position.y = 0.48;
+    root.userData.parts = { body };
+    addEyes(root, resources, 0x113349, 0.56);
+  } else if (kind === 'ghost') {
+    const body = addMesh(root, resources.ico('enemy-ghost-body'), resources.standardMaterial(`enemy-ghost-${color}`, color, { transparent: true, opacity: 0.74, roughness: 0.52 }));
+    body.scale.set(0.62, 0.86, 0.54);
+    body.position.y = 0.92;
+    const tails: THREE.Object3D[] = [];
+    for (const x of [-0.36, 0.36]) {
+      const tail = addMesh(root, resources.cone('enemy-ghost-tail'), bodyMaterial);
+      tail.scale.set(0.28, 0.62, 0.35);
+      tail.position.set(x, 0.36, 0);
+      tail.rotation.z = x < 0 ? 0.25 : -0.25;
+      tails.push(tail);
+    }
+    root.userData.parts = { body, tails };
+    addEyes(root, resources, 0x173251, 1.0);
+  } else if (kind === 'archer') {
+    const body = addMesh(root, resources.cylinder('enemy-archer-body'), darkMaterial);
+    body.scale.set(0.48, 0.82, 0.42);
+    body.position.y = 0.55;
+    const head = addMesh(root, resources.ico('enemy-archer-head'), bodyMaterial);
+    head.scale.setScalar(0.5);
+    head.position.y = 1.22;
+    const bow = addMesh(root, resources.torus('enemy-bow'), resources.standardMaterial('enemy-bow', 0x9fe9ff, { roughness: 0.55 }));
+    bow.scale.set(0.5, 0.5, 0.5);
+    bow.position.set(0.5, 0.65, 0.12);
+    bow.rotation.y = Math.PI / 2;
+    root.userData.parts = { body, head, bow };
+    addEyes(root, resources, 0x271f38, 1.25);
+  } else if (kind === 'knight') {
+    const body = addMesh(root, resources.cylinder('enemy-knight-body'), darkMaterial);
+    body.scale.set(0.7, 1.05, 0.58);
+    body.position.y = 0.68;
+    const helmet = addMesh(root, resources.cylinder('enemy-knight-helmet'), bodyMaterial);
+    helmet.scale.set(0.78, 0.65, 0.72);
+    helmet.position.y = 1.45;
+    const visor = addMesh(root, resources.box('enemy-visor'), resources.standardMaterial('enemy-visor', 0xe64e67, { roughness: 0.75 }));
+    visor.scale.set(0.54, 0.08, 0.08);
+    visor.position.set(0, 1.48, 0.4);
+    const sword = addMesh(root, resources.box('enemy-sword'), resources.standardMaterial('enemy-sword', 0xffc66b, { metalness: 0.4, roughness: 0.38 }));
+    sword.scale.set(0.1, 0.95, 0.1);
+    sword.position.set(0.72, 0.86, 0.04);
+    sword.rotation.z = -0.45;
+    const shield = addMesh(root, resources.cylinder('enemy-shield'), resources.standardMaterial('enemy-shield', 0x5e7d9c, { metalness: 0.36, roughness: 0.48 }));
+    shield.scale.set(0.42, 0.12, 0.42);
+    shield.position.set(-0.66, 0.76, 0.16);
+    shield.rotation.x = Math.PI / 2;
+    root.userData.parts = { body, helmet, visor, sword, shield };
+  } else if (kind === 'demon' || kind === 'imp') {
+    const body = addMesh(root, resources.ico(`enemy-${kind}-body`), bodyMaterial);
+    body.scale.setScalar(kind === 'imp' ? 0.66 : 0.84);
+    body.position.y = 0.7;
+    const horns: THREE.Object3D[] = [];
+    for (const x of [-0.32, 0.32]) {
+      const horn = addMesh(root, resources.cone(`enemy-${kind}-horn`), darkMaterial);
+      horn.scale.set(0.2, 0.62, 0.2);
+      horn.position.set(x, 1.35, 0);
+      horn.rotation.z = x < 0 ? -0.28 : 0.28;
+      horns.push(horn);
+    }
+    root.userData.parts = { body, horns };
+    addEyes(root, resources, 0xffd175, 0.8);
   } else {
-    // Spiky dark messy hair
-    const hair = addMesh(root, resources.ico('zombie-hair'), resources.standardMaterial('zombie-hair-mat', 0x1c252d, { roughness: 0.9 }));
-    hair.scale.set(0.48, 0.22, 0.44);
-    hair.position.set(0, 1.52, 0);
+    const torso = addMesh(root, resources.cylinder('enemy-skeleton-body'), darkMaterial);
+    torso.scale.set(0.48, 0.8, 0.38);
+    torso.position.y = 0.55;
+    const head = addMesh(root, resources.ico('enemy-skeleton-head'), boneMaterial);
+    head.scale.setScalar(0.52);
+    head.position.y = 1.24;
+    const jaw = addMesh(root, resources.box('enemy-skeleton-jaw'), boneMaterial);
+    jaw.scale.set(0.38, 0.1, 0.3);
+    jaw.position.set(0, 0.98, 0.14);
+    addEyes(root, resources, 0x5ddcff, 1.28);
+    const sword = addMesh(root, resources.box('enemy-skeleton-sword'), boneMaterial);
+    sword.scale.set(0.08, 0.72, 0.08);
+    sword.position.set(0.55, 0.66, 0.02);
+    sword.rotation.z = -0.35;
+    const arms: THREE.Object3D[] = [];
+    for (const x of [-0.38, 0.38]) {
+      const arm = addMesh(root, resources.cylinder('enemy-skeleton-arm'), boneMaterial);
+      arm.scale.set(0.09, 0.52, 0.09);
+      arm.position.set(x, 0.72, 0.02);
+      arm.rotation.z = x < 0 ? -0.34 : 0.34;
+      arms.push(arm);
+    }
+    const legs: THREE.Object3D[] = [];
+    for (const x of [-0.2, 0.2]) {
+      const leg = addMesh(root, resources.cylinder('enemy-skeleton-leg'), boneMaterial);
+      leg.scale.set(0.1, 0.45, 0.1);
+      leg.position.set(x, 0.18, 0.02);
+      leg.rotation.z = x < 0 ? -0.1 : 0.1;
+      legs.push(leg);
+    }
+    const shield = addMesh(root, resources.cylinder('enemy-skeleton-shield'), resources.standardMaterial('enemy-skeleton-shield', 0x46637c, { metalness: 0.36, roughness: 0.5 }));
+    shield.scale.set(0.36, 0.1, 0.36);
+    shield.position.set(-0.58, 0.62, 0.14);
+    shield.rotation.x = Math.PI / 2;
+    root.userData.parts = { torso, head, jaw, sword, arms, legs, shield };
   }
 
-  // 7. Outstretched Zombie Arms Shambling Forward
-  const arms: THREE.Object3D[] = [];
-  for (const x of [-0.34, 0.34]) {
-    const armGroup = new THREE.Group();
-    armGroup.position.set(x, 0.88, 0.08);
-
-    // Sleeve
-    const sleeve = addMesh(armGroup, resources.cylinder('zombie-sleeve'), zombieShirtMat);
-    sleeve.scale.set(0.12, 0.22, 0.12);
-    sleeve.position.set(0, 0, 0.08);
-    sleeve.rotation.x = -Math.PI / 2.1;
-
-    // Outstretched Forearm & Hand (Teal Skin)
-    const forearm = addMesh(armGroup, resources.cylinder('zombie-forearm'), zombieSkinMat);
-    forearm.scale.set(0.1, 0.42, 0.1);
-    forearm.position.set(0, 0, 0.35);
-    forearm.rotation.x = -Math.PI / 2.1;
-
-    root.add(armGroup);
-    arms.push(armGroup);
+  if (worldId !== 1 && (kind === 'skeleton' || kind === 'ghost' || kind === 'knight')) {
+    const rune = addMesh(root, resources.torus(`enemy-world-rune-${kind}-${worldId}`), resources.basicMaterial(`enemy-world-rune-${kind}-${worldId}`, worldAccent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
+    rune.scale.setScalar(kind === 'knight' ? 0.48 : 0.34);
+    rune.rotation.x = Math.PI / 2;
+    rune.position.y = kind === 'ghost' ? 0.32 : 0.12;
+    root.userData.parts = { ...(root.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>), rune };
   }
 
-  root.userData.parts = { torso, head, arms };
   return root;
 }
-
 
 export function addEliteAccent(root: THREE.Group, resources: SharedResources): THREE.Mesh {
   const ring = addMesh(root, resources.torus('elite-ring'), resources.standardMaterial('elite-ring', 0xffc04f, { emissive: 0x6c2f08, emissiveIntensity: 0.65, metalness: 0.45, roughness: 0.4 }));

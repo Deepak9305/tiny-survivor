@@ -22,26 +22,26 @@ export class XPPickup3D {
     this.group = new THREE.Group();
     this.group.name = id;
 
-    // Radiant Glowing Purple/Magenta Diamonds (Survivor.io EXP Crystals)
-    const color = value > 30 ? 0xff42e0 : value > 15 ? 0xd050ff : 0xb53eff;
-    const innerColor = 0xffeaff;
-    const baseScale = value > 30 ? 0.28 : value > 15 ? 0.22 : 0.17;
+    // Small: blue, Medium: cyan, Large: purple
+    const color = value > 30 ? 0xc58cff : value > 15 ? 0x5de7ff : 0x4aafff;
+    const innerColor = value > 30 ? 0xffffff : value > 15 ? 0xd6f7ff : 0xb8e6ff;
+    const baseScale = value > 30 ? 0.26 : value > 15 ? 0.2 : 0.15;
     this.initialScale = baseScale;
 
-    // Main faceted diamond gem
-    const gem = addMesh(this.group, resources.octa(`xp-gem-${color}`), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.8, roughness: 0.15, metalness: 0.2 }));
-    gem.scale.set(baseScale * 0.9, baseScale * 1.45, baseScale * 0.9);
+    // Main faceted gem
+    const gem = addMesh(this.group, resources.octa(`xp-gem-${color}`), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.2 }));
+    gem.scale.set(baseScale * 0.9, baseScale * 1.4, baseScale * 0.9);
     gem.position.y = 0.2;
 
     // Glowing core shard
-    const core = addMesh(this.group, resources.octa(`xp-core-${color}`), resources.basicMaterial(`xp-core-${innerColor}`, innerColor, { transparent: true, opacity: 0.9 }));
-    core.scale.set(baseScale * 0.45, baseScale * 0.85, baseScale * 0.45);
+    const core = addMesh(this.group, resources.octa(`xp-core-${color}`), resources.basicMaterial(`xp-core-${innerColor}`, innerColor, { transparent: true, opacity: 0.85 }));
+    core.scale.set(baseScale * 0.45, baseScale * 0.8, baseScale * 0.45);
     core.position.y = 0.2;
 
-    // Floating specular halo ring for medium & large crystals
+    // Subtle floating halo ring for medium & large crystals
     if (value > 15) {
-      const halo = addMesh(this.group, resources.torus(`xp-halo-${color}`), resources.basicMaterial(`xp-halo-mat-${color}`, 0xe888ff, { transparent: true, opacity: 0.65 }));
-      halo.scale.setScalar(baseScale * 1.3);
+      const halo = addMesh(this.group, resources.torus(`xp-halo-${color}`), resources.basicMaterial(`xp-halo-mat-${color}`, color, { transparent: true, opacity: 0.6 }));
+      halo.scale.setScalar(baseScale * 1.25);
       halo.position.y = 0.2;
       halo.rotation.x = Math.PI / 2;
     }

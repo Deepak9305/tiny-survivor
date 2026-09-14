@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clampLogicalPosition, setLogicalPosition } from '../core/coordinates';
-import { SharedResources, addMesh } from '../core/SharedResources';
+import { SharedResources } from '../core/SharedResources';
 import { createShadowMage } from '../visuals/CharacterFactory';
 
 export interface PlayerStats {
@@ -22,8 +22,6 @@ export class Player3D {
   private readonly character: THREE.Group;
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
-  private readonly inWorldHpBar: THREE.Group;
-  private readonly inWorldHpFill: THREE.Mesh;
   private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
   private readonly baseCharacterScale = 1.55;
   private movement = new THREE.Vector2();
@@ -50,36 +48,6 @@ export class Player3D {
     this.group = new THREE.Group();
     this.group.name = 'player';
     this.group.add(this.character);
-
-    // Floating In-World Health Bar (Survivor.io design directly under hero feet)
-    const hpGroup = new THREE.Group();
-    hpGroup.name = 'player-floating-hp';
-    hpGroup.position.set(0, 0.06, 0.58);
-    hpGroup.rotation.x = -Math.PI / 3.8;
-
-    const hpBg = addMesh(
-      hpGroup,
-      resources.box('player-floating-hp-bg'),
-      resources.basicMaterial('player-floating-hp-bg-mat', 0x0a0f18, { transparent: true, opacity: 0.95 })
-    );
-    hpBg.scale.set(0.92, 0.12, 0.04);
-
-    const hpFill = addMesh(
-      hpGroup,
-      resources.box('player-floating-hp-fill'),
-      resources.standardMaterial('player-floating-hp-fill-mat', 0x38d150, {
-        emissive: 0x22ab37,
-        emissiveIntensity: 0.8,
-        roughness: 0.25,
-      })
-    );
-    hpFill.scale.set(0.86, 0.08, 0.05);
-    hpFill.position.z = 0.01;
-
-    this.inWorldHpBar = hpGroup;
-    this.inWorldHpFill = hpFill;
-    this.group.add(hpGroup);
-
     parent.add(this.group);
     this.syncPosition();
   }
@@ -120,16 +88,11 @@ export class Player3D {
 
     const arms = this.parts.arms as THREE.Object3D[] | undefined;
     if (arms?.length === 2) {
-      const walkSwing = moving ? Math.sin(this.visualTime * 8) * 0.08 : 0;
-      arms[0].rotation.x = -Math.PI / 4 + walkSwing - attackSwing * 0.3;
-      arms[1].rotation.x = -Math.PI / 4 - walkSwing - attackSwing * 0.3;
-    }
-    const blaster = this.parts.blaster;
-    if (blaster instanceof THREE.Object3D) {
-      blaster.position.z = 0.44 - attackSwing * 0.08;
+      arms[0].rotation.z = -0.32 - attackSwing * 0.35 - celebrateProgress * 0.5;
+      arms[1].rotation.z = 0.32 + attackSwing * 0.65 + celebrateProgress * 0.7;
     }
     const staff = this.parts.staff;
-    if (staff instanceof THREE.Object3D && staff !== blaster) staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
+    if (staff instanceof THREE.Object3D) staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
     const crystal = this.parts.crystal;
     if (crystal instanceof THREE.Object3D) crystal.rotation.y += delta * (moving ? 4.5 : (celebrateProgress > 0 ? 8 : 2.2));
     const crystalHalo = this.parts.crystalHalo;
@@ -143,11 +106,6 @@ export class Player3D {
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;
     this.character.scale.setScalar(this.baseCharacterScale * (this.hitFlash > 0 ? 1.055 : 1) * revivePop * levelUpPulse);
-
-    // Update Floating In-World Health Bar
-    const hpRatio = Math.max(0, Math.min(1, this.stats.currentHP / Math.max(1, this.stats.maxHP)));
-    this.inWorldHpFill.scale.x = Math.max(0.001, 0.86 * hpRatio);
-    this.inWorldHpFill.position.x = -0.43 * (1 - hpRatio);
   }
 
   setMovementVector(x: number, y: number): void {

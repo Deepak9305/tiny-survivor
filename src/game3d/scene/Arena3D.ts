@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { StageDefinition } from '../../types';
 import { getWorldMapSignature, WORLD_LAYOUT_VALIDATION } from './WorldLayout';
 import { ARENA_DEPTH, ARENA_WIDTH, logicalToWorld } from '../core/coordinates';
-import { SharedResources, addMesh } from '../core/SharedResources';
+import { SharedResources } from '../core/SharedResources';
 import { biomeThemeFor, type BiomeTheme } from './BiomeTheme';
 import { modelRegistry, type ModelAssetId } from '../assets/ModelRegistry';
 
@@ -70,7 +70,7 @@ export function createArena(
 // -------------------------------------------------------------
 // GROUND TEXTURE SYNTHESIS (512x512 High-Detail Procedural Map)
 // -------------------------------------------------------------
-function createGroundTexture(_theme: BiomeTheme, seed: number, _worldId: number): THREE.CanvasTexture {
+function createGroundTexture(theme: BiomeTheme, seed: number, worldId: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
@@ -78,104 +78,167 @@ function createGroundTexture(_theme: BiomeTheme, seed: number, _worldId: number)
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
   const rng = seeded(seed);
+  const baseColor = `#${theme.ground.toString(16).padStart(6, '0')}`;
+  const deepColor = `#${theme.groundDeep.toString(16).padStart(6, '0')}`;
+  const detailColor = `#${theme.groundDetail.toString(16).padStart(6, '0')}`;
+  const accentColor = `#${theme.accent.toString(16).padStart(6, '0')}`;
+  const warmColor = `#${theme.warm.toString(16).padStart(6, '0')}`;
 
-  // 1. Base Warm Golden Sand / Dirt Terrain (Survivor.io Wasteland)
-  ctx.fillStyle = '#dba03b';
+  // Base background fill
+  ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, 512, 512);
 
-  // Dirt color patches and natural variation
-  for (let i = 0; i < 60; i++) {
-    const x = rng() * 512;
-    const y = rng() * 512;
-    const rad = 20 + rng() * 50;
-    const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
-    grad.addColorStop(0, '#c68a28');
-    grad.addColorStop(1, 'transparent');
-    ctx.globalAlpha = 0.55;
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, rad, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 2. Asphalt Highway / Urban Road (Diagonal cutting through)
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = '#5c554e';
-  ctx.beginPath();
-  ctx.moveTo(0, 70);
-  ctx.lineTo(512, 270);
-  ctx.lineTo(512, 512);
-  ctx.lineTo(0, 420);
-  ctx.closePath();
-  ctx.fill();
-
-  // Asphalt grain / subtle texture
-  ctx.globalAlpha = 0.18;
-  ctx.fillStyle = '#3a342e';
-  for (let i = 0; i < 80; i++) {
-    const px = rng() * 512;
-    const py = 120 + rng() * 340;
-    ctx.fillRect(px, py, 4 + rng() * 8, 4 + rng() * 8);
-  }
-
-  // 3. Concrete Curb Trim (Separating Road from Dirt)
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = '#d9d2c7';
-  ctx.lineWidth = 12;
-  ctx.beginPath();
-  ctx.moveTo(0, 70);
-  ctx.lineTo(512, 270);
-  ctx.stroke();
-
-  // Subtle dark drop-shadow under curb
-  ctx.strokeStyle = 'rgba(40, 30, 20, 0.45)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(0, 76);
-  ctx.lineTo(512, 276);
-  ctx.stroke();
-
-  // 4. Pedestrian Crosswalk Zebra Stripes (Bold white bars)
-  ctx.save();
-  ctx.fillStyle = '#ede8e1';
-  ctx.globalAlpha = 0.95;
-  const numStripes = 9;
-  for (let i = 0; i < numStripes; i++) {
-    const t = (i + 0.5) / numStripes;
-    const px = 50 + t * 250;
-    const py = 125 + t * 105;
-    ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(0.38); // Match 0.38 rad road angle
-    ctx.fillRect(-12, -42, 24, 84);
-    ctx.restore();
-  }
-  ctx.restore();
-
-  // 5. Yellow Dashed Center Lane Dividers
-  ctx.save();
-  ctx.strokeStyle = '#f5c531';
-  ctx.lineWidth = 7;
-  ctx.setLineDash([30, 24]);
-  ctx.beginPath();
-  ctx.moveTo(0, 245);
-  ctx.lineTo(512, 445);
-  ctx.stroke();
-  ctx.restore();
-
-  // 6. Scattered road pebbles/cracks
-  ctx.globalAlpha = 0.3;
-  ctx.strokeStyle = '#2b2622';
-  ctx.lineWidth = 1.5;
-  for (let i = 0; i < 8; i++) {
-    ctx.beginPath();
-    let cx = 100 + rng() * 300;
-    let cy = 200 + rng() * 200;
-    ctx.moveTo(cx, cy);
-    cx += (rng() - 0.5) * 30;
-    cy += (rng() - 0.5) * 30;
-    ctx.lineTo(cx, cy);
-    ctx.stroke();
+  if (worldId === 1) {
+    // WORLD 1: GRAVEYARD
+    // Dark wet dirt, aged stone slabs, cobblestone patches, grave mounds
+    // Dirt variations
+    for (let i = 0; i < 90; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      const rad = 25 + rng() * 60;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      grad.addColorStop(0, deepColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Flagstones & cobblestone paving
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = detailColor;
+    ctx.lineWidth = 1.5;
+    for (let row = 0; row < 18; row++) {
+      for (let col = 0; col < 18; col++) {
+        const px = col * 30 + (rng() - 0.5) * 6;
+        const py = row * 30 + (rng() - 0.5) * 6;
+        ctx.strokeRect(px, py, 26 + (rng() - 0.5) * 4, 26 + (rng() - 0.5) * 4);
+      }
+    }
+    // Grave soil patches
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = deepColor;
+    for (let i = 0; i < 16; i++) {
+      const x = rng() * 460 + 20;
+      const y = rng() * 460 + 20;
+      ctx.fillRect(x, y, 32 + rng() * 20, 55 + rng() * 25);
+    }
+  } else if (worldId === 2) {
+    // WORLD 2: HAUNTED FOREST
+    // Dark woodland soil, mossy glades, tangled root veins, purple corruptive mycelium
+    for (let i = 0; i < 110; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      const rad = 30 + rng() * 70;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      grad.addColorStop(0, deepColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Twisted root veins
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = deepColor;
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 28; i++) {
+      ctx.beginPath();
+      let cx = rng() * 512;
+      let cy = rng() * 512;
+      ctx.moveTo(cx, cy);
+      for (let s = 0; s < 5; s++) {
+        cx += (rng() - 0.5) * 60;
+        cy += (rng() - 0.5) * 60;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+    // Purple spectral spores / mycelium
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = accentColor;
+    for (let i = 0; i < 80; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      ctx.beginPath();
+      ctx.arc(x, y, 2 + rng() * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (worldId === 3) {
+    // WORLD 3: FROZEN RUINS
+    // Dark ancient stone with permafrost fracture veins, snow drifts, icy crystalline cracks
+    for (let i = 0; i < 80; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      const rad = 35 + rng() * 80;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      grad.addColorStop(0, '#cceeff');
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Ice fracture cracks
+    ctx.globalAlpha = 0.38;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < 35; i++) {
+      ctx.beginPath();
+      let cx = rng() * 512;
+      let cy = rng() * 512;
+      ctx.moveTo(cx, cy);
+      for (let s = 0; s < 4; s++) {
+        cx += (rng() - 0.5) * 70;
+        cy += (rng() - 0.5) * 70;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+  } else {
+    // WORLD 4: DEMON CASTLE
+    // Dark scorched black-red flagstones, glowing lava fissures, rune circles
+    for (let i = 0; i < 85; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      const rad = 25 + rng() * 65;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      grad.addColorStop(0, deepColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Glowing lava cracks
+    ctx.globalAlpha = 0.45;
+    ctx.strokeStyle = warmColor;
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i < 24; i++) {
+      ctx.beginPath();
+      let cx = rng() * 512;
+      let cy = rng() * 512;
+      ctx.moveTo(cx, cy);
+      for (let s = 0; s < 4; s++) {
+        cx += (rng() - 0.5) * 60;
+        cy += (rng() - 0.5) * 60;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+    // Obsidian tile grid
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = deepColor;
+    ctx.lineWidth = 2.0;
+    for (let row = 0; row < 14; row++) {
+      for (let col = 0; col < 14; col++) {
+        ctx.strokeRect(col * 38, row * 38, 36, 36);
+      }
+    }
   }
 
   ctx.globalAlpha = 1;
@@ -183,83 +246,26 @@ function createGroundTexture(_theme: BiomeTheme, seed: number, _worldId: number)
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(3.5, 6.5);
+  texture.repeat.set(4.5, 7.5);
   texture.anisotropy = 4;
   return texture;
 }
 
 // -------------------------------------------------------------
-// GROUND DETAILS: RUBBER TIRES, BONES & TURRET PROP
+// GROUND DETAILS & EMBEDDED STONES
 // -------------------------------------------------------------
 function addGroundDetails(
   parent: THREE.Group,
   mapSeed: number,
   resources: SharedResources,
   theme: BiomeTheme,
-  _worldId: number,
+  worldId: number,
   lowPerformanceMode: boolean
 ): void {
   const rng = seeded(mapSeed + 77);
+  const count = lowPerformanceMode ? 14 : 26;
 
-  // 1. Scatter 3D Rubber Car Tires (from Survivor.io screenshot)
-  const tireMat = resources.standardMaterial('survivor-tire-mat', 0x222225, { roughness: 0.9, metalness: 0.1 });
-  const tireCount = lowPerformanceMode ? 6 : 14;
-  for (let i = 0; i < tireCount; i++) {
-    const point = edgePoint(rng, 140);
-    const pos = logicalToWorld(point.x, point.y);
-    const tire = new THREE.Mesh(resources.torus('car-tire'), tireMat);
-    tire.rotation.x = Math.PI / 2;
-    tire.position.set(pos.x, 0.04, pos.z);
-    tire.scale.set(0.42 + rng() * 0.1, 0.42 + rng() * 0.1, 0.48);
-    parent.add(tire);
-  }
-
-  // 2. Scatter Bones (from Survivor.io screenshot)
-  const boneMat = resources.standardMaterial('survivor-bone-mat', 0xe8e2d4, { roughness: 0.85 });
-  const boneCount = lowPerformanceMode ? 8 : 16;
-  for (let i = 0; i < boneCount; i++) {
-    const point = edgePoint(rng, 100);
-    const pos = logicalToWorld(point.x, point.y);
-    const bone = new THREE.Mesh(resources.cylinder('bone-shaft'), boneMat);
-    bone.rotation.x = Math.PI / 2;
-    bone.rotation.z = rng() * Math.PI;
-    bone.position.set(pos.x, 0.02, pos.z);
-    bone.scale.set(0.04, 0.32 + rng() * 0.1, 0.04);
-    parent.add(bone);
-  }
-
-  // 3. Autonomous Defense Turret Prop (Standing on the roadside as in the screenshot)
-  const turret = new THREE.Group();
-  turret.name = 'survivor-defense-turret';
-  turret.position.set(-3.6, 0, 1.2);
-  turret.rotation.y = 0.55;
-
-  const turretLegMat = resources.standardMaterial('turret-leg-mat', 0x3b4856, { metalness: 0.6, roughness: 0.4 });
-  for (let i = 0; i < 3; i++) {
-    const angle = (i / 3) * Math.PI * 2;
-    const leg = addMesh(turret, resources.box(`turret-leg-${i}`), turretLegMat);
-    leg.scale.set(0.12, 0.45, 0.12);
-    leg.position.set(Math.cos(angle) * 0.32, 0.15, Math.sin(angle) * 0.32);
-    leg.rotation.z = Math.cos(angle) * 0.45;
-    leg.rotation.x = Math.sin(angle) * 0.45;
-  }
-
-  const turretHeadMat = resources.standardMaterial('turret-head-mat', 0x768898, { metalness: 0.5, roughness: 0.35 });
-  const turretHead = addMesh(turret, resources.cylinder('turret-head'), turretHeadMat);
-  turretHead.scale.set(0.42, 0.34, 0.42);
-  turretHead.position.y = 0.44;
-
-  const nozzleMat = resources.standardMaterial('turret-nozzle-mat', 0xff2828, { emissive: 0xff1515, emissiveIntensity: 2.2, roughness: 0.2 });
-  const nozzle = addMesh(turret, resources.cylinder('turret-nozzle'), nozzleMat);
-  nozzle.scale.set(0.16, 0.38, 0.16);
-  nozzle.position.set(0.12, 0.62, 0.08);
-  nozzle.rotation.x = -0.38;
-
-  parent.add(turret);
-
-  // 4. Ground embedded stones
-  const stoneCount = lowPerformanceMode ? 10 : 20;
-  for (let i = 0; i < stoneCount; i++) {
+  for (let i = 0; i < count; i++) {
     const point = edgePoint(rng, 170);
     const pos = logicalToWorld(point.x, point.y);
     const stone = new THREE.Mesh(
