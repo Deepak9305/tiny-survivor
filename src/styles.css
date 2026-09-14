@@ -59,6 +59,8 @@ main { min-height: 100svh; width: min(100%, 540px); margin: 0 auto; overflow: hi
 .game-logo--compact .game-logo__survivor { font-size: 14px; text-shadow: 1px 1px 0 #8e4615; }
 
 .currency-bar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 16px; }
+.currency-bar--clean { justify-content: space-between; width: 100%; }
+.currency-bar__currencies { display: flex; align-items: center; gap: 8px; }
 .currency-bar__actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .player-chip { display: flex; align-items: center; gap: 8px; min-width: 90px; }
 .player-chip > span:last-child { display: flex; flex-direction: column; gap: 1px; }

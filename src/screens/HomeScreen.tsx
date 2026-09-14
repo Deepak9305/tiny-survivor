@@ -22,7 +22,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
       <div className="home-hero__shade" />
       <div className="home-world-mark" aria-hidden="true"><span>WORLD {stage.worldId}</span><strong>{stage.biome}</strong></div>
       <div className="home-hero__content">
-        <CurrencyBar coins={save.coins} gems={save.gems} selectedHero={save.selectedHero} onShop={() => onNavigate('shop')} onSettings={() => onNavigate('settings')} />
+        <CurrencyBar coins={save.coins} gems={save.gems} selectedHero={save.selectedHero} cleanHeader onShop={() => onNavigate('shop')} onSettings={() => onNavigate('settings')} />
         <div className="home-hero__brand"><GameLogo /></div>
         <div className="home-hero__lower">
           <button className="home-stage-link" onClick={() => onNavigate('map')} aria-label="Open the stage map">

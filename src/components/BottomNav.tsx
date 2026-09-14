@@ -1,4 +1,4 @@
-import { Crown, House, ScrollText, Swords } from 'lucide-react';
+import { BookOpen, Crown, ScrollText, Swords } from 'lucide-react';
 import type { Screen } from '../types';
 
 interface BottomNavProps {
@@ -6,11 +6,11 @@ interface BottomNavProps {
   onNavigate: (screen: Screen) => void;
 }
 
-const items: Array<{ id: Screen; label: string; icon: typeof House }> = [
-  { id: 'home', label: 'Home', icon: House },
+const items: Array<{ id: Screen; label: string; icon: typeof Swords }> = [
   { id: 'heroes', label: 'Heroes', icon: Swords },
-  { id: 'upgrades', label: 'Upgrade', icon: Crown },
+  { id: 'upgrades', label: 'Upgrades', icon: Crown },
   { id: 'missions', label: 'Missions', icon: ScrollText },
+  { id: 'bestiary', label: 'Codex', icon: BookOpen },
 ];
 
 export function BottomNav({ current, onNavigate }: BottomNavProps) {

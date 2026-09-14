@@ -4,6 +4,7 @@ interface CurrencyBarProps {
   coins: number;
   gems: number;
   selectedHero?: string;
+  cleanHeader?: boolean;
   onShop?: () => void;
   onSettings?: () => void;
 }
@@ -15,7 +16,22 @@ function getHeroDisplayName(selectedHero?: string): string {
   return heroNames[selectedHero] ?? selectedHero.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function CurrencyBar({ coins, gems, selectedHero, onShop, onSettings }: CurrencyBarProps) {
+export function CurrencyBar({ coins, gems, selectedHero, cleanHeader, onShop, onSettings }: CurrencyBarProps) {
+  if (cleanHeader) {
+    return (
+      <div className="currency-bar currency-bar--clean">
+        <div className="currency-bar__currencies">
+          <span className="currency-pill currency-pill--gold"><Coins size={15} /> {coins.toLocaleString()}</span>
+          <span className="currency-pill currency-pill--gem"><Gem size={14} /> {gems}</span>
+        </div>
+        <div className="currency-bar__actions">
+          {onShop && <button type="button" className="icon-button currency-bar__shop" onClick={onShop} aria-label="Open shop"><ShoppingBag size={18} /></button>}
+          {onSettings && <button type="button" className="icon-button" onClick={onSettings} aria-label="Open settings"><Settings size={18} /></button>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="currency-bar">
       <div className="player-chip">
