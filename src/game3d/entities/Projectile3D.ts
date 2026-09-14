@@ -53,21 +53,21 @@ export class Projectile3D {
       core.scale.setScalar(0.22);
       core.position.y = 0.72;
     } else {
-      // Magic Bolt: White center + Cyan shell + Blue trail sparks
-      const core = addMesh(this.group, resources.ico('magic-core'), resources.standardMaterial('magic-core-mat', 0xffffff, { emissive: 0xd0f4ff, emissiveIntensity: 2.4, roughness: 0.1 }));
-      core.scale.setScalar(0.18);
+      // Survivor Blaster Bullet: Bright white-gold core + Glowing orange tracer shell + Flame trail
+      const core = addMesh(this.group, resources.ico('blaster-bullet-core'), resources.standardMaterial('blaster-core-mat', 0xffffff, { emissive: 0xffea78, emissiveIntensity: 2.6, roughness: 0.1 }));
+      core.scale.setScalar(0.19);
       core.position.y = 0.72;
 
-      const shell = addMesh(this.group, resources.octa('magic-shell'), resources.standardMaterial('magic-shell-mat', 0x2ae2ff, { emissive: 0x00c4ff, emissiveIntensity: 1.8, roughness: 0.2, transparent: true, opacity: 0.88 }));
-      shell.scale.setScalar(0.32);
+      const shell = addMesh(this.group, resources.octa('blaster-bullet-shell'), resources.standardMaterial('blaster-shell-mat', 0xffa018, { emissive: 0xff7700, emissiveIntensity: 2.0, roughness: 0.2, transparent: true, opacity: 0.9 }));
+      shell.scale.set(0.24, 0.24, 0.46);
       shell.position.y = 0.72;
 
-      const trail = addMesh(this.group, resources.cone('magic-trail'), resources.basicMaterial('magic-trail-mat', 0x0099ff, { transparent: true, opacity: 0.55 }));
-      trail.scale.set(0.16, 0.72, 0.16);
-      trail.position.set(0, 0.72, 0.32);
+      const trail = addMesh(this.group, resources.cone('blaster-bullet-trail'), resources.basicMaterial('blaster-trail-mat', 0xffc424, { transparent: true, opacity: 0.75 }));
+      trail.scale.set(0.18, 0.85, 0.18);
+      trail.position.set(0, 0.72, 0.38);
       trail.rotation.x = Math.PI / 2;
 
-      const glowRing = addMesh(this.group, resources.torus('magic-ring'), resources.basicMaterial('magic-ring-mat', 0x7ae8ff, { transparent: true, opacity: 0.7 }));
+      const glowRing = addMesh(this.group, resources.torus('blaster-bullet-ring'), resources.basicMaterial('blaster-ring-mat', 0xffdd44, { transparent: true, opacity: 0.8 }));
       glowRing.scale.setScalar(0.26);
       glowRing.position.y = 0.72;
     }
