@@ -70,6 +70,9 @@ export function createArena(
 // -------------------------------------------------------------
 // GROUND TEXTURE SYNTHESIS (512x512 High-Detail Procedural Map)
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// GROUND TEXTURE SYNTHESIS (512x512 High-Detail Procedural Map)
+// -------------------------------------------------------------
 function createGroundTexture(theme: BiomeTheme, seed: number, worldId: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -90,153 +93,252 @@ function createGroundTexture(theme: BiomeTheme, seed: number, worldId: number): 
 
   if (worldId === 1) {
     // WORLD 1: GRAVEYARD
-    // Dark wet dirt, aged stone slabs, cobblestone patches, grave mounds
-    // Dirt variations
+    // Wet cemetery soil, aged cobblestone slabs with shaded bevels, dark grave mounds, subtle puddles
+    // 1. Organic soil noise & damp earth patches
     for (let i = 0; i < 90; i++) {
-      const x = rng() * 512;
-      const y = rng() * 512;
-      const rad = 25 + rng() * 60;
-      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
-      grad.addColorStop(0, deepColor);
-      grad.addColorStop(1, 'transparent');
-      ctx.globalAlpha = 0.45;
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(x, y, rad, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Flagstones & cobblestone paving
-    ctx.globalAlpha = 0.28;
-    ctx.strokeStyle = detailColor;
-    ctx.lineWidth = 1.5;
-    for (let row = 0; row < 18; row++) {
-      for (let col = 0; col < 18; col++) {
-        const px = col * 30 + (rng() - 0.5) * 6;
-        const py = row * 30 + (rng() - 0.5) * 6;
-        ctx.strokeRect(px, py, 26 + (rng() - 0.5) * 4, 26 + (rng() - 0.5) * 4);
-      }
-    }
-    // Grave soil patches
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = deepColor;
-    for (let i = 0; i < 16; i++) {
-      const x = rng() * 460 + 20;
-      const y = rng() * 460 + 20;
-      ctx.fillRect(x, y, 32 + rng() * 20, 55 + rng() * 25);
-    }
-  } else if (worldId === 2) {
-    // WORLD 2: HAUNTED FOREST
-    // Dark woodland soil, mossy glades, tangled root veins, purple corruptive mycelium
-    for (let i = 0; i < 110; i++) {
       const x = rng() * 512;
       const y = rng() * 512;
       const rad = 30 + rng() * 70;
       const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
       grad.addColorStop(0, deepColor);
       grad.addColorStop(1, 'transparent');
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.52;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(x, y, rad, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Twisted root veins
-    ctx.globalAlpha = 0.3;
-    ctx.strokeStyle = deepColor;
-    ctx.lineWidth = 3;
+
+    // 2. Cobblestone slabs with mortar and chiseled edges
+    const tileSize = 32;
+    for (let row = 0; row < 16; row++) {
+      for (let col = 0; col < 16; col++) {
+        const px = col * tileSize + (rng() - 0.5) * 4;
+        const py = row * tileSize + (rng() - 0.5) * 4;
+        const w = tileSize - 4 + (rng() - 0.5) * 4;
+        const h = tileSize - 4 + (rng() - 0.5) * 4;
+
+        // Dark mortar drop-shadow
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = deepColor;
+        ctx.fillRect(px + 1.5, py + 1.5, w, h);
+
+        // Stone face
+        ctx.globalAlpha = 0.32;
+        ctx.fillStyle = detailColor;
+        ctx.fillRect(px, py, w, h);
+
+        // Stone edge highlight
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = '#6a7d90';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, w, h);
+      }
+    }
+
+    // 3. Grave soil plots (freshly turned damp dark earth)
+    for (let i = 0; i < 14; i++) {
+      const x = rng() * 440 + 20;
+      const y = rng() * 440 + 20;
+      const gw = 38 + rng() * 22;
+      const gh = 65 + rng() * 30;
+      ctx.globalAlpha = 0.48;
+      ctx.fillStyle = deepColor;
+      ctx.beginPath();
+      ctx.roundRect(x, y, gw, gh, 8);
+      ctx.fill();
+      // Mound ridge
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = detailColor;
+      ctx.beginPath();
+      ctx.roundRect(x + 5, y + 6, gw - 10, gh - 12, 6);
+      ctx.fill();
+    }
+
+    // 4. Subtle wet moonlight puddles
+    for (let i = 0; i < 12; i++) {
+      const px = rng() * 460 + 26;
+      const py = rng() * 460 + 26;
+      const prad = 14 + rng() * 24;
+      const grad = ctx.createRadialGradient(px, py, 2, px, py, prad);
+      grad.addColorStop(0, '#101e30');
+      grad.addColorStop(0.7, '#081220');
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(px, py, prad, prad * 0.55, rng() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+      // Specular sheen
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.arc(px - prad * 0.2, py - prad * 0.1, prad * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (worldId === 2) {
+    // WORLD 2: HAUNTED FOREST
+    // Deep woodland soil, mossy glades, snaking root networks, glowing purple & teal mycelium
+    // 1. Dark loam & moss variation
+    for (let i = 0; i < 110; i++) {
+      const x = rng() * 512;
+      const y = rng() * 512;
+      const rad = 32 + rng() * 75;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      grad.addColorStop(0, deepColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.58;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2. Thick snaking root veins with shaded edges
+    ctx.lineWidth = 3.5;
     for (let i = 0; i < 28; i++) {
       ctx.beginPath();
       let cx = rng() * 512;
       let cy = rng() * 512;
       ctx.moveTo(cx, cy);
       for (let s = 0; s < 5; s++) {
-        cx += (rng() - 0.5) * 60;
-        cy += (rng() - 0.5) * 60;
+        cx += (rng() - 0.5) * 65;
+        cy += (rng() - 0.5) * 65;
         ctx.lineTo(cx, cy);
       }
+      ctx.globalAlpha = 0.38;
+      ctx.strokeStyle = deepColor;
+      ctx.stroke();
+      // Root center highlight
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = detailColor;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     }
-    // Purple spectral spores / mycelium
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = accentColor;
-    for (let i = 0; i < 80; i++) {
+
+    // 3. Bioluminescent purple fungal mycelium rings & spore clusters
+    for (let i = 0; i < 55; i++) {
       const x = rng() * 512;
       const y = rng() * 512;
+      const rad = 8 + rng() * 18;
+      const grad = ctx.createRadialGradient(x, y, 1, x, y, rad);
+      grad.addColorStop(0, accentColor);
+      grad.addColorStop(0.5, `${accentColor}55`);
+      grad.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, 2 + rng() * 4, 0, Math.PI * 2);
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+      // Tiny spore dots
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = '#eeddff';
+      ctx.beginPath();
+      ctx.arc(x, y, 1.8, 0, Math.PI * 2);
       ctx.fill();
     }
   } else if (worldId === 3) {
     // WORLD 3: FROZEN RUINS
-    // Dark ancient stone with permafrost fracture veins, snow drifts, icy crystalline cracks
-    for (let i = 0; i < 80; i++) {
+    // Permafrost stone with frost fracture veins, crystalline rime, sweeping snow drifts
+    for (let i = 0; i < 90; i++) {
       const x = rng() * 512;
       const y = rng() * 512;
-      const rad = 35 + rng() * 80;
+      const rad = 35 + rng() * 85;
       const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
       grad.addColorStop(0, '#cceeff');
       grad.addColorStop(1, 'transparent');
-      ctx.globalAlpha = 0.22;
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(x, y, rad, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Ice fracture cracks
-    ctx.globalAlpha = 0.38;
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 1.6;
-    for (let i = 0; i < 35; i++) {
+
+    // Sub-surface glowing cyan ice fractures
+    ctx.lineWidth = 2.2;
+    for (let i = 0; i < 38; i++) {
       ctx.beginPath();
       let cx = rng() * 512;
       let cy = rng() * 512;
       ctx.moveTo(cx, cy);
       for (let s = 0; s < 4; s++) {
-        cx += (rng() - 0.5) * 70;
-        cy += (rng() - 0.5) * 70;
+        cx += (rng() - 0.5) * 75;
+        cy += (rng() - 0.5) * 75;
         ctx.lineTo(cx, cy);
       }
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = accentColor;
       ctx.stroke();
+      ctx.globalAlpha = 0.3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Flagstone cracks
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = detailColor;
+    ctx.lineWidth = 1.2;
+    for (let row = 0; row < 14; row++) {
+      for (let col = 0; col < 14; col++) {
+        ctx.strokeRect(col * 38 + (rng() - 0.5) * 4, row * 38 + (rng() - 0.5) * 4, 34, 34);
+      }
     }
   } else {
     // WORLD 4: DEMON CASTLE
-    // Dark scorched black-red flagstones, glowing lava fissures, rune circles
-    for (let i = 0; i < 85; i++) {
+    // Scorched basalt flagstones, glowing hot magma rivers and veins, demonic runes
+    for (let i = 0; i < 90; i++) {
       const x = rng() * 512;
       const y = rng() * 512;
-      const rad = 25 + rng() * 65;
+      const rad = 28 + rng() * 70;
       const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
       grad.addColorStop(0, deepColor);
       grad.addColorStop(1, 'transparent');
-      ctx.globalAlpha = 0.6;
+      ctx.globalAlpha = 0.65;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(x, y, rad, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Glowing lava cracks
-    ctx.globalAlpha = 0.45;
-    ctx.strokeStyle = warmColor;
-    ctx.lineWidth = 2.4;
-    for (let i = 0; i < 24; i++) {
-      ctx.beginPath();
+
+    // Glowing hot lava fissures (white-hot core + orange outer glow)
+    for (let i = 0; i < 26; i++) {
+      const pts: { x: number; y: number }[] = [];
       let cx = rng() * 512;
       let cy = rng() * 512;
-      ctx.moveTo(cx, cy);
+      pts.push({ x: cx, y: cy });
       for (let s = 0; s < 4; s++) {
-        cx += (rng() - 0.5) * 60;
-        cy += (rng() - 0.5) * 60;
-        ctx.lineTo(cx, cy);
+        cx += (rng() - 0.5) * 65;
+        cy += (rng() - 0.5) * 65;
+        pts.push({ x: cx, y: cy });
       }
+
+      // Outer orange flame aura
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x, pts[p].y);
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = warmColor;
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Inner white-hot core
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x, pts[p].y);
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = '#fff0c0';
+      ctx.lineWidth = 1.2;
       ctx.stroke();
     }
-    // Obsidian tile grid
-    ctx.globalAlpha = 0.25;
+
+    // Basalt flagstone grid with dark mortar
+    ctx.globalAlpha = 0.28;
     ctx.strokeStyle = deepColor;
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 2.2;
     for (let row = 0; row < 14; row++) {
       for (let col = 0; col < 14; col++) {
-        ctx.strokeRect(col * 38, row * 38, 36, 36);
+        ctx.strokeRect(col * 38, row * 38, 35, 35);
       }
     }
   }
@@ -468,49 +570,76 @@ function buildGraveyardArena(
   // 1. NORTH GATE & RUIN ZONE (Top background landmarks)
   placeProp(parent, worldSlug, 'chapel_ruin', () => {
     const g = new THREE.Group();
-    g.add(createBox(3.2, 2.6, 0.4, mStone));
+    g.add(createBox(4.2, 3.2, 0.5, mStone, 0, 1.6, 0));
+    g.add(createCone(2.2, 1.9, 4, mStoneAlt, 0, 4.0, 0, 0, Math.PI / 4, 0));
+    g.add(createBox(0.5, 1.4, 0.6, mStone, -1.1, 1.5, 0));
+    g.add(createBox(0.5, 1.4, 0.6, mStone, 1.1, 1.5, 0));
+    g.add(createBox(0.12, 0.7, 0.12, mStoneAlt, 0, 5.1, 0));
+    g.add(createBox(0.42, 0.12, 0.12, mStoneAlt, 0, 4.9, 0));
     return g;
   }, { position: new THREE.Vector3(0, 1.3, -11.5), scale: new THREE.Vector3(1.4, 1.4, 1.4) });
 
   placeProp(parent, worldSlug, 'stone_arch', () => {
     const g = new THREE.Group();
-    g.add(createBox(2.8, 0.4, 0.5, mStoneAlt, 0, 2.2, 0));
-    g.add(createBox(0.4, 2.2, 0.4, mStone, -1.2, 1.1, 0));
-    g.add(createBox(0.4, 2.2, 0.4, mStone, 1.2, 1.1, 0));
+    g.add(createBox(0.5, 2.5, 0.5, mStone, -1.35, 1.25, 0));
+    g.add(createBox(0.5, 2.5, 0.5, mStone, 1.35, 1.25, 0));
+    g.add(createBox(3.3, 0.5, 0.6, mStoneAlt, 0, 2.65, 0));
+    g.add(createBox(0.3, 0.3, 0.68, mStone, 0, 2.65, 0));
     return g;
   }, { position: new THREE.Vector3(0, 0, -9.2), scale: new THREE.Vector3(1.3, 1.3, 1.3) });
 
   placeProp(parent, worldSlug, 'iron_gate', () => {
     const g = new THREE.Group();
-    g.add(createBox(2.0, 1.4, 0.08, mIron, 0, 0.7, 0));
+    g.add(createBox(0.4, 2.2, 0.4, mStoneAlt, -1.3, 1.1, 0));
+    g.add(createSphere(0.22, 6, mStoneAlt, -1.3, 2.35, 0));
+    g.add(createBox(0.4, 2.2, 0.4, mStoneAlt, 1.3, 1.1, 0));
+    g.add(createSphere(0.22, 6, mStoneAlt, 1.3, 2.35, 0));
+    g.add(createBox(2.2, 1.6, 0.08, mIron, 0, 0.9, 0));
     return g;
   }, { position: new THREE.Vector3(0, 0, -7.8) });
 
   // 2. CRYPT ZONE (Noble Mausoleum in West, Ancient Crypt in East)
   placeProp(parent, worldSlug, 'crypt_large', () => {
     const g = new THREE.Group();
-    g.add(createBox(2.6, 2.2, 3.2, mStone, 0, 1.1, 0));
+    g.add(createBox(3.4, 0.3, 4.0, mStoneAlt, 0, 0.15, 0));
+    g.add(createBox(3.0, 2.4, 3.6, mStone, 0, 1.35, 0));
+    g.add(createBox(3.3, 0.45, 3.9, mStoneAlt, 0, 2.65, 0));
+    g.add(createCone(2.5, 0.9, 4, mStoneAlt, 0, 3.25, 0, 0, Math.PI / 4, 0));
+    g.add(createCylinder(0.2, 0.22, 2.2, 8, mStoneAlt, -1.2, 1.25, 1.85));
+    g.add(createCylinder(0.2, 0.22, 2.2, 8, mStoneAlt, 1.2, 1.25, 1.85));
+    g.add(createBox(1.2, 1.9, 0.12, mIron, 0, 1.05, 1.82));
     return g;
   }, { position: new THREE.Vector3(-4.8, 0, -4.5), scale: new THREE.Vector3(1.2, 1.2, 1.2), rotationY: 0.25 });
 
   placeProp(parent, worldSlug, 'crypt_small', () => {
     const g = new THREE.Group();
-    g.add(createBox(1.6, 1.4, 2.2, mStone, 0, 0.7, 0));
+    g.add(createBox(1.9, 0.2, 2.5, mStoneAlt, 0, 0.1, 0));
+    g.add(createBox(1.7, 1.5, 2.3, mStone, 0, 0.85, 0));
+    g.add(createCone(1.4, 0.8, 4, mStoneAlt, 0, 1.95, 0, 0, Math.PI / 4, 0));
+    g.add(createBox(0.8, 1.2, 0.1, mIron, 0, 0.7, 1.16));
     return g;
   }, { position: new THREE.Vector3(4.8, 0, -3.8), scale: new THREE.Vector3(1.15, 1.15, 1.15), rotationY: -0.22 });
 
   // 3. STATUES & LANDMARKS
   placeProp(parent, worldSlug, 'angel_statue', () => {
     const g = new THREE.Group();
-    g.add(createBox(0.6, 0.5, 0.6, mStone, 0, 0.25, 0));
-    g.add(createCylinder(0.25, 0.35, 1.1, 7, mStoneAlt, 0, 1.05, 0));
+    g.add(createBox(0.8, 0.25, 0.8, mStone, 0, 0.12, 0));
+    g.add(createBox(0.65, 0.5, 0.65, mStone, 0, 0.48, 0));
+    g.add(createCylinder(0.26, 0.38, 1.2, 8, mStoneAlt, 0, 1.25, 0));
+    g.add(createSphere(0.22, 7, mStoneAlt, 0, 1.9, 0.02));
+    g.add(createBox(0.72, 0.95, 0.09, mStoneAlt, -0.32, 1.6, -0.18, 0.22, -0.32, 0.25));
+    g.add(createBox(0.72, 0.95, 0.09, mStoneAlt, 0.32, 1.6, -0.18, 0.22, 0.32, -0.25));
     return g;
   }, { position: new THREE.Vector3(-3.2, 0, 0.8), scale: new THREE.Vector3(1.25, 1.25, 1.25), rotationY: 0.6 });
 
   placeProp(parent, worldSlug, 'angel_statue', () => {
     const g = new THREE.Group();
-    g.add(createBox(0.6, 0.5, 0.6, mStone, 0, 0.25, 0));
-    g.add(createCylinder(0.25, 0.35, 1.1, 7, mStoneAlt, 0, 1.05, 0));
+    g.add(createBox(0.8, 0.25, 0.8, mStone, 0, 0.12, 0));
+    g.add(createBox(0.65, 0.5, 0.65, mStone, 0, 0.48, 0));
+    g.add(createCylinder(0.26, 0.38, 1.2, 8, mStoneAlt, 0, 1.25, 0));
+    g.add(createSphere(0.22, 7, mStoneAlt, 0, 1.9, 0.02));
+    g.add(createBox(0.72, 0.95, 0.09, mStoneAlt, -0.32, 1.6, -0.18, 0.22, -0.32, 0.25));
+    g.add(createBox(0.72, 0.95, 0.09, mStoneAlt, 0.32, 1.6, -0.18, 0.22, 0.32, -0.25));
     return g;
   }, { position: new THREE.Vector3(3.2, 0, 1.2), scale: new THREE.Vector3(1.25, 1.25, 1.25), rotationY: -0.6 });
 
@@ -639,27 +768,39 @@ function buildHauntedForestArena(
   // 1. LANDMARK: THE GREAT CURSED TREE (Towering over North edge)
   placeProp(parent, worldSlug, 'cursed_tree_giant', () => {
     const g = new THREE.Group();
-    g.add(createCylinder(0.9, 1.6, 4.5, 8, mBark, 0, 2.25, 0));
+    g.add(createCylinder(1.1, 2.1, 5.2, 8, mBark, 0, 2.6, 0));
+    g.add(createBox(4.2, 0.8, 1.1, mBark, 0, 0.4, 0, 0, 0.45, 0));
+    g.add(createBox(1.1, 0.8, 4.2, mBark, 0, 0.4, 0, 0, -0.45, 0));
+    g.add(createCylinder(0.55, 0.9, 3.2, 6, mBark, -1.4, 4.8, 0.5, 0.25, 0, 0.5));
+    g.add(createCylinder(0.55, 0.9, 3.2, 6, mBark, 1.4, 4.8, -0.5, -0.25, 0, -0.5));
+    g.add(createSphere(0.45, 6, resources.basicMaterial('tree-void', 0x0a0410), 0, 2.2, 1.0));
+    g.add(createOcta(0.24, mPurple, 0, 2.2, 0.95));
     return g;
   }, { position: new THREE.Vector3(0, 0, -8.5), scale: new THREE.Vector3(1.35, 1.35, 1.35) });
 
   // 2. ANCIENT SPIRIT SHRINE
   placeProp(parent, worldSlug, 'ancient_shrine', () => {
     const g = new THREE.Group();
-    g.add(createBox(2.4, 0.22, 0.4, mWood, 0, 2.25, 0));
+    g.add(createBox(0.35, 2.8, 0.35, mWood, -1.2, 1.4, 0));
+    g.add(createBox(0.35, 2.8, 0.35, mWood, 1.2, 1.4, 0));
+    g.add(createBox(3.4, 0.3, 0.45, mWood, 0, 2.7, 0));
+    g.add(createBox(2.8, 0.22, 0.38, mWood, 0, 2.3, 0));
+    g.add(createOcta(0.18, mTeal, 0, 2.0, 0));
     return g;
   }, { position: new THREE.Vector3(-4.5, 0, -3.2), scale: new THREE.Vector3(1.2, 1.2, 1.2), rotationY: 0.4 });
 
   // 3. STANDING STONES & SPIRIT LANTERNS
   placeProp(parent, worldSlug, 'standing_stone', () => {
     const g = new THREE.Group();
-    g.add(createBox(0.65, 2.4, 0.4, mStone, 0, 1.2, 0));
+    g.add(createBox(0.75, 2.6, 0.45, mStone, 0, 1.3, 0));
+    g.add(createBox(0.18, 1.4, 0.06, mPurple, 0, 1.3, 0.24));
     return g;
   }, { position: new THREE.Vector3(4.2, 0, -2.8), scale: new THREE.Vector3(1.2, 1.2, 1.2), rotationY: -0.45 });
 
   placeProp(parent, worldSlug, 'standing_stone', () => {
     const g = new THREE.Group();
-    g.add(createBox(0.65, 2.4, 0.4, mStone, 0, 1.2, 0));
+    g.add(createBox(0.75, 2.6, 0.45, mStone, 0, 1.3, 0));
+    g.add(createBox(0.18, 1.4, 0.06, mPurple, 0, 1.3, 0.24));
     return g;
   }, { position: new THREE.Vector3(-3.8, 0, 3.5), scale: new THREE.Vector3(1.1, 1.1, 1.1), rotationY: 0.3 });
 
@@ -738,14 +879,21 @@ function buildFrozenRuinsArena(
   // 1. LANDMARK: GREAT FROST GATE (North background)
   placeProp(parent, worldSlug, 'temple_gate_arch', () => {
     const g = new THREE.Group();
-    g.add(createBox(3.8, 0.65, 0.8, mStone, 0, 3.4, 0));
+    g.add(createBox(0.65, 3.4, 0.65, mStone, -1.6, 1.7, 0));
+    g.add(createBox(0.65, 3.4, 0.65, mStone, 1.6, 1.7, 0));
+    g.add(createBox(4.2, 0.7, 0.85, mStone, 0, 3.5, 0));
+    g.add(createCone(0.12, 0.8, 4, mIce, -0.8, 2.9, 0, Math.PI, 0, 0));
+    g.add(createCone(0.15, 1.1, 4, mIce, 0, 2.7, 0, Math.PI, 0, 0));
+    g.add(createCone(0.12, 0.8, 4, mIce, 0.8, 2.9, 0, Math.PI, 0, 0));
     return g;
   }, { position: new THREE.Vector3(0, 0, -8.8), scale: new THREE.Vector3(1.3, 1.3, 1.3) });
 
   // 2. FROZEN WARRIOR MONUMENT & ALTAR
   placeProp(parent, worldSlug, 'frozen_statue', () => {
     const g = new THREE.Group();
-    g.add(createBox(0.8, 0.6, 0.8, mStone, 0, 0.3, 0));
+    g.add(createBox(0.9, 0.3, 0.9, mStone, 0, 0.15, 0));
+    g.add(createCylinder(0.3, 0.4, 1.4, 7, mStone, 0, 0.9, 0));
+    g.add(createBox(0.95, 1.8, 0.95, mIce, 0, 1.0, 0));
     return g;
   }, { position: new THREE.Vector3(-3.8, 0, -3.5), scale: new THREE.Vector3(1.3, 1.3, 1.3), rotationY: 0.35 });
 
@@ -776,13 +924,15 @@ function buildFrozenRuinsArena(
   // 4. GIANT ICE CRYSTAL CLUSTERS
   placeProp(parent, worldSlug, 'ice_crystal_huge', () => {
     const g = new THREE.Group();
-    g.add(createOcta(0.85, mIce, 0, 1.8, 0));
+    g.add(createCone(0.45, 2.6, 5, mIce, 0, 1.3, 0));
+    g.add(createCone(0.28, 1.6, 5, mIce, 0.4, 0.8, 0.2, 0.2, 0, -0.35));
     return g;
   }, { position: new THREE.Vector3(-4.4, 0, 3.8), scale: new THREE.Vector3(1.3, 1.3, 1.3) });
 
   placeProp(parent, worldSlug, 'ice_crystal_cluster', () => {
     const g = new THREE.Group();
-    g.add(createOcta(0.48, mIce, 0, 0.8, 0));
+    g.add(createCone(0.32, 1.8, 5, mIce, 0, 0.9, 0));
+    g.add(createCone(0.22, 1.2, 5, mIce, -0.3, 0.6, -0.15, -0.2, 0, 0.3));
     return g;
   }, { position: new THREE.Vector3(4.4, 0, 3.8), scale: new THREE.Vector3(1.2, 1.2, 1.2) });
 
@@ -795,7 +945,7 @@ function buildFrozenRuinsArena(
 
   placeProp(parent, worldSlug, 'ice_crystal_cluster', () => {
     const g = new THREE.Group();
-    g.add(createOcta(0.48, mIce, 0, 0.8, 0));
+    g.add(createCone(0.32, 1.8, 5, mIce, 0, 0.9, 0));
     return g;
   }, { position: new THREE.Vector3(2.6, 0, 8.2), scale: new THREE.Vector3(1.25, 1.25, 1.25) });
 }
@@ -818,13 +968,23 @@ function buildDemonCastleArena(
   // 1. LANDMARK: GATES OF DIS & DEMON THRONE
   placeProp(parent, worldSlug, 'infernal_gate', () => {
     const g = new THREE.Group();
-    g.add(createBox(4.4, 0.8, 0.9, mObsidian, 0, 4.0, 0));
+    g.add(createBox(0.8, 4.0, 0.8, mObsidian, -1.8, 2.0, 0));
+    g.add(createBox(0.8, 4.0, 0.8, mObsidian, 1.8, 2.0, 0));
+    g.add(createBox(4.6, 0.8, 1.0, mObsidian, 0, 4.0, 0));
+    g.add(createCone(0.18, 1.1, 4, mObsidian, -1.8, 4.9, 0));
+    g.add(createCone(0.18, 1.1, 4, mObsidian, 1.8, 4.9, 0));
+    g.add(createCone(0.22, 1.4, 4, mObsidian, 0, 4.9, 0));
+    g.add(createBox(2.6, 3.4, 0.08, mFire, 0, 1.7, 0));
     return g;
   }, { position: new THREE.Vector3(0, 0, -8.8), scale: new THREE.Vector3(1.3, 1.3, 1.3) });
 
   placeProp(parent, worldSlug, 'demon_throne_silhouette', () => {
     const g = new THREE.Group();
-    g.add(createBox(1.4, 2.6, 0.3, mObsidian, 0, 1.5, 0));
+    g.add(createBox(2.2, 0.4, 1.8, mObsidian, 0, 0.2, 0));
+    g.add(createBox(1.8, 2.6, 0.4, mObsidian, 0, 1.5, -0.6));
+    g.add(createCone(0.15, 0.9, 4, mObsidian, -0.7, 2.9, -0.6));
+    g.add(createCone(0.18, 1.2, 4, mObsidian, 0, 3.1, -0.6));
+    g.add(createCone(0.15, 0.9, 4, mObsidian, 0.7, 2.9, -0.6));
     return g;
   }, { position: new THREE.Vector3(0, 0, -11.2), scale: new THREE.Vector3(1.4, 1.4, 1.4) });
 
@@ -943,15 +1103,17 @@ function addMist(parent: THREE.Group, theme: BiomeTheme, worldId: number): void 
 // -------------------------------------------------------------
 // SHAPE CREATION HELPERS
 // -------------------------------------------------------------
-function createBox(sx: number, sy: number, sz: number, mat: THREE.Material, px = 0, py = 0, pz = 0): THREE.Mesh {
+function createBox(sx: number, sy: number, sz: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
   mesh.position.set(px, py, pz);
+  mesh.rotation.set(rx, ry, rz);
   return mesh;
 }
 
-function createCylinder(rt: number, rb: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0): THREE.Mesh {
+function createCylinder(rt: number, rb: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, s), mat);
   mesh.position.set(px, py, pz);
+  mesh.rotation.set(rx, ry, rz);
   return mesh;
 }
 
@@ -961,15 +1123,24 @@ function createSphere(r: number, s: number, mat: THREE.Material, px = 0, py = 0,
   return mesh;
 }
 
-function createOcta(r: number, mat: THREE.Material, px = 0, py = 0, pz = 0): THREE.Mesh {
+function createOcta(r: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(r), mat);
   mesh.position.set(px, py, pz);
+  mesh.rotation.set(rx, ry, rz);
   return mesh;
 }
 
-function createCone(r: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0): THREE.Mesh {
+function createCone(r: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.ConeGeometry(r, h, s), mat);
   mesh.position.set(px, py, pz);
+  mesh.rotation.set(rx, ry, rz);
+  return mesh;
+}
+
+function createTorus(r: number, tube: number, radSegs: number, tubSegs: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.TorusGeometry(r, tube, radSegs, tubSegs), mat);
+  mesh.position.set(px, py, pz);
+  mesh.rotation.set(rx, ry, rz);
   return mesh;
 }
 

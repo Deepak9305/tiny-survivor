@@ -545,37 +545,37 @@ export class SurvivorGame3D {
       const blade = new THREE.Group();
       blade.name = `orbit-blade-${this.orbitVisuals.length}`;
 
-      // Steel blade
-      const steelBlade = addMesh(blade, this.resources.box('orbit-blade-steel'), this.resources.standardMaterial('orbit-steel-mat', 0xd0dae8, { metalness: 0.85, roughness: 0.18 }));
-      steelBlade.scale.set(0.68, 0.05, 0.16);
-      steelBlade.position.set(0.18, 0.76, 0);
+      // Steel crescent blade
+      const steelBlade = addMesh(blade, this.resources.box('orbit-blade-steel'), this.resources.standardMaterial('orbit-steel-mat', 0xdce4f0, { metalness: 0.9, roughness: 0.15 }));
+      steelBlade.scale.set(0.85, 0.06, 0.2);
+      steelBlade.position.set(0.22, 0.76, 0);
 
       // Cyan rune edge / core
-      const runeEdge = addMesh(blade, this.resources.box('orbit-blade-rune'), this.resources.standardMaterial('orbit-rune-mat', 0x5de7ff, { emissive: 0x2abfff, emissiveIntensity: 2.2, roughness: 0.2 }));
-      runeEdge.scale.set(0.6, 0.065, 0.05);
-      runeEdge.position.set(0.18, 0.76, 0);
+      const runeEdge = addMesh(blade, this.resources.box('orbit-blade-rune'), this.resources.standardMaterial('orbit-rune-mat', 0x62ecff, { emissive: 0x22c2ff, emissiveIntensity: 2.6, roughness: 0.15 }));
+      runeEdge.scale.set(0.76, 0.08, 0.07);
+      runeEdge.position.set(0.22, 0.76, 0);
 
-      // Dark crossguard
-      const guard = addMesh(blade, this.resources.box('orbit-blade-guard'), this.resources.standardMaterial('orbit-guard-mat', 0x222834, { metalness: 0.6, roughness: 0.4 }));
-      guard.scale.set(0.06, 0.08, 0.28);
-      guard.position.set(-0.16, 0.76, 0);
+      // Dark ornate crossguard
+      const guard = addMesh(blade, this.resources.box('orbit-blade-guard'), this.resources.standardMaterial('orbit-guard-mat', 0x1e2430, { metalness: 0.7, roughness: 0.35 }));
+      guard.scale.set(0.08, 0.1, 0.34);
+      guard.position.set(-0.18, 0.76, 0);
 
       // Grip and pommel
       const grip = addMesh(blade, this.resources.cylinder('orbit-blade-grip'), this.resources.standardMaterial('orbit-grip-mat', 0x3d2b1f, { roughness: 0.7 }));
-      grip.scale.set(0.035, 0.22, 0.035);
+      grip.scale.set(0.04, 0.25, 0.04);
       grip.rotation.z = Math.PI / 2;
-      grip.position.set(-0.28, 0.76, 0);
+      grip.position.set(-0.32, 0.76, 0);
 
-      const pommel = addMesh(blade, this.resources.octa('orbit-blade-pommel'), this.resources.standardMaterial('orbit-pommel-mat', 0xffd154, { emissive: 0xd49b20, emissiveIntensity: 0.8, metalness: 0.8 }));
-      pommel.scale.setScalar(0.06);
-      pommel.position.set(-0.4, 0.76, 0);
+      const pommel = addMesh(blade, this.resources.octa('orbit-blade-pommel'), this.resources.standardMaterial('orbit-pommel-mat', 0xffd154, { emissive: 0xd49b20, emissiveIntensity: 1.2, metalness: 0.85 }));
+      pommel.scale.setScalar(0.08);
+      pommel.position.set(-0.46, 0.76, 0);
 
-      // Motion trail streak behind the blade
-      const streak = addMesh(blade, this.resources.plane('orbit-blade-streak'), this.resources.basicMaterial('orbit-streak-mat', 0x4dd8ff, { transparent: true, opacity: 0.48, side: THREE.DoubleSide }));
-      streak.scale.set(0.8, 0.22, 1);
-      streak.position.set(-0.24, 0.76, -0.16);
+      // Motion trail streak behind the blade (bright glowing ribbon)
+      const streak = addMesh(blade, this.resources.plane('orbit-blade-streak'), this.resources.basicMaterial('orbit-streak-mat', 0x5ee0ff, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }));
+      streak.scale.set(1.15, 0.3, 1);
+      streak.position.set(-0.3, 0.76, -0.2);
       streak.rotation.x = Math.PI / 2;
-      streak.rotation.z = 0.25;
+      streak.rotation.z = 0.28;
 
       blade.visible = false;
       this.actors.add(blade);

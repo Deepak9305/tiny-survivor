@@ -45,44 +45,54 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
     return { root, aura, shadow };
   }
 
-  // Fallback Procedural Model
-  const body = addMesh(root, resources.cylinder('hero-body'), resources.standardMaterial('hero-body', 0x2456a2, { roughness: 0.65 }));
-  body.scale.set(0.72, 0.86, 0.56);
+  // Fallback Procedural Model (Mascot Level Chibi Action Sculpt)
+  const mGold = resources.standardMaterial('hero-gold', 0xebb338, { metalness: 0.75, roughness: 0.35 });
+  const body = addMesh(root, resources.cylinder('hero-body'), resources.standardMaterial('hero-body', 0x183462, { roughness: 0.72 }));
+  body.scale.set(0.74, 0.88, 0.58);
   body.position.y = 0.72;
 
-  const cloak = addMesh(root, resources.cone('hero-cloak'), resources.standardMaterial('hero-cloak', 0x142d62, { roughness: 0.9 }));
-  cloak.scale.set(0.86, 1.18, 0.7);
-  cloak.position.y = 0.62;
+  const cloak = addMesh(root, resources.cone('hero-cloak'), resources.standardMaterial('hero-cloak', 0x0c1628, { roughness: 0.88 }));
+  cloak.scale.set(0.92, 1.25, 0.74);
+  cloak.position.y = 0.60;
 
-  const hood = addMesh(root, resources.cone('hero-hood'), resources.standardMaterial('hero-hood', 0x0b142a, { roughness: 0.86 }));
-  hood.scale.set(0.86, 0.92, 0.82);
-  hood.position.y = 1.34;
-  const hoodRim = addMesh(root, resources.torus('hero-hood-rim'), resources.standardMaterial('hero-hood-rim', 0x1b4c78, { metalness: 0.16, roughness: 0.64 }));
-  hoodRim.scale.set(0.47, 0.22, 0.32);
-  hoodRim.position.set(0, 1.2, 0.2);
-  hoodRim.rotation.x = Math.PI / 2;
+  const goldHem = addMesh(root, resources.torus('hero-gold-hem'), mGold);
+  goldHem.scale.set(0.48, 0.48, 0.04);
+  goldHem.position.set(0, 0.35, 0);
+  goldHem.rotation.x = Math.PI / 2;
 
-  const face = addMesh(root, resources.ico('hero-face'), resources.standardMaterial('hero-face', 0x121c32, { roughness: 0.72 }));
-  face.scale.set(0.58, 0.56, 0.45);
-  face.position.set(0, 1.29, 0.08);
+  const hood = addMesh(root, resources.cone('hero-hood'), resources.standardMaterial('hero-hood', 0x0c1628, { roughness: 0.88 }));
+  hood.scale.set(0.9, 0.96, 0.86);
+  hood.position.set(0, 1.38, -0.06);
+  hood.rotation.x = 0.2;
 
-  const eyeMaterial = resources.basicMaterial('hero-eyes', 0x86efff, { transparent: true, opacity: 0.98 });
-  for (const x of [-0.19, 0.19]) {
-    const eye = addMesh(root, resources.sphere('hero-eye'), eyeMaterial);
-    eye.scale.set(0.075, 0.045, 0.03);
-    eye.position.set(x, 1.36, 0.48);
+  const hoodRim = addMesh(root, resources.torus('hero-hood-rim'), resources.standardMaterial('hero-hood-rim', 0x183462, { metalness: 0.2, roughness: 0.65 }));
+  hoodRim.scale.set(0.48, 0.24, 0.34);
+  hoodRim.position.set(0, 1.22, 0.18);
+  hoodRim.rotation.x = Math.PI / 2.2;
+
+  const faceVoid = addMesh(root, resources.sphere('hero-face-void'), resources.basicMaterial('hero-face-void', 0x020408));
+  faceVoid.scale.set(0.52, 0.5, 0.42);
+  faceVoid.position.set(0, 1.25, 0.08);
+
+  const eyeMaterial = resources.basicMaterial('hero-eyes', 0x62f0ff, { transparent: true, opacity: 0.98 });
+  for (const x of [-0.17, 0.17]) {
+    const eye = addMesh(root, resources.box('hero-eye'), eyeMaterial);
+    eye.scale.set(0.085, 0.038, 0.02);
+    eye.position.set(x, 1.26, 0.26);
+    eye.rotation.z = x < 0 ? -0.1 : 0.1;
   }
 
-  const scarf = addMesh(root, resources.box('hero-scarf'), resources.standardMaterial('hero-scarf', 0xd64e61, { roughness: 0.8 }));
-  scarf.scale.set(0.72, 0.11, 0.32);
-  scarf.position.set(0.12, 1.04, 0.32);
-  scarf.rotation.y = -0.2;
-  const scarfTail = addMesh(root, resources.box('hero-scarf-tail'), resources.standardMaterial('hero-scarf-tail', 0xa9344e, { roughness: 0.82 }));
-  scarfTail.scale.set(0.13, 0.08, 0.62);
-  scarfTail.position.set(-0.39, 1.02, -0.1);
-  scarfTail.rotation.x = -0.22;
+  const scarf = addMesh(root, resources.torus('hero-scarf'), resources.standardMaterial('hero-scarf', 0xdb2c48, { roughness: 0.65, emissive: 0x4a0a14, emissiveIntensity: 0.35 }));
+  scarf.scale.set(0.52, 0.32, 0.14);
+  scarf.position.set(0, 1.05, 0.1);
+  scarf.rotation.x = Math.PI / 2;
 
-  const armMaterial = resources.standardMaterial('hero-arms', 0x1a3e7d, { roughness: 0.7 });
+  const scarfTail = addMesh(root, resources.box('hero-scarf-tail'), resources.standardMaterial('hero-scarf-tail', 0xa81c34, { roughness: 0.7 }));
+  scarfTail.scale.set(0.14, 0.07, 0.68);
+  scarfTail.position.set(-0.35, 0.98, -0.22);
+  scarfTail.rotation.set(-0.3, -0.2, 0.15);
+
+  const armMaterial = resources.standardMaterial('hero-arms', 0x0c1628, { roughness: 0.75 });
   const arms: THREE.Object3D[] = [];
   for (const x of [-0.48, 0.48]) {
     const arm = addMesh(root, resources.cylinder('hero-arm'), armMaterial);
@@ -92,26 +102,33 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
     arms.push(arm);
   }
 
-  const bootMaterial = resources.standardMaterial('hero-boots', 0x0b162a, { roughness: 0.86 });
-  for (const x of [-0.25, 0.25]) {
+  const bootMaterial = resources.standardMaterial('hero-boots', 0x080e18, { roughness: 0.88 });
+  for (const x of [-0.22, 0.22]) {
     const boot = addMesh(root, resources.box('hero-boot'), bootMaterial);
-    boot.scale.set(0.28, 0.22, 0.4);
-    boot.position.set(x, 0.23, 0.08);
+    boot.scale.set(0.26, 0.22, 0.38);
+    boot.position.set(x, 0.22, 0.08);
   }
 
-  const staff = addMesh(root, resources.cylinder('hero-staff'), resources.standardMaterial('hero-staff', 0x563c33, { roughness: 0.95 }));
-  staff.scale.set(0.055, 1.35, 0.055);
+  const staff = addMesh(root, resources.cylinder('hero-staff'), resources.standardMaterial('hero-staff', 0x382218, { roughness: 0.92 }));
+  staff.scale.set(0.055, 1.45, 0.055);
   staff.position.set(0.66, 0.72, 0.08);
   staff.rotation.z = -0.28;
-  const crystal = addMesh(root, resources.octa('hero-crystal'), resources.standardMaterial('hero-crystal', 0x58dcff, { emissive: 0x198dc7, emissiveIntensity: 1.5, roughness: 0.35, metalness: 0.18 }));
-  crystal.scale.setScalar(0.26);
-  crystal.position.set(0.84, 1.46, 0.08);
-  const crystalHalo = addMesh(root, resources.torus('hero-crystal-halo'), resources.basicMaterial('hero-crystal-halo', 0x58dcff, { transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
-  crystalHalo.scale.setScalar(0.23);
+
+  const staffProngs = addMesh(root, resources.cylinder('hero-staff-head'), mGold);
+  staffProngs.scale.set(0.07, 0.06, 0.12);
+  staffProngs.position.set(0.82, 1.38, 0.08);
+  staffProngs.rotation.z = -0.28;
+
+  const crystal = addMesh(root, resources.octa('hero-crystal'), resources.standardMaterial('hero-crystal', 0x56e0ff, { emissive: 0x1db5e6, emissiveIntensity: 2.2, roughness: 0.2, metalness: 0.1 }));
+  crystal.scale.setScalar(0.28);
+  crystal.position.set(0.86, 1.52, 0.08);
+
+  const crystalHalo = addMesh(root, resources.torus('hero-crystal-halo'), resources.basicMaterial('hero-crystal-halo', 0x56e0ff, { transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+  crystalHalo.scale.setScalar(0.26);
   crystalHalo.position.copy(crystal.position);
   crystalHalo.rotation.x = Math.PI / 2;
 
-  root.userData.parts = { body, cloak, hood, hoodRim, scarf, scarfTail, arms, staff, crystal, crystalHalo };
+  root.userData.parts = { body, cloak, goldHem, hood, hoodRim, scarf, scarfTail, arms, staff, crystal, crystalHalo };
 
   return { root, aura, shadow };
 }
@@ -387,44 +404,52 @@ function createSkeletonKingModel(resources: SharedResources): { root: THREE.Grou
   aura.rotation.x = -Math.PI / 2;
   aura.position.y = 0.04;
 
-  const cape = addMesh(root, resources.cone('boss-cape'), resources.standardMaterial('boss-cape', 0x3d172b, { roughness: 0.92 }));
-  cape.scale.set(1.4, 1.72, 0.2);
-  cape.position.set(0, 1.08, -0.34);
+  const cape = addMesh(root, resources.cone('boss-cape'), resources.standardMaterial('boss-cape', 0x94182c, { roughness: 0.85 }));
+  cape.scale.set(1.5, 1.9, 0.22);
+  cape.position.set(0, 1.15, -0.38);
 
-  const armor = addMesh(root, resources.cylinder('boss-armor'), resources.standardMaterial('boss-armor', 0x2b2139, { metalness: 0.35, roughness: 0.65 }));
-  armor.scale.set(1.15, 1.35, 0.9);
-  armor.position.y = 1.18;
-  const chest = addMesh(root, resources.box('boss-chest'), resources.standardMaterial('boss-chest', 0x67263e, { metalness: 0.25, roughness: 0.68 }));
-  chest.scale.set(1.24, 0.68, 0.82);
-  chest.position.y = 1.38;
-  const skull = addMesh(root, resources.ico('boss-skull'), resources.standardMaterial('boss-skull', 0xc6d1dc, { roughness: 0.72 }));
-  skull.scale.set(1.08, 0.92, 0.94);
-  skull.position.set(0, 2.45, 0.05);
-  const jaw = addMesh(root, resources.box('boss-jaw'), resources.standardMaterial('boss-jaw', 0x9caebe, { roughness: 0.8 }));
-  jaw.scale.set(0.86, 0.28, 0.64);
-  jaw.position.set(0, 1.92, 0.22);
-  const eyeMaterial = resources.basicMaterial('boss-eyes', 0xff5967);
-  for (const x of [-0.36, 0.36]) {
-    const eye = addMesh(root, resources.sphere('boss-eye'), eyeMaterial);
-    eye.scale.set(0.13, 0.09, 0.05);
-    eye.position.set(x, 2.5, 0.85);
+  const armor = addMesh(root, resources.cylinder('boss-armor'), resources.standardMaterial('boss-armor', 0x1c2432, { metalness: 0.65, roughness: 0.48 }));
+  armor.scale.set(1.25, 1.45, 0.95);
+  armor.position.y = 1.25;
+  const chest = addMesh(root, resources.box('boss-chest'), resources.standardMaterial('boss-chest', 0xffca55, { metalness: 0.8, roughness: 0.3, emissive: 0x775010, emissiveIntensity: 0.5 }));
+  chest.scale.set(1.1, 0.72, 0.86);
+  chest.position.y = 1.45;
+  const skull = addMesh(root, resources.ico('boss-skull'), resources.standardMaterial('boss-skull', 0xd8e4ee, { roughness: 0.78 }));
+  skull.scale.set(1.12, 0.96, 0.98);
+  skull.position.set(0, 2.52, 0.05);
+  const jaw = addMesh(root, resources.box('boss-jaw'), resources.standardMaterial('boss-jaw', 0xd8e4ee, { roughness: 0.8 }));
+  jaw.scale.set(0.9, 0.32, 0.68);
+  jaw.position.set(0, 1.96, 0.24);
+  const eyeMaterial = resources.basicMaterial('boss-eyes', 0xff2244);
+  for (const x of [-0.34, 0.34]) {
+    const eye = addMesh(root, resources.box('boss-eye'), eyeMaterial);
+    eye.scale.set(0.18, 0.18, 0.08);
+    eye.position.set(x, 2.56, 0.62);
   }
-  const crownMaterial = resources.standardMaterial('boss-crown', 0xffc34e, { emissive: 0x82400b, emissiveIntensity: 0.7, metalness: 0.55, roughness: 0.34 });
-  for (const x of [-0.58, 0, 0.58]) {
+  const crownMaterial = resources.standardMaterial('boss-crown', 0xffca55, { emissive: 0x775010, emissiveIntensity: 0.6, metalness: 0.85, roughness: 0.28 });
+  const rubyMaterial = resources.standardMaterial('boss-ruby', 0xff2244, { emissive: 0xee0022, emissiveIntensity: 1.8, roughness: 0.2 });
+  for (const x of [-0.6, -0.3, 0, 0.3, 0.6]) {
     const point = addMesh(root, resources.cone('boss-crown-point'), crownMaterial);
-    point.scale.set(0.22, 0.75, 0.22);
-    point.position.set(x, 3.32 - Math.abs(x) * 0.14, 0.04);
-    point.rotation.z = x * -0.3;
+    point.scale.set(0.18, 0.68, 0.18);
+    point.position.set(x, 3.28 - Math.abs(x) * 0.12, 0.04);
+    point.rotation.z = x * -0.25;
+    const ruby = addMesh(root, resources.octa('boss-ruby-jewel'), rubyMaterial);
+    ruby.scale.setScalar(0.08);
+    ruby.position.set(x, 3.02, 0.22);
   }
-  const sword = addMesh(root, resources.box('boss-sword'), resources.standardMaterial('boss-sword', 0xdbe8f4, { metalness: 0.58, roughness: 0.28 }));
-  sword.scale.set(0.18, 1.9, 0.12);
-  sword.position.set(1.55, 1.3, 0.1);
-  sword.rotation.z = -0.4;
+  const sword = addMesh(root, resources.box('boss-sword'), resources.standardMaterial('boss-sword', 0x1c2432, { metalness: 0.7, roughness: 0.4 }));
+  sword.scale.set(0.24, 2.4, 0.1);
+  sword.position.set(1.55, 1.4, 0.1);
+  sword.rotation.z = -0.35;
+  const swordRune = addMesh(root, resources.box('boss-sword-rune'), rubyMaterial);
+  swordRune.scale.set(0.08, 2.0, 0.12);
+  swordRune.position.set(1.55, 1.4, 0.1);
+  swordRune.rotation.z = -0.35;
   const hilt = addMesh(root, resources.box('boss-hilt'), crownMaterial);
-  hilt.scale.set(0.7, 0.14, 0.18);
-  hilt.position.set(1.32, 0.72, 0.1);
-  hilt.rotation.z = -0.4;
-  root.userData.parts = { armor, chest, cape, skull, sword, crown: crownMaterial };
+  hilt.scale.set(0.75, 0.16, 0.2);
+  hilt.position.set(1.32, 0.65, 0.1);
+  hilt.rotation.z = -0.35;
+  root.userData.parts = { armor, chest, cape, skull, sword, swordRune, crown: crownMaterial };
   return { root, aura, shadow };
 }
 

@@ -20,72 +20,97 @@ export class CombatEffects3D {
 
   ring(x: number, y: number, radius: number, color: number): void {
     const group = new THREE.Group();
-    const ringMaterial = this.resources.basicMaterial(`effect-ring-${color}`, color, { transparent: true, opacity: 0.62, side: THREE.DoubleSide }).clone();
-    ringMaterial.opacity = 0.62;
-    const ring = addMesh(group, this.resources.ring(`effect-ring-${radius}`, Math.max(0.1, radius * 0.68), Math.max(0.12, radius * 0.73)), ringMaterial);
-    ring.userData.baseOpacity = 0.62;
+    // Outer colored shockwave ring
+    const ringMaterial = this.resources.basicMaterial(`effect-ring-${color}`, color, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }).clone();
+    ringMaterial.opacity = 0.85;
+    const ring = addMesh(group, this.resources.ring(`effect-ring-${radius}`, Math.max(0.12, radius * 0.72), Math.max(0.16, radius * 0.82)), ringMaterial);
+    ring.userData.baseOpacity = 0.85;
     ring.rotation.x = -Math.PI / 2;
+
+    // Inner bright white-hot shockwave pulse
+    const innerMaterial = this.resources.basicMaterial(`effect-ring-inner-${color}`, 0xffffff, { transparent: true, opacity: 0.95, side: THREE.DoubleSide }).clone();
+    innerMaterial.opacity = 0.95;
+    const innerRing = addMesh(group, this.resources.ring(`effect-ring-in-${radius}`, Math.max(0.08, radius * 0.45), Math.max(0.11, radius * 0.55)), innerMaterial);
+    innerRing.userData.baseOpacity = 0.95;
+    innerRing.rotation.x = -Math.PI / 2;
+
     group.position.copy(logicalToWorld(x, y));
-    group.position.y = 0.045;
-    group.scale.setScalar(0.38);
+    group.position.y = 0.05;
+    group.scale.setScalar(0.42);
     this.parent.add(group);
-    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.16 : 0.28, kind: 'ring' });
+    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.18 : 0.32, kind: 'ring' });
   }
 
   burst(x: number, y: number, color: number, critical = false): void {
     const point = logicalToWorld(x, y);
-    const count = this.reducedEffects ? (critical ? 5 : 3) : (critical ? 10 : 6);
+    const count = this.reducedEffects ? (critical ? 7 : 4) : (critical ? 16 : 9);
     for (let index = 0; index < count; index += 1) {
-      const particleMaterial = this.resources.basicMaterial(`effect-particle-${color}`, color, { transparent: true, opacity: 0.9 }).clone();
-      particleMaterial.opacity = 0.9;
+      const isCore = index % 3 === 0;
+      const pColor = isCore ? 0xffffff : color;
+      const particleMaterial = this.resources.basicMaterial(`effect-p-${pColor}`, pColor, { transparent: true, opacity: 0.95 }).clone();
+      particleMaterial.opacity = 0.95;
       const mesh = addMesh(this.parent, this.resources.octa('effect-particle'), particleMaterial);
-      const angle = index / count * Math.PI * 2 + Math.random() * 0.4;
-      const speed = 0.7 + Math.random() * (critical ? 1.2 : 0.72);
-      mesh.position.set(point.x, 0.45 + Math.random() * 0.45, point.z);
-      mesh.scale.setScalar(critical ? 0.12 : 0.08);
-      this.particles.push({ mesh, velocity: new THREE.Vector3(Math.cos(angle) * speed, 0.7 + Math.random() * 0.8, Math.sin(angle) * speed), life: 0, maxLife: this.reducedEffects ? 0.28 : 0.46 });
+      const angle = index / count * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const speed = (critical ? 1.4 : 0.9) + Math.random() * (critical ? 1.6 : 0.95);
+      mesh.position.set(point.x, 0.45 + Math.random() * 0.5, point.z);
+      mesh.scale.setScalar((critical ? 0.14 : 0.09) * (isCore ? 0.75 : 1.0));
+      this.particles.push({
+        mesh,
+        velocity: new THREE.Vector3(Math.cos(angle) * speed, 0.9 + Math.random() * 1.1, Math.sin(angle) * speed),
+        life: 0,
+        maxLife: this.reducedEffects ? 0.3 : 0.52,
+      });
     }
   }
 
   projectileImpact(x: number, y: number, color: number): void {
-    this.ring(x, y, 0.55, color);
-    this.burst(x, y, color);
+    this.ring(x, y, 0.72, color);
+    this.burst(x, y, color, false);
   }
 
   enemyDeath(x: number, y: number, color: number, elite = false): void {
-    this.ring(x, y, elite ? 1.05 : 0.7, elite ? 0xffc04f : color);
-    this.burst(x, y, elite ? 0xffd37c : color, elite);
+    this.ring(x, y, elite ? 1.35 : 0.88, elite ? 0xffd155 : color);
+    this.burst(x, y, elite ? 0xffe277 : color, elite);
+    if (elite) {
+      this.ring(x, y, 0.65, 0xffffff);
+    }
   }
 
   collect(x: number, y: number, color = 0x75eaff): void {
-    this.ring(x, y, 0.42, color);
-    this.burst(x, y, color);
+    this.ring(x, y, 0.55, color);
+    this.burst(x, y, color, false);
   }
 
   levelUp(x: number, y: number): void {
-    this.ring(x, y, 1.65, 0x9cecff);
-    this.burst(x, y, 0xd8f7ff, true);
+    this.ring(x, y, 2.2, 0x9cecff);
+    this.ring(x, y, 1.4, 0xffffff);
+    this.burst(x, y, 0x62e8ff, true);
+    this.burst(x, y, 0xffffff, true);
   }
 
   bossArrival(x: number, y: number): void {
-    this.ring(x, y, 2.25, 0xff5b66);
-    this.burst(x, y, 0xff8a62, true);
-    this.ring(x, y, 1.25, 0xffd37c);
+    this.ring(x, y, 2.8, 0xff4855);
+    this.ring(x, y, 1.6, 0xffc244);
+    this.burst(x, y, 0xff7055, true);
+    this.burst(x, y, 0xffd37c, true);
   }
 
   bossDeath(x: number, y: number): void {
-    this.ring(x, y, 3.1, 0xffc04f);
+    this.ring(x, y, 3.6, 0xffc04f);
+    this.ring(x, y, 2.2, 0xff4e5e);
     this.burst(x, y, 0xffd37c, true);
     this.burst(x, y, 0xff5b66, true);
+    this.burst(x, y, 0xffffff, true);
   }
 
   explosion(x: number, y: number, radius = 1.2, color = 0xff6622): void {
-    // Ground flash ring
-    this.ring(x, y, radius * 1.3, color);
-    this.ring(x, y, radius * 0.7, 0xfff0aa);
+    // Ground flash ring (dual concentric)
+    this.ring(x, y, radius * 1.5, color);
+    this.ring(x, y, radius * 0.85, 0xfff4bb);
     // Fiery spark burst
     this.burst(x, y, color, true);
-    this.burst(x, y, 0xffe259, false);
+    this.burst(x, y, 0xffdd44, false);
+    this.burst(x, y, 0xffffff, false);
   }
 
   lightning(fromX: number, fromY: number, toX: number, toY: number, color: number): void {

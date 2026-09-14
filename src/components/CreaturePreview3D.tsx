@@ -37,20 +37,23 @@ export function CreaturePreview3D({ kind, bossId, worldId, discovered, className
     renderer.domElement.setAttribute('aria-hidden', 'true');
     parent.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(theme.keyLight, theme.fillLight, 1.35));
-    const keyLight = new THREE.DirectionalLight(theme.keyLight, 1.7);
-    keyLight.position.set(-4, 7, 5);
+    scene.add(new THREE.HemisphereLight(theme.keyLight, theme.fillLight, 1.45));
+    const keyLight = new THREE.DirectionalLight(theme.keyLight, 2.4);
+    keyLight.position.set(-3.5, 7, 5);
     scene.add(keyLight);
-    const rimLight = new THREE.PointLight(theme.accent, 0.8, 7, 2);
-    rimLight.position.set(2, 2.4, 2.5);
+    const rimLight = new THREE.PointLight(theme.accent, 1.2, 8, 2);
+    rimLight.position.set(3, 2.5, -2.5);
     scene.add(rimLight);
+    const frontFill = new THREE.PointLight(0xffffff, 0.6, 6, 2);
+    frontFill.position.set(0, 1.5, 3.5);
+    scene.add(frontFill);
 
-    const pedestal = addMesh(scene, resources.cylinder('preview-pedestal'), resources.standardMaterial('preview-pedestal', theme.groundDeep, { roughness: 0.86, metalness: 0.18 }));
-    pedestal.scale.set(2.35, 0.14, 1.55);
+    const pedestal = addMesh(scene, resources.cylinder('preview-pedestal'), resources.standardMaterial('preview-pedestal', theme.groundDeep, { roughness: 0.82, metalness: 0.25 }));
+    pedestal.scale.set(2.4, 0.16, 1.6);
     pedestal.position.y = 0.08;
-    const pedestalRing = addMesh(scene, resources.ring('preview-pedestal-ring', 1.16, 1.28), resources.basicMaterial('preview-pedestal-ring', theme.accent, { transparent: true, opacity: 0.54, side: THREE.DoubleSide }));
+    const pedestalRing = addMesh(scene, resources.ring('preview-pedestal-ring', 1.15, 1.28), resources.basicMaterial('preview-pedestal-ring', theme.accent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
     pedestalRing.rotation.x = -Math.PI / 2;
-    pedestalRing.position.y = 0.17;
+    pedestalRing.position.y = 0.18;
 
     let model: THREE.Group;
     let aura: THREE.Mesh | undefined;
