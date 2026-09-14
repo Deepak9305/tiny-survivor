@@ -1,12 +1,10 @@
-import { BookOpen, Map, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { CurrencyBar } from '../components/CurrencyBar';
 import { GameLogo } from '../components/GameLogo';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { getCurrentStage } from '../data/stages';
 import type { SaveData, Screen } from '../types';
-
-import { HeroPreview3D } from '../components/HeroPreview3D';
 
 interface HomeScreenProps {
   save: SaveData;
@@ -16,27 +14,39 @@ interface HomeScreenProps {
 
 export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
   const stage = getCurrentStage(save);
-  return <main className={`home-screen home-screen--world-${stage.worldId}`}>
-    <section className="home-hero">
-      <HeroPreview3D worldId={stage.worldId} className="home-hero-3d" />
-      <div className="home-hero__shade" />
-      <div className="home-world-mark" aria-hidden="true"><span>WORLD {stage.worldId}</span><strong>{stage.biome}</strong></div>
-      <div className="home-hero__content">
-        <CurrencyBar coins={save.coins} gems={save.gems} selectedHero={save.selectedHero} cleanHeader onShop={() => onNavigate('shop')} onSettings={() => onNavigate('settings')} />
-        <div className="home-hero__brand"><GameLogo /></div>
-        <div className="home-hero__lower">
-          <button className="home-stage-link" onClick={() => onNavigate('map')} aria-label="Open the stage map">
-            <span className="home-stage-link__eyebrow">CURRENT STAGE</span>
-            <strong>{stage.id} <span aria-hidden="true">&middot;</span> {stage.name}</strong>
-            <small>WORLD {stage.worldId} <span aria-hidden="true">&middot;</span> {stage.biome}</small>
-            <Map size={17} aria-hidden="true" />
-          </button>
-          <PrimaryButton wide variant="gold" onClick={onPlay}><Play size={20} fill="currentColor" /> PLAY</PrimaryButton>
-          <button type="button" className="home-codex-link" onClick={() => onNavigate('bestiary')}><BookOpen size={15} /> MONSTER CODEX <span>{save.discoveredEnemies.length + save.discoveredBosses.length}/12</span></button>
-          <span className="home-hero__microcopy">Stage {stage.id} &middot; Ready</span>
+  return (
+    <main className="home-screen">
+      <section className="home-hero">
+        <div className="home-hero__content">
+          <CurrencyBar
+            coins={save.coins}
+            gems={save.gems}
+            selectedHero={save.selectedHero}
+            cleanHeader
+            onShop={() => onNavigate('shop')}
+            onSettings={() => onNavigate('settings')}
+          />
+          <div className="home-hero__brand">
+            <GameLogo />
+          </div>
+          <div className="home-hero__lower">
+            <button
+              type="button"
+              className="home-stage-link"
+              onClick={() => onNavigate('map')}
+              aria-label="Open the stage map"
+            >
+              <span className="home-stage-link__eyebrow">WORLD {stage.worldId} · {stage.biome.toUpperCase()}</span>
+              <strong>Stage {stage.id} : {stage.name}</strong>
+            </button>
+            <PrimaryButton wide variant="gold" className="home-play-btn" onClick={onPlay}>
+              <Play size={24} fill="currentColor" /> PLAY
+            </PrimaryButton>
+          </div>
         </div>
-      </div>
-    </section>
-    <BottomNav current="home" onNavigate={onNavigate} />
-  </main>;
+      </section>
+      <BottomNav current="home" onNavigate={onNavigate} />
+    </main>
+  );
 }
+

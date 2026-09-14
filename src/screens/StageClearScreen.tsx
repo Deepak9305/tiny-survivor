@@ -1,68 +1,72 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Clock3, Coins, Home, Play, RotateCw, Skull, Star, Zap } from 'lucide-react';
-import { PrimaryButton } from '../components/PrimaryButton';
+import { Star } from 'lucide-react';
 import { formatTime } from './GameOverScreen';
 import type { RunResult } from '../types';
 
-interface StageClearScreenProps { result: RunResult; onNext: () => void; onReplay: () => void; onHome: () => void }
+interface StageClearScreenProps {
+  result: RunResult;
+  onNext: () => void;
+  onReplay: () => void;
+  onHome: () => void;
+}
 
-export function StageClearScreen({ result, onNext, onReplay, onHome }: StageClearScreenProps) {
-  const [rewardCount, setRewardCount] = useState(0);
+export function StageClearScreen({ result, onNext, onHome }: StageClearScreenProps) {
+  const [coinsCount, setCoinsCount] = useState(0);
   const isFinalCampaign = result.stageId === '4-5';
 
   useEffect(() => {
     const started = performance.now();
     let frame = 0;
     const animate = (now: number) => {
-      const progress = Math.min(1, (now - started) / 620);
-      setRewardCount(Math.round(result.coins * (1 - Math.pow(1 - progress, 3))));
+      const progress = Math.min(1, (now - started) / 600);
+      setCoinsCount(Math.round(result.coins * progress));
       if (progress < 1) frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [result.coins]);
 
-  return <main className={`result-page result-page--clear${isFinalCampaign ? ' result-page--campaign-complete' : ''}`}>
-    <div className="result-page__stars">
-      <Star size={39} fill="currentColor" />
-      <Star size={58} fill="currentColor" />
-      <Star size={39} fill="currentColor" />
-    </div>
-    <span className="eyebrow">
-      {isFinalCampaign ? 'WORLD 4 COMPLETE · CAMPAIGN COMPLETE' : `STAGE ${result.stageId} · ${result.stageName.toUpperCase()}`}
-    </span>
-    <h1>{isFinalCampaign ? 'Victory! Campaign Complete' : 'Stage Clear!'}</h1>
-    <p className="result-page__sub">
-      {isFinalCampaign ? 'You have conquered all 4 dark fantasy realms!' : 'Run complete. Your rewards are ready.'}
-    </p>
-    <section className="clear-stats">
-      <span><Clock3 size={16} /><strong>{formatTime(result.time)}</strong><small>Time</small></span>
-      <span><Skull size={16} /><strong>{result.kills}</strong><small>Enemies defeated</small></span>
-      <span><Zap size={16} /><strong>Lv {result.highestLevel}</strong><small>Highest level</small></span>
-    </section>
-    <section className="clear-reward">
-      <span><Coins size={18} /> RUN REWARD</span>
-      <strong>+{rewardCount}</strong>
-      <small>COINS</small>
-    </section>
-    <div className="result-page__actions">
-      {!isFinalCampaign ? (
-        <PrimaryButton variant="gold" wide onClick={onNext}>
-          <Play size={18} fill="currentColor" /> NEXT STAGE <ArrowRight size={17} />
-        </PrimaryButton>
-      ) : (
-        <PrimaryButton variant="gold" wide onClick={onHome}>
-          <Home size={18} fill="currentColor" /> RETURN HOME
-        </PrimaryButton>
-      )}
-      <PrimaryButton variant="blue" wide onClick={onReplay}>
-        <RotateCw size={17} /> REPLAY STAGE
-      </PrimaryButton>
-      {!isFinalCampaign && (
-        <PrimaryButton variant="ghost" wide onClick={onHome}>
-          <Home size={17} /> HOME
-        </PrimaryButton>
-      )}
-    </div>
-  </main>;
+  return (
+    <main className="stage-clear-screen">
+      <div className="stage-clear-container">
+        {/* 3 Golden Stars */}
+        <div className="stage-clear-stars">
+          <Star size={36} fill="#ffc83d" stroke="#ffe599" className="stage-clear-star" />
+          <Star size={48} fill="#ffc83d" stroke="#ffe599" className="stage-clear-star stage-clear-star--center" />
+          <Star size={36} fill="#ffc83d" stroke="#ffe599" className="stage-clear-star" />
+        </div>
+
+        {/* Title */}
+        <h1 className="stage-clear-title">STAGE CLEAR</h1>
+
+        {/* Stats Card */}
+        <div className="stage-clear-stats-card">
+          <div className="stage-clear-stat-row">
+            <span className="stage-clear-stat-label">Time</span>
+            <strong className="stage-clear-stat-val">{formatTime(result.time)}</strong>
+          </div>
+          <div className="stage-clear-stat-row">
+            <span className="stage-clear-stat-label">Enemies</span>
+            <strong className="stage-clear-stat-val">{result.kills}</strong>
+          </div>
+          <div className="stage-clear-stat-row">
+            <span className="stage-clear-stat-label">Coins</span>
+            <strong className="stage-clear-stat-val">+{coinsCount}</strong>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="stage-clear-actions">
+          <button
+            type="button"
+            className="stage-clear-btn"
+            onClick={isFinalCampaign ? onHome : onNext}
+          >
+            {isFinalCampaign ? 'Return Home' : 'Next Stage'}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
 }
+

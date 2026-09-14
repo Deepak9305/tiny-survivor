@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Target, Zap } from 'lucide-react';
+import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Swords, Target, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { VirtualJoystick } from '../components/VirtualJoystick';
 import { StagePreloadScreen } from '../components/StagePreloadScreen';
@@ -137,16 +137,48 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
 }
 
 function LevelUpOverlay({ choices, onChoose }: { choices: UpgradeChoice[]; onChoose: (choice: UpgradeChoice) => void }) {
-  return <div className="level-up-overlay"><div className="level-up-panel"><Sparkles className="level-up-panel__spark" size={20} aria-hidden="true" /><h1>Level Up!</h1><p>Choose an Upgrade</p><div className="choice-grid">{choices.map((choice) => <button type="button" key={choice.id} className={`choice-card choice-card--${choice.rarity}`} onClick={() => onChoose(choice)} aria-label={`${choice.title}: ${choice.nextEffect}`}><span className="choice-card__icon">{getChoiceIcon(choice)}</span><span className="choice-card__content"><span className="choice-card__kind">{choice.kind === 'weapon' ? 'WEAPON' : 'PASSIVE'}</span><strong>{choice.title}</strong><small>Lv {choice.level} <span aria-hidden="true">→</span> {Math.min(5, choice.level + 1)}</small><em>{choice.nextEffect}</em></span><span className="choice-card__rarity">{choice.rarity.toUpperCase()}</span></button>)}</div><div className="level-up-panel__footer"><span>Choose one power</span><button type="button" disabled><Dices size={16} /><span>REROLL</span><small>WATCH AD</small></button></div></div></div>;
+  return (
+    <div className="level-up-overlay">
+      <div className="level-up-panel">
+        <h1 className="level-up-title">Level Up!</h1>
+        <p className="level-up-subtitle">Choose a skill</p>
+        <div className="choice-grid">
+          {choices.map((choice) => (
+            <button
+              type="button"
+              key={choice.id}
+              className={`choice-card choice-card--${choice.id}`}
+              onClick={() => onChoose(choice)}
+              aria-label={`${choice.title}: ${choice.nextEffect}`}
+            >
+              <div className="choice-card__header">
+                <strong>{choice.title}</strong>
+                {choice.level === 0 ? (
+                  <span className="choice-badge-new">New</span>
+                ) : (
+                  <span className="choice-badge-lv">Lv. {choice.level + 1}</span>
+                )}
+              </div>
+              <div className={`choice-card__rune-icon choice-card__rune-icon--${choice.id}`}>
+                {getChoiceIcon(choice)}
+              </div>
+              <p className="choice-card__desc">{choice.nextEffect}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function getChoiceIcon(choice: UpgradeChoice) {
-  if (choice.id.includes('fire')) return <Flame size={26} />;
-  if (choice.id.includes('bolt') || choice.id.includes('lightning')) return <Zap size={26} />;
-  if (choice.id.includes('vitality')) return <Heart size={26} />;
-  if (choice.id.includes('armor')) return <Shield size={26} />;
-  if (choice.id.includes('power')) return <Sparkles size={26} />;
-  return <Target size={26} />;
+  if (choice.id.includes('fire')) return <Flame size={32} />;
+  if (choice.id.includes('blades')) return <Swords size={32} />;
+  if (choice.id.includes('bolt') || choice.id.includes('lightning')) return <Zap size={32} />;
+  if (choice.id.includes('vitality')) return <Heart size={32} />;
+  if (choice.id.includes('armor')) return <Shield size={32} />;
+  if (choice.id.includes('power')) return <Sparkles size={32} />;
+  return <Target size={32} />;
 }
 
 function formatRunTime(seconds: number): string { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`; }
