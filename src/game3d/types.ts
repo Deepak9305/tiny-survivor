@@ -7,6 +7,8 @@ export interface Game3DCallbacks {
   onStageClear: (result: RunResult) => void;
   onPaused: (paused: boolean) => void;
   onBossWarning: () => void;
+  onPlayerHit?: () => void;
+  onRendererError?: (message: string) => void;
 }
 
 export interface Game3DOptions {

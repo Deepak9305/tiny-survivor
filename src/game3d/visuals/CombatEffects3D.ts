@@ -52,6 +52,33 @@ export class CombatEffects3D {
     this.burst(x, y, color);
   }
 
+  enemyDeath(x: number, y: number, color: number, elite = false): void {
+    this.ring(x, y, elite ? 1.05 : 0.7, elite ? 0xffc04f : color);
+    this.burst(x, y, elite ? 0xffd37c : color, elite);
+  }
+
+  collect(x: number, y: number, color = 0x75eaff): void {
+    this.ring(x, y, 0.42, color);
+    this.burst(x, y, color);
+  }
+
+  levelUp(x: number, y: number): void {
+    this.ring(x, y, 1.65, 0x9cecff);
+    this.burst(x, y, 0xd8f7ff, true);
+  }
+
+  bossArrival(x: number, y: number): void {
+    this.ring(x, y, 2.25, 0xff5b66);
+    this.burst(x, y, 0xff8a62, true);
+    this.ring(x, y, 1.25, 0xffd37c);
+  }
+
+  bossDeath(x: number, y: number): void {
+    this.ring(x, y, 3.1, 0xffc04f);
+    this.burst(x, y, 0xffd37c, true);
+    this.burst(x, y, 0xff5b66, true);
+  }
+
   lightning(fromX: number, fromY: number, toX: number, toY: number, color: number): void {
     const start = logicalToWorld(fromX, fromY);
     const end = logicalToWorld(toX, toY);

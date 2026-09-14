@@ -4,12 +4,13 @@ import { Share } from '@capacitor/share';
 import type { RunResult, SaveData } from '../types';
 import { saveGame } from './saveService';
 
-export async function registerAppLifecycle(getSave: () => SaveData): Promise<() => void> {
+export async function registerAppLifecycle(getSave: () => SaveData, onBack?: () => void): Promise<() => void> {
   if (!Capacitor.isNativePlatform()) return () => undefined;
-  const listener = await App.addListener('appStateChange', ({ isActive }) => {
+  const stateListener = await App.addListener('appStateChange', ({ isActive }) => {
     if (!isActive) void saveGame(getSave());
   });
-  return () => { void listener.remove(); };
+  const backListener = onBack ? await App.addListener('backButton', () => onBack()) : undefined;
+  return () => { void stateListener.remove(); void backListener?.remove(); };
 }
 
 export async function shareRunResult(result: RunResult): Promise<void> {

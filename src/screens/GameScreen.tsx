@@ -3,6 +3,7 @@ import { Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Ta
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { VirtualJoystick } from '../components/VirtualJoystick';
 import { AdService } from '../services/adService';
+import { audioService } from '../services/audioService';
 import { GameOverScreen } from './GameOverScreen';
 import type { GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
 
@@ -18,10 +19,19 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
   const [warning, setWarning] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(true);
   const [gameOver, setGameOver] = useState<RunResult | undefined>();
+  const [hitVignette, setHitVignette] = useState(false);
+  const [rendererError, setRendererError] = useState<string | undefined>();
+  const [reviveLoading, setReviveLoading] = useState(false);
+  const [reviveMessage, setReviveMessage] = useState<string | undefined>();
   const warningTimer = useRef<number | undefined>(undefined);
+  const hitTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!gameRoot.current) return;
+    audioService.initialize();
+    audioService.setMusicEnabled(save.settings.music);
+    audioService.setSfxEnabled(save.settings.soundEffects);
+    audioService.playMusic('run');
     mountThreeGame(gameRoot.current, stage, save, {
       onSnapshot: setSnapshot,
       onLevelUp: setUpgradeChoices,
@@ -29,9 +39,11 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       onStageClear,
       onPaused: setPaused,
       onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
+      onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
+      onRendererError: setRendererError,
     });
-    return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); destroyThreeGame(); };
-  }, [stage.id]);
+    return () => { if (warningTimer.current) window.clearTimeout(warningTimer.current); if (hitTimer.current) window.clearTimeout(hitTimer.current); audioService.stopMusic(); destroyThreeGame(); };
+  }, [save.settings.music, save.settings.soundEffects, stage.id]);
 
   useEffect(() => {
     const tutorialTimer = window.setTimeout(() => setTutorialVisible(false), 4600);
@@ -40,18 +52,26 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
 
   const chooseUpgrade = (choice: UpgradeChoice) => {
     setUpgradeChoices(undefined);
+    audioService.playUISound('confirm');
     getActiveThreeGame()?.selectUpgrade(choice.id);
   };
 
   const revive = async () => {
+    if (reviveLoading) return;
+    setReviveLoading(true);
+    setReviveMessage(undefined);
     const earned = await AdService.showRewarded('revive');
     if (earned && getActiveThreeGame()?.revive()) setGameOver(undefined);
+    else if (!earned) setReviveMessage('Rewarded ad unavailable. Retry the run or return home.');
+    setReviveLoading(false);
   };
 
   const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
   const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
 
-  return <main className="game-screen"><div ref={gameRoot} className="three-root" />
+  return <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}`}><div ref={gameRoot} className="three-root" />
+    {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
+    {rendererError && <div className="game-renderer-error" role="alert"><div className="game-renderer-error__icon"><Shield size={22} /></div><strong>3D ARENA PAUSED</strong><p>{rendererError}</p><button type="button" onClick={onHome}>RETURN HOME</button></div>}
     <div className="game-ui">
       <div className="game-topbar">
         <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
@@ -61,7 +81,7 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
         <div className="game-timer"><span>{stage.id}</span><strong>{formatRunTime(snapshot.time)}</strong></div>
         <div className="game-actions">
           <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}><Skull size={15} /><strong>{snapshot.kills.toLocaleString()}</strong></div>
-          <button className="game-pause" onClick={() => { if (paused) getActiveThreeGame()?.resumeRun(); else getActiveThreeGame()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
+          <button className="game-pause" onClick={() => { audioService.playUISound(paused ? 'confirm' : 'tap'); if (paused) getActiveThreeGame()?.resumeRun(); else getActiveThreeGame()?.pauseRun(); }} aria-label={paused ? 'Resume run' : 'Pause run'}>{paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}</button>
         </div>
       </div>
       <div className="game-progress"><div className="game-progress__label"><span>LV {snapshot.level}</span></div><div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div></div>
@@ -71,8 +91,8 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
     </div>
     <VirtualJoystick disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
     {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
-    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
-    {gameOver && <GameOverScreen result={gameOver} onRevive={revive} onRetry={onRetry} onHome={onHome} />}
+    {paused && !upgradeChoices && !gameOver && <div className="pause-overlay"><div className="pause-card"><div className="pause-card__icon"><Pause size={22} /></div><span className="eyebrow">RUN PAUSED</span><h1>Catch your breath.</h1><div className="pause-build"><span>LV {snapshot.level}</span><span>{snapshot.kills.toLocaleString()} KILLS</span><span>{formatRunTime(snapshot.time)}</span></div><div className="pause-build__items">{Object.entries(snapshot.weaponLevels).map(([id, level]) => <span key={id}>{id.replaceAll('-', ' ')} <strong>·{level}</strong></span>)}</div><button onClick={() => getActiveThreeGame()?.resumeRun()}><Play size={17} fill="currentColor" /> RESUME</button><button className="pause-card__quit" onClick={onHome}><RotateCw size={16} /> EXIT RUN</button></div></div>}
+    {gameOver && <GameOverScreen result={gameOver} onRevive={revive} reviveLoading={reviveLoading} reviveMessage={reviveMessage} onRetry={onRetry} onHome={onHome} />}
   </main>;
 }
 

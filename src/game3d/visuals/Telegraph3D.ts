@@ -32,6 +32,11 @@ export class Telegraph3D {
       const radius = attack === 'slam' ? 2.8 : 1.85;
       const ring = addMesh(group, this.resources.ring(`telegraph-ring-${attack}`, radius * 0.84, radius), material);
       ring.rotation.x = -Math.PI / 2;
+      const fillMaterial = material.clone();
+      fillMaterial.opacity = 0.09;
+      const fill = addMesh(group, new THREE.CircleGeometry(radius * 0.84, 32), fillMaterial);
+      fill.rotation.x = -Math.PI / 2;
+      fill.position.y = -0.006;
       const position = logicalToWorld(x, y);
       group.position.set(position.x, 0.035, position.z);
     }

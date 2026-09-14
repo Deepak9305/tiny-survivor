@@ -3,6 +3,7 @@ import { BOSS_BALANCE, PLAYER_BALANCE } from '../data/balance';
 import { generateUpgradeChoices } from '../data/upgrades';
 import type { EnemyKind, GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId } from '../types';
 import { HapticsService } from '../services/hapticsService';
+import { audioService } from '../services/audioService';
 import { BossSystem, type BossAttack } from '../game/systems/BossSystem';
 import { calculateDamage } from '../game/systems/DamageSystem';
 import { EnemySpawner } from '../game/systems/EnemySpawner';
@@ -20,14 +21,13 @@ import { InputController } from './input/InputController';
 import { CameraController } from './scene/CameraController';
 import { createArena } from './scene/Arena3D';
 import { createLighting } from './scene/Lighting3D';
+import { biomeThemeFor } from './scene/BiomeTheme';
 import { logicalToWorld, WORLD_HEIGHT, WORLD_WIDTH } from './core/coordinates';
 import { SharedResources, addMesh } from './core/SharedResources';
 import { CombatEffects3D } from './visuals/CombatEffects3D';
 import { DamageText3D } from './visuals/DamageText3D';
 import { Telegraph3D } from './visuals/Telegraph3D';
 import type { Game3DCallbacks, Game3DOptions } from './types';
-
-const VIEW_BACKGROUND = 0x041222;
 
 export class SurvivorGame3D {
   private readonly parent: HTMLElement;
@@ -88,20 +88,23 @@ export class SurvivorGame3D {
     this.save = save;
     this.callbacks = callbacks;
     this.lowPerformanceMode = save.settings.lowPerformanceMode;
+    const theme = biomeThemeFor(stage);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.12;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.lowPerformanceMode ? 1 : 1.5));
-    this.renderer.setClearColor(VIEW_BACKGROUND, 1);
+    this.renderer.setClearColor(theme.background, 1);
     this.renderer.domElement.className = 'three-canvas';
     this.renderer.domElement.setAttribute('aria-label', `${stage.name} 3D gameplay arena`);
     this.renderer.domElement.setAttribute('role', 'img');
     this.parent.appendChild(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color(VIEW_BACKGROUND);
-    this.scene.fog = new THREE.FogExp2(0x071827, this.lowPerformanceMode ? 0.035 : 0.029);
+    this.scene.background = new THREE.Color(theme.background);
+    this.scene.fog = new THREE.Fog(theme.fog, this.lowPerformanceMode ? 13 : 17, this.lowPerformanceMode ? 43 : 56);
     this.scene.add(this.actors, this.effectsRoot);
-    this.cameraController = new CameraController(this.lowPerformanceMode);
-    createLighting(this.scene, this.lowPerformanceMode);
+    this.cameraController = new CameraController(this.lowPerformanceMode, save.settings.reducedEffects, save.settings.screenShake);
+    createLighting(this.scene, stage, this.lowPerformanceMode);
     createArena(this.scene, stage, this.resources, this.lowPerformanceMode);
     this.effects = new CombatEffects3D(this.effectsRoot, this.resources, save.settings.reducedEffects || this.lowPerformanceMode);
     this.damageText = new DamageText3D(this.effectsRoot, this.lowPerformanceMode);
@@ -138,6 +141,7 @@ export class SurvivorGame3D {
     this.levelUpOpen = false;
     if (this.xpSystem.checkLevelUp()) {
       this.levelUpOpen = true;
+      audioService.playSFX('upgrade');
       this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, 3));
       return;
     }
@@ -156,6 +160,10 @@ export class SurvivorGame3D {
     this.runController.reviveRun();
     this.player.stats.currentHP = this.player.stats.maxHP * 0.55;
     this.player.applyInvulnerability(this.gameTime, 2.1);
+    this.player.triggerRevive();
+    this.effects.levelUp(this.player.x, this.player.y);
+    audioService.playSFX('revive');
+    this.cameraController.triggerPullback(0.45, 0.5);
     this.isRunPaused = false;
     this.input.reset();
     this.callbacks.onPaused(false);
@@ -168,6 +176,7 @@ export class SurvivorGame3D {
     this.isRunPaused = true;
     this.input.reset();
     this.runController.pauseRun();
+    audioService.pause();
     this.callbacks.onPaused(true);
   }
 
@@ -175,7 +184,13 @@ export class SurvivorGame3D {
     if (this.isFinished || this.levelUpOpen || !this.isRunPaused) return;
     this.isRunPaused = false;
     this.runController.resumeRun();
+    audioService.resume();
     this.callbacks.onPaused(false);
+  }
+
+  togglePauseRun(): void {
+    if (this.isRunPaused) this.resumeRun();
+    else this.pauseRun();
   }
 
   quitRun(): void {
@@ -236,10 +251,11 @@ export class SurvivorGame3D {
     if (this.destroyed) return;
     const delta = Math.min(0.034, Math.max(0.001, this.clock.getDelta()));
     if (!this.isRunPaused && !this.isFinished) this.update(delta);
+    if (this.isFinished && this.boss) this.boss.update(delta);
     this.effects.update(delta);
     this.telegraphs.update(delta);
     this.damageText.update(delta);
-    if (this.player) this.cameraController.update(delta, this.player.x, this.player.y, !this.isRunPaused);
+    if (this.player) this.cameraController.update(delta, this.player.x, this.player.y, this.player.getMovementVector(), !this.isRunPaused);
     this.renderer.render(this.scene, this.cameraController.camera);
     this.frameId = requestAnimationFrame(this.frame);
   };
@@ -354,7 +370,9 @@ export class SurvivorGame3D {
         this.spawnDamageNumber(playerX, playerY - 30, Math.round(enemy.contactDamage), false, 0xff6673);
         this.effects.burst(playerX, playerY, 0xff6673);
         this.cameraController.triggerShake(0.12, 0.18);
+        audioService.playSFX('hurt', { throttle: 0.32 });
         void HapticsService.medium(this.save.settings.haptics);
+        this.callbacks.onPlayerHit?.();
         this.callbacks.onSnapshot(this.getSnapshot());
         if (this.player.stats.currentHP <= 0) {
           this.finishGameOver();
@@ -376,6 +394,11 @@ export class SurvivorGame3D {
     const enemy = new Enemy3D(this.actors, type, x, y, this.resources, elite, difficulty);
     this.enemies.push(enemy);
     this.spatialGrid.insert(enemy);
+    if (elite) {
+      this.effects.ring(x, y, 0.92, 0xffc04f);
+      audioService.playSFX('elite', { throttle: 0.28 });
+      void HapticsService.medium(this.save.settings.haptics);
+    }
   }
 
   private removeEnemy(enemy: Enemy3D, dropXp = true): void {
@@ -414,7 +437,11 @@ export class SurvivorGame3D {
     return nearest;
   }
 
-  private fireProjectile(spec: ProjectileSpec): void { this.projectiles.push(new Projectile3D(this.actors, this.player.x, this.player.y, spec, this.resources)); }
+  private fireProjectile(spec: ProjectileSpec): void {
+    this.player.triggerAttack();
+    audioService.playSFX(spec.weaponId, { throttle: spec.weaponId === 'magic-bolt' ? 0.1 : 0.16, volume: spec.weaponId === 'chain-lightning' ? 0.8 : 1 });
+    this.projectiles.push(new Projectile3D(this.actors, this.player.x, this.player.y, spec, this.resources));
+  }
 
   private updateProjectiles(delta: number): void {
     for (let projectileIndex = this.projectiles.length - 1; projectileIndex >= 0; projectileIndex -= 1) {
@@ -427,6 +454,7 @@ export class SurvivorGame3D {
         if (Math.sqrt(dx * dx + dy * dy) < 42 + projectile.spec.radius) {
           this.damageBoss(projectile.spec.damage);
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
+          audioService.playSFX('hit', { pitch: 0.82 });
           hit = true;
           projectile.canPierce();
         }
@@ -439,6 +467,7 @@ export class SurvivorGame3D {
           this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color);
           if (projectile.spec.explosive) this.dealAreaDamage(projectile.x, projectile.y, 68, projectile.spec.damage * 0.64, projectile.spec.color);
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
+          audioService.playSFX('hit', { pitch: projectile.spec.explosive ? 0.76 : 1, throttle: 0.08 });
           hit = true;
           if (projectile.canPierce()) break;
         }
@@ -455,7 +484,9 @@ export class SurvivorGame3D {
     const killed = enemy.damage(result.finalDamage);
     this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, result.critical ? 0xffd37c : color);
     this.effects.burst(enemy.x, enemy.y, result.critical ? 0xffd37c : color, result.critical);
+    audioService.playSFX(killed ? 'death' : 'hit', { pitch: result.critical ? 1.2 : 1, throttle: killed ? 0.05 : 0.08 });
     if (killed) {
+      this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
       this.removeEnemy(enemy, true);
       this.onEnemyKilled(enemy.elite);
     }
@@ -463,9 +494,11 @@ export class SurvivorGame3D {
 
   private dealAreaDamage(x: number, y: number, radius: number, damage: number, color: number): void {
     if (color === 0x9f8cff) {
+      const isFirstChainHit = !this.lastLightningPoint;
       const from = this.lastLightningPoint ?? this.player.getPosition();
       this.effects.lightning(from.x, from.y, x, y, color);
       this.lastLightningPoint = { x, y };
+      if (isFirstChainHit) audioService.playSFX('chain-lightning');
     }
     this.effects.ring(x, y, radius * 0.025, color);
     const targets = [...this.spatialGrid.queryRadius(x, y, radius)];
@@ -476,6 +509,8 @@ export class SurvivorGame3D {
       const killed = enemy.damage(result.finalDamage);
       this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, color);
       if (killed) {
+        this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
+        audioService.playSFX('death', { throttle: 0.08 });
         this.removeEnemy(enemy, true);
         this.onEnemyKilled(enemy.elite);
       }
@@ -525,10 +560,14 @@ export class SurvivorGame3D {
       if (!pickup.update(delta, this.gameTime, playerX, playerY, this.player.stats.pickupRadius)) continue;
       const levels = this.xpSystem.addXP(pickup.value * this.player.stats.xpMultiplier);
       this.xpCollected += pickup.value;
+      this.effects.collect(pickup.x, pickup.y, pickup.value > 30 ? 0xc58cff : 0x75eaff);
+      audioService.playSFX('xp', { pitch: pickup.value > 30 ? 0.82 : 1, throttle: 0.09 });
       pickup.destroy();
       this.xpPickups.splice(index, 1);
       if (levels > 0) {
-        this.effects.burst(playerX, playerY, 0x7ceaff, true);
+        this.effects.levelUp(playerX, playerY);
+        audioService.playSFX('level-up', { throttle: 0.2 });
+        this.cameraController.triggerShake(0.14, 0.22);
         void HapticsService.success(this.save.settings.haptics);
       }
     }
@@ -561,6 +600,7 @@ export class SurvivorGame3D {
       this.bossWarningShown = true;
       this.bossSpawnCountdown = 3.4;
       this.callbacks.onBossWarning();
+      audioService.playSFX('boss-warning', { throttle: 0.5 });
       void HapticsService.heavy(this.save.settings.haptics);
     }
     if (this.bossWarningShown) {
@@ -578,7 +618,11 @@ export class SurvivorGame3D {
     const y = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
     this.boss = new Boss3D(this.actors, x, y, this.resources);
     this.bossSystem.spawnBoss(this.stage.bossId);
-    this.effects.burst(x, y, 0xff5b66, true);
+    this.effects.bossArrival(x, y);
+    this.cameraController.triggerPullback(1.15, 0.9);
+    this.cameraController.triggerShake(0.2, 0.32);
+    audioService.crossfadeMusic('boss');
+    audioService.playSFX('boss-warning', { volume: 1.15, throttle: 0.2 });
     this.callbacks.onSnapshot(this.getSnapshot());
   }
 
@@ -587,7 +631,11 @@ export class SurvivorGame3D {
     this.boss.setPosition(THREE.MathUtils.clamp(x, 90, WORLD_WIDTH - 90), THREE.MathUtils.clamp(y, 120, WORLD_HEIGHT - 100));
   }
 
-  private telegraphBossAttack(attack: BossAttack, x: number, y: number): void { this.telegraphs.show(attack, x, y, this.player.x, this.player.y); }
+  private telegraphBossAttack(attack: BossAttack, x: number, y: number): void {
+    this.boss?.startAttack(attack);
+    this.telegraphs.show(attack, x, y, this.player.x, this.player.y);
+    audioService.playSFX(attack === 'slam' ? 'boss-slam' : 'boss-warning', { volume: 0.72, throttle: 0.24 });
+  }
 
   private executeBossAttack(attack: BossAttack, x: number, y: number): void {
     const dx = this.player.x - x;
@@ -598,6 +646,9 @@ export class SurvivorGame3D {
       if (distance < 112 && this.player.takeDamage(this.getPlayerDamage(BOSS_BALANCE.damage), this.gameTime)) {
         this.effects.burst(this.player.x, this.player.y, 0xff4e62, true);
         this.cameraController.triggerShake(0.3, 0.3);
+        audioService.playSFX('hurt', { throttle: 0.28 });
+        this.callbacks.onPlayerHit?.();
+        void HapticsService.heavy(this.save.settings.haptics);
         this.callbacks.onSnapshot(this.getSnapshot());
         if (this.player.stats.currentHP <= 0) this.finishGameOver();
       }
@@ -612,6 +663,9 @@ export class SurvivorGame3D {
       if (distance < 150 && this.player.takeDamage(this.getPlayerDamage(BOSS_BALANCE.damage * 1.15), this.gameTime)) {
         this.effects.burst(this.player.x, this.player.y, 0xff4e62, true);
         this.cameraController.triggerShake(0.24, 0.24);
+        audioService.playSFX('hurt', { throttle: 0.28 });
+        this.callbacks.onPlayerHit?.();
+        void HapticsService.heavy(this.save.settings.haptics);
         this.callbacks.onSnapshot(this.getSnapshot());
         if (this.player.stats.currentHP <= 0) this.finishGameOver();
       }
@@ -622,7 +676,16 @@ export class SurvivorGame3D {
     const result = calculateDamage({ baseDamage, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
     this.spawnDamageNumber(this.boss?.x ?? 0, (this.boss?.y ?? 0) - 72, result.finalDamage, result.critical, 0xffd37c);
     this.effects.burst(this.boss?.x ?? 0, this.boss?.y ?? 0, 0xffd37c, result.critical);
-    if (this.bossSystem.damageBoss(result.finalDamage)) this.finishStageClear();
+    audioService.playSFX('hit', { pitch: result.critical ? 1.3 : 0.82, throttle: 0.08 });
+    if (this.bossSystem.damageBoss(result.finalDamage)) {
+      if (this.boss) {
+        this.boss.startDeath();
+        this.effects.bossDeath(this.boss.x, this.boss.y);
+        this.cameraController.triggerPullback(1.8, 1.1);
+      }
+      audioService.playSFX('boss-death', { throttle: 0.4 });
+      this.finishStageClear();
+    }
   }
 
   private fireEnemyProjectile(enemy: Enemy3D): void {
@@ -646,6 +709,9 @@ export class SurvivorGame3D {
         this.spawnDamageNumber(this.player.x, this.player.y - 28, 13, false, 0xff6372);
         this.effects.burst(this.player.x, this.player.y, 0xff6372);
         this.cameraController.triggerShake(0.1, 0.16);
+        audioService.playSFX('hurt', { throttle: 0.3 });
+        this.callbacks.onPlayerHit?.();
+        void HapticsService.medium(this.save.settings.haptics);
         if (this.player.stats.currentHP <= 0) this.finishGameOver();
       }
       if (projectile.age > 6 || projectile.x < -30 || projectile.x > WORLD_WIDTH + 30 || projectile.y < -30 || projectile.y > WORLD_HEIGHT + 30) projectile.active = false;
@@ -676,6 +742,7 @@ export class SurvivorGame3D {
     this.runController.finishRun();
     const result = this.buildRunResult(this.stage.coinReward + Math.round(this.gameTime / 10) + this.enemies.length + 30);
     this.callbacks.onSnapshot(this.getSnapshot());
+    audioService.playSFX('stage-clear', { throttle: 0.4 });
     void HapticsService.success(this.save.settings.haptics);
     this.pendingResultTimer = window.setTimeout(() => { this.pendingResultTimer = undefined; this.callbacks.onStageClear(result); }, 800);
   }
@@ -688,6 +755,7 @@ export class SurvivorGame3D {
     this.runController.failRun();
     const result = this.buildRunResult(Math.max(6, Math.round(this.gameTime / 14) + Math.round(this.enemies.length / 8)));
     this.callbacks.onSnapshot(this.getSnapshot());
+    audioService.playSFX('game-over', { throttle: 0.4 });
     this.pendingResultTimer = window.setTimeout(() => { this.pendingResultTimer = undefined; this.callbacks.onGameOver(result); }, 500);
   }
 
@@ -700,12 +768,14 @@ export class SurvivorGame3D {
     if (this.destroyed || this.isFinished || this.levelUpOpen || this.isRunPaused) return;
     this.isRunPaused = true;
     this.runController.pauseRun();
+    audioService.pause();
     this.callbacks.onPaused(true);
   }
 
   private readonly handleContextLost = (event: Event): void => {
     event.preventDefault();
     this.pauseFromBackground();
+    this.callbacks.onRendererError?.('The 3D context was interrupted. The run is paused; reload if the arena does not return.');
     console.warn('Tiny Survivor paused because the WebGL context was lost.');
   };
 
@@ -717,7 +787,10 @@ function disposeScene(scene: THREE.Scene): void {
     if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite) {
       object.geometry?.dispose();
       const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of materials) material.dispose();
+      for (const material of materials) {
+        if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial || material instanceof THREE.SpriteMaterial) material.map?.dispose();
+        material.dispose();
+      }
     }
   });
 }

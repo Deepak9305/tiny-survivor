@@ -24,7 +24,9 @@ export class Enemy3D implements SpatialEntity {
   private hp: number;
   private slowMultiplier = 1;
   private slowUntil = 0;
-  private phaseTime = Math.random() * 5;
+  private phaseTime: number;
+  private hitPulse = 0;
+  private readonly baseVisualScale: number;
 
   constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, difficulty = 1) {
     const balance = ENEMY_BALANCE[kind];
@@ -41,6 +43,8 @@ export class Enemy3D implements SpatialEntity {
     this.group.name = this.id;
     this.model = createEnemyModel(kind, balance.color, resources);
     const visualScale = (this.radius * LOGICAL_SCALE) / 0.38;
+    this.baseVisualScale = visualScale;
+    this.phaseTime = (enemySequence * 1.618) % 5;
     this.model.scale.setScalar(visualScale);
     this.group.add(this.model);
     if (elite) addEliteAccent(this.model, resources);
@@ -80,8 +84,28 @@ export class Enemy3D implements SpatialEntity {
     this.phaseTime += delta;
     const bob = this.kind === 'bat' || this.kind === 'ghost' ? Math.sin(this.phaseTime * 3.2) * 0.09 : Math.sin(this.phaseTime * 2.2) * 0.025;
     this.model.position.y = bob;
-    if (this.elite) this.model.scale.setScalar((this.radius * LOGICAL_SCALE) / 0.38 * (1 + Math.sin(this.phaseTime * 4) * 0.035));
+    this.hitPulse = Math.max(0, this.hitPulse - delta);
+    const elitePulse = this.elite ? 1 + Math.sin(this.phaseTime * 4) * 0.035 : 1;
+    const hitScale = this.hitPulse > 0 ? 1 + Math.sin((1 - this.hitPulse / 0.16) * Math.PI) * 0.13 : 1;
+    this.model.scale.setScalar(this.baseVisualScale * elitePulse * hitScale);
     this.model.rotation.y = Math.atan2(directionX, directionY);
+    const parts = this.model.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
+    if (this.kind === 'bat' && parts?.wings instanceof Array) {
+      const wings = parts.wings;
+      if (wings.length === 2) {
+        wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * 8) * 0.34;
+        wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * 8) * 0.34;
+      }
+    }
+    if (this.kind === 'slime' && parts?.body instanceof THREE.Object3D) {
+      const squash = 1 + Math.sin(this.phaseTime * 3.3) * 0.06;
+      parts.body.scale.y = 0.62 / squash;
+      parts.body.scale.x = 0.82 * squash;
+    }
+    if (this.kind === 'ghost' && parts?.tails instanceof Array) {
+      const tails = parts.tails;
+      for (let index = 0; index < tails.length; index += 1) tails[index].rotation.z += Math.sin(this.phaseTime * 3 + index) * delta * 0.55;
+    }
     this.healthBar.lookAt(this.group.position.clone().add(new THREE.Vector3(0, 4, 8)));
     if (this.kind === 'ghost') this.model.visible = Math.floor(now * 2) % 9 !== 0;
     else this.model.visible = true;
@@ -95,6 +119,7 @@ export class Enemy3D implements SpatialEntity {
 
   damage(amount: number): boolean {
     this.hp = Math.max(0, this.hp - Math.max(1, amount));
+    this.hitPulse = 0.16;
     this.updateHealthBar();
     return this.hp <= 0;
   }

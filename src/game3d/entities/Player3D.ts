@@ -22,10 +22,13 @@ export class Player3D {
   private readonly character: THREE.Group;
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
+  private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
   private movement = new THREE.Vector2();
   private invulnerableUntil = 0;
   private visualTime = 0;
   private hitFlash = 0;
+  private attackTime = 0;
+  private reviveTime = 0;
   private direction = 0;
   x: number;
   y: number;
@@ -38,6 +41,7 @@ export class Player3D {
     this.character = visual.root;
     this.aura = visual.aura;
     this.shadow = visual.shadow;
+    this.parts = this.character.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>;
     this.group = new THREE.Group();
     this.group.name = 'player';
     this.group.add(this.character);
@@ -50,6 +54,8 @@ export class Player3D {
     this.movement.set(0, 0);
     this.invulnerableUntil = 0;
     this.hitFlash = 0;
+    this.attackTime = 0;
+    this.reviveTime = 0;
   }
 
   updateMovement(delta: number, worldWidth: number, worldHeight: number): void {
@@ -62,13 +68,33 @@ export class Player3D {
     }
     this.syncPosition();
     this.visualTime += delta;
-    const bob = Math.sin(this.visualTime * 6) * 0.035;
+    const moving = length > 0.02;
+    const bob = Math.sin(this.visualTime * (moving ? 8 : 4.8)) * (moving ? 0.055 : 0.028);
     this.character.position.y = bob;
     this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, this.direction, Math.min(1, delta * 8));
-    this.aura.scale.setScalar(1 + Math.sin(this.visualTime * 3) * 0.06);
-    this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * 6)) * 0.035;
+    this.attackTime = Math.max(0, this.attackTime - delta);
+    this.reviveTime = Math.max(0, this.reviveTime - delta);
+    const attackProgress = this.attackTime > 0 ? 1 - this.attackTime / 0.24 : 0;
+    const attackSwing = attackProgress > 0 ? Math.sin(Math.min(1, attackProgress) * Math.PI) : 0;
+    const arms = this.parts.arms as THREE.Object3D[] | undefined;
+    if (arms?.length === 2) {
+      arms[0].rotation.z = -0.32 - attackSwing * 0.35;
+      arms[1].rotation.z = 0.32 + attackSwing * 0.65;
+    }
+    const staff = this.parts.staff;
+    if (staff instanceof THREE.Object3D) staff.rotation.z = -0.28 - attackSwing * 0.5;
+    const crystal = this.parts.crystal;
+    if (crystal instanceof THREE.Object3D) crystal.rotation.y += delta * (moving ? 4.5 : 2.2);
+    const crystalHalo = this.parts.crystalHalo;
+    if (crystalHalo instanceof THREE.Object3D) crystalHalo.rotation.z += delta * 2.4;
+    const scarfTail = this.parts.scarfTail;
+    if (scarfTail instanceof THREE.Object3D) scarfTail.rotation.x = -0.22 + Math.sin(this.visualTime * 5.2) * (moving ? 0.24 : 0.1);
+    const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
+    this.aura.scale.setScalar(1 + Math.sin(this.visualTime * (lowHealth ? 5.6 : 3)) * (lowHealth ? 0.11 : 0.06));
+    this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * (moving ? 8 : 4.8))) * 0.045;
     this.hitFlash = Math.max(0, this.hitFlash - delta);
-    this.character.scale.setScalar(this.hitFlash > 0 ? 1.05 : 1);
+    const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
+    this.character.scale.setScalar((this.hitFlash > 0 ? 1.055 : 1) * revivePop);
   }
 
   setMovementVector(x: number, y: number): void {
@@ -80,11 +106,15 @@ export class Player3D {
   getMovementVector(): THREE.Vector2 { return this.movement.clone(); }
   getPosition(): { x: number; y: number } { return { x: this.x, y: this.y }; }
 
+  triggerAttack(): void { this.attackTime = 0.24; }
+  triggerRevive(): void { this.reviveTime = 1.2; this.hitFlash = 0.2; }
+
   takeDamage(amount: number, now: number, invulnerabilityDuration = 0.58): boolean {
     if (this.isInvulnerable(now)) return false;
     this.stats.currentHP = Math.max(0, this.stats.currentHP - Math.max(1, amount));
     this.applyInvulnerability(now, invulnerabilityDuration);
     this.hitFlash = invulnerabilityDuration;
+    this.attackTime = 0;
     return true;
   }
 

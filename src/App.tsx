@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AdService } from './services/adService';
+import { audioService } from './services/audioService';
 import { registerAppLifecycle } from './services/nativeService';
 import { DEFAULT_SAVE, loadSave, normalizeSave, resetSave, saveGame } from './services/saveService';
 import { getPermanentUpgradeCost } from './data/balance';
@@ -15,6 +16,8 @@ import { StageClearScreen } from './screens/StageClearScreen';
 import { StageDetailScreen } from './screens/StageDetailScreen';
 import { UpgradesScreen } from './screens/UpgradesScreen';
 import { WorldMapScreen } from './screens/WorldMapScreen';
+import { ScreenTransition } from './components/ScreenTransition';
+import { getActiveThreeGame } from './game3d/ThreeGame';
 import type { MissionProgress, RunResult, SaveData, Screen, Settings } from './types';
 
 function localDate(): string { const date = new Date(); return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`; }
@@ -49,11 +52,28 @@ export default function App() {
     return () => { mounted = false; };
   }, []);
 
+  const handleNativeBack = useCallback(() => {
+    if (screen === 'game') {
+      getActiveThreeGame()?.togglePauseRun();
+      return;
+    }
+    if (screen === 'stage') setScreen('map');
+    else if (screen !== 'home') setScreen('home');
+  }, [screen]);
+
   useEffect(() => {
     let cleanup: () => void = () => undefined;
-    void registerAppLifecycle(() => save).then((removeListener) => { cleanup = removeListener; });
-    return () => cleanup();
-  }, [save]);
+    let disposed = false;
+    void registerAppLifecycle(() => save, handleNativeBack).then((removeListener) => { if (disposed) removeListener(); else cleanup = removeListener; });
+    return () => { disposed = true; cleanup(); };
+  }, [handleNativeBack, save]);
+
+  useEffect(() => {
+    audioService.initialize();
+    audioService.setMusicEnabled(save.settings.music);
+    audioService.setSfxEnabled(save.settings.soundEffects);
+    if (ready && screen !== 'game') audioService.playMusic('menu');
+  }, [ready, save.settings.music, save.settings.soundEffects, screen]);
 
   const persist = useCallback((next: SaveData) => { const normalized = normalizeSave(next); setSave(normalized); void saveGame(normalized); }, []);
 
@@ -125,19 +145,21 @@ export default function App() {
   const sharedBack = () => setScreen('home');
   const stage = getStage(selectedStageId);
 
+  let view: ReactNode;
   switch (screen) {
-    case 'home': return <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
-    case 'map': return <WorldMapScreen save={save} onBack={sharedBack} onSelect={(id) => { setSelectedStageId(id); setScreen('stage'); }} />;
-    case 'stage': return <StageDetailScreen stageId={selectedStageId} save={save} onBack={() => setScreen('map')} onStart={() => startStage(selectedStageId)} />;
-    case 'heroes': return <HeroesScreen save={save} onBack={sharedBack} onSelect={handleHeroSelect} />;
-    case 'upgrades': return <UpgradesScreen save={save} onBack={sharedBack} onUpgrade={handleUpgrade} />;
-    case 'missions': return <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />;
-    case 'shop': return <ShopScreen save={save} onBack={sharedBack} onFreeChest={() => persist({ ...save, coins: save.coins + 120 })} />;
-    case 'settings': return <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />;
-    case 'stageClear': return lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getStage(lastResult.stageId).id === '1-5' ? '2-1' : getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
-    case 'game': return <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} />;
-    default: return <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
+    case 'home': view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
+    case 'map': view = <WorldMapScreen save={save} onBack={sharedBack} onSelect={(id) => { setSelectedStageId(id); setScreen('stage'); }} />; break;
+    case 'stage': view = <StageDetailScreen stageId={selectedStageId} save={save} onBack={() => setScreen('map')} onStart={() => startStage(selectedStageId)} />; break;
+    case 'heroes': view = <HeroesScreen save={save} onBack={sharedBack} onSelect={handleHeroSelect} />; break;
+    case 'upgrades': view = <UpgradesScreen save={save} onBack={sharedBack} onUpgrade={handleUpgrade} />; break;
+    case 'missions': view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />; break;
+    case 'shop': view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={() => persist({ ...save, coins: save.coins + 120 })} />; break;
+    case 'settings': view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />; break;
+    case 'stageClear': view = lastResult ? <StageClearScreen result={lastResult} onNext={() => startStage(getStage(lastResult.stageId).id === '1-5' ? '2-1' : getNextStageId(lastResult.stageId))} onReplay={() => startStage(lastResult.stageId)} onHome={sharedBack} /> : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />; break;
+    case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} />; break;
+    default: view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
   }
+  return <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>;
 }
 
 function getNextStageId(stageId: string): string {
