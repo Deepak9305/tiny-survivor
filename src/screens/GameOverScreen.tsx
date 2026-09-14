@@ -1,4 +1,4 @@
-import { Heart, Home, Play, RotateCw } from 'lucide-react';
+import { Heart, Home, Play, RotateCw, Skull, Sparkles, Timer } from 'lucide-react';
 import { PrimaryButton } from '../components/PrimaryButton';
 import type { RunResult } from '../types';
 
@@ -11,6 +11,10 @@ interface GameOverScreenProps {
   onHome: () => void;
 }
 
+export function formatTime(seconds: number): string {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+}
+
 export function GameOverScreen({
   result,
   onRevive,
@@ -20,69 +24,86 @@ export function GameOverScreen({
   onHome,
 }: GameOverScreenProps) {
   return (
-    <section className="result-overlay result-overlay--loss">
-      <div className="run-over-container">
-        <h1 className="run-over-title">RUN OVER</h1>
-
-        <div className="run-over-stats-card">
-          <div className="run-over-stat-row">
-            <span className="run-over-stat-label">Time Survived</span>
-            <strong className="run-over-stat-val">{formatTime(result.time)}</strong>
+    <section className="result-overlay-landscape result-overlay--loss">
+      <div className="run-over-container-landscape">
+        {/* Left ~45%: Defeat Diorama / World Art */}
+        <div className="run-over-left-diorama">
+          <div className="run-over-skull-glow">
+            <Skull size={56} className="skull-danger-icon" />
           </div>
-          <div className="run-over-stat-row">
-            <span className="run-over-stat-label">Enemies Killed</span>
-            <strong className="run-over-stat-val">{result.kills}</strong>
-          </div>
-          <div className="run-over-stat-row">
-            <span className="run-over-stat-label">Level Reached</span>
-            <strong className="run-over-stat-val">{result.highestLevel}</strong>
-          </div>
-          <div className="run-over-stat-row">
-            <span className="run-over-stat-label">Coins Earned</span>
-            <strong className="run-over-stat-val">{result.coins}</strong>
-          </div>
+          <h1 className="run-over-title">DEFEATED</h1>
+          <p className="run-over-tagline">Your soul returns to the sanctuary...</p>
         </div>
 
-        <div className="run-over-actions">
-          <button
-            type="button"
-            className="run-over-btn run-over-btn--revive"
-            onClick={onRevive}
-            disabled={reviveLoading}
-          >
-            <Play size={18} fill="currentColor" /> {reviveLoading ? 'Loading...' : 'Revive'}
-          </button>
+        {/* Right ~55%: Stats & Actions */}
+        <div className="run-over-right-stats">
+          <div className="run-over-stats-grid">
+            <div className="run-over-stat-card">
+              <span className="run-over-stat-label">
+                <Timer size={14} /> TIME SURVIVED
+              </span>
+              <strong className="run-over-stat-val">{formatTime(result.time)}</strong>
+            </div>
 
-          <button
-            type="button"
-            className="run-over-btn run-over-btn--retry"
-            onClick={onRetry}
-          >
-            Retry
-          </button>
+            <div className="run-over-stat-card">
+              <span className="run-over-stat-label">
+                <Skull size={14} /> FOES SLAIN
+              </span>
+              <strong className="run-over-stat-val">{result.kills.toLocaleString()}</strong>
+            </div>
 
-          <button
-            type="button"
-            className="run-over-btn run-over-btn--home"
-            onClick={onHome}
-          >
-            Home
-          </button>
+            <div className="run-over-stat-card">
+              <span className="run-over-stat-label">
+                <Sparkles size={14} /> LEVEL REACHED
+              </span>
+              <strong className="run-over-stat-val">Lv. {result.highestLevel}</strong>
+            </div>
+
+            <div className="run-over-stat-card">
+              <span className="run-over-stat-label">
+                <Heart size={14} /> COINS COLLECTED
+              </span>
+              <strong className="run-over-stat-val">+{result.coins.toLocaleString()}</strong>
+            </div>
+          </div>
+
+          <div className="run-over-actions-landscape">
+            <button
+              type="button"
+              className="run-over-btn run-over-btn--revive"
+              onClick={onRevive}
+              disabled={reviveLoading}
+            >
+              <Play size={18} fill="currentColor" />
+              <span>{reviveLoading ? 'Loading Ad...' : 'REVIVE WITH AD'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="run-over-btn run-over-btn--retry"
+              onClick={onRetry}
+            >
+              <RotateCw size={16} />
+              <span>RETRY</span>
+            </button>
+
+            <button
+              type="button"
+              className="run-over-btn run-over-btn--home"
+              onClick={onHome}
+            >
+              <Home size={16} />
+              <span>SANCTUARY</span>
+            </button>
+          </div>
+
+          {reviveMessage && (
+            <p className="result-ad-message" role="status">
+              {reviveMessage}
+            </p>
+          )}
         </div>
-
-        {reviveMessage && (
-          <p className="result-ad-message" role="status">
-            {reviveMessage}
-          </p>
-        )}
       </div>
     </section>
   );
 }
-
-export function formatTime(seconds: number): string {
-  return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${String(
-    Math.floor(seconds % 60)
-  ).padStart(2, '0')}`;
-}
-

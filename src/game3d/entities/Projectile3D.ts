@@ -17,13 +17,17 @@ export class Projectile3D {
   active = true;
 
   constructor(parent: THREE.Object3D, x: number, y: number, spec: ProjectileSpec, resources: SharedResources) {
+    this.group = new THREE.Group();
+    this.group.name = this.id;
     this.x = x;
     this.y = y;
     this.spec = spec;
     this.remainingPierce = spec.pierce;
-    this.group = new THREE.Group();
-    this.group.name = this.id;
-    const targetAngle = (spec.target ? Math.atan2(spec.target.y - y, spec.target.x - x) : 0) + (spec.angle ?? 0);
+    const hasDir = spec.direction && (spec.direction.x !== 0 || spec.direction.y !== 0);
+    const baseAngle = hasDir
+      ? Math.atan2(spec.direction!.y, spec.direction!.x)
+      : (spec.target ? Math.atan2(spec.target.y - y, spec.target.x - x) : 0);
+    const targetAngle = baseAngle + (spec.angle ?? 0);
     this.velocity.set(Math.cos(targetAngle), Math.sin(targetAngle)).multiplyScalar(spec.speed);
     const isFire = spec.weaponId === 'fire-orb';
     const isChain = spec.weaponId === 'chain-lightning';
@@ -85,7 +89,7 @@ export class Projectile3D {
     this.y += this.velocity.y * delta;
     this.syncPosition();
     this.group.rotation.y += delta * 12;
-    if (this.age > 4) this.active = false;
+    if (this.spec.explosive ? this.age > 1.8 : this.age > 3.2) this.active = false;
   }
 
   canPierce(): boolean {

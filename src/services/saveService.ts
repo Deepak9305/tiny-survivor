@@ -2,11 +2,13 @@ import { Preferences } from '@capacitor/preferences';
 import type { BossId, EnemyKind, MissionProgress, SaveData, Settings } from '../types';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
-const SAVE_SCHEMA_VERSION = 2;
+const SAVE_SCHEMA_VERSION = 3;
 
 export const DEFAULT_SETTINGS: Settings = {
   music: true,
   soundEffects: true,
+  musicVolume: 0.65,
+  sfxVolume: 0.80,
   haptics: true,
   damageNumbers: true,
   screenShake: true,
@@ -107,7 +109,12 @@ export function normalizeSave(raw: unknown): SaveData {
     missionDate: typeof data.missionDate === 'string' ? data.missionDate : '',
     achievements: data.achievements && typeof data.achievements === 'object' ? data.achievements : {},
     claimedAchievements: Array.isArray(data.claimedAchievements) ? data.claimedAchievements.filter((id): id is string => typeof id === 'string') : [],
-    settings: { ...DEFAULT_SETTINGS, ...settings },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...settings,
+      musicVolume: typeof settings.musicVolume === 'number' && Number.isFinite(settings.musicVolume) ? Math.max(0, Math.min(1, settings.musicVolume)) : DEFAULT_SETTINGS.musicVolume,
+      sfxVolume: typeof settings.sfxVolume === 'number' && Number.isFinite(settings.sfxVolume) ? Math.max(0, Math.min(1, settings.sfxVolume)) : DEFAULT_SETTINGS.sfxVolume,
+    },
     endlessBestTime: validNumber(data.endlessBestTime, 0),
     endlessBestKills: validInteger(data.endlessBestKills, 0),
     ownedCosmetics: Array.isArray(data.ownedCosmetics) ? data.ownedCosmetics.filter((id): id is string => typeof id === 'string') : ['classic'],

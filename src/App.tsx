@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Smartphone } from 'lucide-react';
 import { AdService } from './services/adService';
 import { audioService } from './services/audioService';
 import { registerAppLifecycle } from './services/nativeService';
@@ -196,7 +197,20 @@ export default function App() {
     case 'game': view = <GameScreen key={`${stage.id}-${runKey}`} stage={stage} save={save} onStageClear={handleStageClear} onGameOver={handleGameOver} onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }} onHome={() => setScreen('home')} onBestiary={() => handleBestiarySelect('skeleton')} />; break;
     default: view = <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
   }
-  return <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>;
+  return (
+    <>
+      <div className="rotate-device-overlay" aria-hidden="true">
+        <div className="rotate-device-card">
+          <div className="rotate-device-icon-box">
+            <Smartphone size={38} className="rotate-device-phone" />
+          </div>
+          <h2>ROTATE YOUR DEVICE</h2>
+          <p>Tiny Survivor is built for landscape twin-stick combat. Please turn your device sideways.</p>
+        </div>
+      </div>
+      <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>
+    </>
+  );
 }
 
 function getNextStageId(stageId: string): string {

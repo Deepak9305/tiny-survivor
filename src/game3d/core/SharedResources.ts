@@ -70,6 +70,9 @@ export class SharedResources {
   torus(key = 'torus'): THREE.BufferGeometry {
     return this.geometry(key, () => new THREE.TorusGeometry(0.5, 0.06, 6, 16));
   }
+  circle(key = 'circle', radius = 0.5): THREE.BufferGeometry {
+    return this.geometry(`${key}:${radius}`, () => new THREE.CircleGeometry(radius, 20));
+  }
 
   dispose(): void {
     for (const geometry of this.geometries.values()) geometry.dispose();

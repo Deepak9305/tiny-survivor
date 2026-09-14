@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { setLogicalPosition } from '../core/coordinates';
-import { SharedResources } from '../core/SharedResources';
+import { SharedResources, addMesh } from '../core/SharedResources';
 import { createShadowMage } from '../visuals/CharacterFactory';
 import { resolveObstacleCollision } from '../scene/WorldObstacles';
 
@@ -35,6 +35,10 @@ export class Player3D {
   private levelUpTime = 0;
   private victoryTime = 0;
   private direction = 0;
+  private aimDirection = 0;
+  private hasAimed = false;
+  private aimActive = false;
+  private aimIndicator?: THREE.Group;
   x: number;
   y: number;
 
@@ -57,6 +61,32 @@ export class Player3D {
     heroPointLight.name = 'hero-point-light';
     heroPointLight.position.set(0, 1.2, 0.2);
     this.group.add(heroPointLight);
+
+    // Subtle Arcane Aim Indicator under hero
+    const aimIndicatorGroup = new THREE.Group();
+    aimIndicatorGroup.name = 'aim-indicator';
+    aimIndicatorGroup.position.set(0, 0.04, 0);
+
+    const aimChevron = addMesh(
+      aimIndicatorGroup,
+      resources.cone('aim-chevron-geom'),
+      resources.basicMaterial('aim-chevron-mat', 0x38bdf8, { transparent: true, opacity: 0.28 })
+    );
+    aimChevron.scale.set(0.18, 0.55, 0.12);
+    aimChevron.rotation.x = Math.PI / 2;
+    aimChevron.position.set(0, 0, 0.85);
+
+    const aimDot = addMesh(
+      aimIndicatorGroup,
+      resources.circle('aim-dot-geom'),
+      resources.basicMaterial('aim-dot-mat', 0x7dd3fc, { transparent: true, opacity: 0.45 })
+    );
+    aimDot.scale.setScalar(0.12);
+    aimDot.rotation.x = -Math.PI / 2;
+    aimDot.position.set(0, 0, 1.22);
+
+    this.group.add(aimIndicatorGroup);
+    this.aimIndicator = aimIndicatorGroup;
 
     parent.add(this.group);
     this.syncPosition();
@@ -84,7 +114,9 @@ export class Player3D {
       const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);
       this.x = resolved.x;
       this.y = resolved.y;
-      this.direction = Math.atan2(direction.x, direction.y);
+      if (!this.hasAimed) {
+        this.direction = Math.atan2(direction.x, direction.y);
+      }
     }
     this.syncPosition();
     this.visualTime += delta;
@@ -93,7 +125,22 @@ export class Player3D {
     // Idle breathing & walk bounce
     const bob = Math.sin(this.visualTime * (moving ? 8.5 : 3.8)) * (moving ? 0.055 : 0.022);
     this.character.position.y = bob;
-    this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, this.direction, Math.min(1, delta * 9));
+
+    const targetFacing = this.aimActive ? this.aimDirection : this.direction;
+    this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, targetFacing, Math.min(1, delta * 12));
+
+    if (this.aimIndicator) {
+      this.aimIndicator.rotation.y = this.aimDirection;
+      const targetIndicatorOpacity = this.aimActive ? 0.88 : (this.hasAimed ? 0.28 : 0);
+      const chevron = this.aimIndicator.children[0] as THREE.Mesh | undefined;
+      if (chevron?.material && 'opacity' in chevron.material) {
+        (chevron.material as THREE.Material & { opacity: number }).opacity = THREE.MathUtils.lerp(
+          (chevron.material as THREE.Material & { opacity: number }).opacity,
+          targetIndicatorOpacity,
+          Math.min(1, delta * 10)
+        );
+      }
+    }
     this.attackTime = Math.max(0, this.attackTime - delta);
     this.reviveTime = Math.max(0, this.reviveTime - delta);
     this.levelUpTime = Math.max(0, this.levelUpTime - delta);
@@ -135,6 +182,25 @@ export class Player3D {
     const vector = new THREE.Vector2(x, y);
     if (vector.length() < 0.12) vector.set(0, 0);
     this.movement.copy(vector).clampLength(0, 1);
+  }
+
+  setAimVector(x: number, y: number, isAiming: boolean): void {
+    const len = Math.sqrt(x * x + y * y);
+    if (isAiming && len > 0.12) {
+      this.aimDirection = Math.atan2(x, y);
+      this.aimActive = true;
+      this.hasAimed = true;
+    } else {
+      this.aimActive = false;
+    }
+  }
+
+  isAiming(): boolean {
+    return this.aimActive;
+  }
+
+  getAimDirection(): number {
+    return this.aimDirection;
   }
 
   getMovementVector(): THREE.Vector2 { return this.movement.clone(); }

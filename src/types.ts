@@ -83,6 +83,8 @@ export interface WorldDefinition {
 export interface Settings {
   music: boolean;
   soundEffects: boolean;
+  musicVolume: number;
+  sfxVolume: number;
   haptics: boolean;
   damageNumbers: boolean;
   screenShake: boolean;

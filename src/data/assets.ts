@@ -110,15 +110,15 @@ export function getStageAssetRequirements(stage: StageDefinition, heroId = 'shad
 }
 
 export const GAMEPLAY_TIPS = [
-  'Keep moving! Circling enemies helps herd them into tight clusters for area spells.',
-  'Magic Bolt pierces through enemies at higher levels, cutting lines through hordes.',
-  'Fire Orb causes massive explosive ground flash upon impact. High damage to bosses!',
-  'Chain Lightning arcs across dense swarms of enemies instantly.',
-  'Orbiting Blades create a protective ring of steel and cyan runes around you.',
-  'XP crystals magnetically accelerate toward you when you step inside your pickup radius.',
-  'Watch for red telegraph rings before major boss attacks, then counterattack!',
-  'Check the Monster Codex to learn each enemy\'s specific elemental weaknesses.',
-  'World Bosses summon minions and cycle through multiple punishing combat phases.',
+  'Use the LEFT stick to move and the RIGHT stick to aim your directional spells.',
+  'Weapons fire automatically according to their cooldown while you maintain aim direction.',
+  'Orbiting Blades remain fully automatic, defending your flanks while you focus your aim.',
+  'Enemies telegraph their attacks with red arcs, lanes, and circles—dodge during their windup!',
+  'Cursed Knights block 45% of frontal damage with their shield—flank them from behind!',
+  'Focus your fire on Exploding Imps to detonate them before their fuse finishes ticking.',
+  'Step perpendicular to Skeleton Archer aim lines right before their arrow releases.',
+  'Sidestep Bat dives when you hear their screech and spot the red trajectory lane.',
+  'World Boss attacks have clear telegraphs followed by damage recovery windows.',
 ];
 
 export function getRandomGameplayTip(): string {

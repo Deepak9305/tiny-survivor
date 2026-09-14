@@ -1,9 +1,9 @@
-import { BookOpen, Play } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
+import { BookOpen, Map, Play, Shield } from 'lucide-react';
 import { CurrencyBar } from '../components/CurrencyBar';
 import { GameLogo } from '../components/GameLogo';
+import { NavRail } from '../components/NavRail';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { getCurrentStage } from '../data/stages';
+import { getCurrentStage, WORLD_META } from '../data/stages';
 import type { SaveData, Screen } from '../types';
 
 interface HomeScreenProps {
@@ -21,52 +21,99 @@ function getWorldBg(worldId: number): string {
 
 export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
   const stage = getCurrentStage(save);
+  const worldMeta = WORLD_META.find((w) => w.id === stage.worldId) ?? WORLD_META[0];
   const worldBg = getWorldBg(stage.worldId);
 
   return (
-    <main className="home-screen">
-      <section className="home-hero" style={{ backgroundImage: `url(${worldBg})` }}>
-        <div className="home-hero__content">
-          <CurrencyBar
-            coins={save.coins}
-            gems={save.gems}
-            selectedHero={save.selectedHero}
-            cleanHeader
-            onShop={() => onNavigate('shop')}
-            onSettings={() => onNavigate('settings')}
-          />
-          <div className="home-hero__brand">
-            <GameLogo />
+    <main className="home-landscape-screen">
+      <NavRail current="home" onNavigate={onNavigate} />
+
+      <div className="home-landscape-body">
+        {/* Left ~56%: Cinematic World Diorama + Logo */}
+        <section
+          className={`home-cinema-panel home-cinema-panel--world-${stage.worldId}`}
+          style={{ backgroundImage: `url(${worldBg})` }}
+        >
+          <div className="home-cinema-panel__overlay" />
+          <div className="home-cinema-panel__content">
+            <div className="home-cinema-panel__brand">
+              <GameLogo />
+              <p className="home-cinema-panel__tagline">
+                TWIN-STICK SURVIVOR &middot; LANDSCAPE ACTION ROGUELITE
+              </p>
+            </div>
+
+            <div className="home-cinema-panel__world-pill">
+              <Shield size={14} className="home-cinema-panel__world-icon" />
+              <span>
+                WORLD {stage.worldId}: {worldMeta.name.toUpperCase()} &middot; {worldMeta.subtitle}
+              </span>
+            </div>
           </div>
-          <div className="home-hero__lower">
-            <div className="home-stage-row">
+        </section>
+
+        {/* Right ~44%: Controls & Action */}
+        <section className="home-action-panel">
+          {/* Top Bar: Currencies, Shop, Settings */}
+          <header className="home-action-panel__header">
+            <CurrencyBar
+              coins={save.coins}
+              gems={save.gems}
+              selectedHero={save.selectedHero}
+              cleanHeader
+              onShop={() => onNavigate('shop')}
+              onSettings={() => onNavigate('settings')}
+            />
+          </header>
+
+          {/* Center Stage & Mission Summary */}
+          <div className="home-action-panel__center">
+            <div className="home-stage-card">
+              <div className="home-stage-card__badge">CURRENT CAMPAIGN</div>
+              <div className="home-stage-card__details">
+                <span className="home-stage-card__sub">
+                  STAGE {stage.id} &bull; {stage.biome.toUpperCase()}
+                </span>
+                <strong className="home-stage-card__name">{stage.name}</strong>
+              </div>
               <button
                 type="button"
-                className="home-stage-link"
+                className="home-stage-card__map-btn"
                 onClick={() => onNavigate('map')}
-                aria-label="Open the stage map"
+                aria-label="View world stage map"
               >
-                <span className="home-stage-link__eyebrow">WORLD {stage.worldId} · {stage.biome.toUpperCase()}</span>
-                <strong>Stage {stage.id} : {stage.name}</strong>
-              </button>
-              <button
-                type="button"
-                className="home-codex-shortcut"
-                onClick={() => onNavigate('bestiary')}
-                aria-label="Open Monster Codex"
-                title="Monster Codex"
-              >
-                <BookOpen size={18} />
-                <span>CODEX</span>
+                <Map size={18} />
+                <span>WORLD MAP</span>
               </button>
             </div>
-            <PrimaryButton wide variant="gold" className="home-play-btn" onClick={onPlay}>
-              <Play size={24} fill="currentColor" /> PLAY
-            </PrimaryButton>
+
+            <div className="home-secondary-row">
+              <button
+                type="button"
+                className="home-secondary-btn home-secondary-btn--codex"
+                onClick={() => onNavigate('bestiary')}
+                aria-label="Open Monster Codex"
+              >
+                <BookOpen size={18} />
+                <span>MONSTER CODEX</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
-      <BottomNav current="home" onNavigate={onNavigate} />
+
+          {/* Bottom Primary CTA */}
+          <footer className="home-action-panel__footer">
+            <PrimaryButton
+              wide
+              variant="gold"
+              className="home-play-btn-landscape"
+              onClick={onPlay}
+            >
+              <Play size={26} fill="currentColor" />
+              <span>BATTLE NOW</span>
+            </PrimaryButton>
+          </footer>
+        </section>
+      </div>
     </main>
   );
 }

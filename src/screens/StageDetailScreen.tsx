@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Clock3, Coins, Ghost, Flame, Shield, Skull, Sparkles, Star, Swords, Zap } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock3, Coins, Ghost, Flame, Play, Shield, Skull, Sparkles, Star, Swords, Zap } from 'lucide-react';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { BOSS_DEFINITIONS } from '../data/bosses';
@@ -53,95 +53,146 @@ export function StageDetailScreen({ stageId, save, onBack, onStart, onBestiary }
   const boss = stage.bossId ? BOSS_DEFINITIONS[stage.bossId] : undefined;
 
   return (
-    <main className="stage-detail-screen">
-      <ScreenHeader title={`${stage.id} ${stage.name}`} onBack={onBack} />
-      <section
-        className={`stage-art stage-art--world-${stage.worldId}`}
-        style={{ backgroundImage: `url(${getWorldBg(stage.worldId)})` }}
-      >
-        <div className="stage-art__shade" />
-        <div className="stage-art__topline">
-          <span className="eyebrow">WORLD {stage.worldId} · {world?.name ?? stage.biome}</span>
-          <span className="stage-art__tag">{stage.bossStage ? 'WORLD BOSS' : 'ADVENTURE'}</span>
-        </div>
+    <main className="meta-screen stage-detail-landscape">
+      <ScreenHeader title={`STAGE ${stage.id} : ${stage.name}`} onBack={onBack} />
 
-        {boss && (
-          <button type="button" className="stage-art__boss-feature" onClick={() => onBestiary(boss.id)}>
-            <img src={getBossArt(boss.id)} alt={boss.name} className="stage-art__boss-portrait" />
-            <div className="stage-art__boss-info">
-              <span className="stage-art__boss-badge"><Skull size={13} /> STAGE 5 WORLD BOSS</span>
-              <strong className="stage-art__boss-title">{boss.name}</strong>
-              <small className="stage-art__boss-sub">{boss.description || 'Supreme Boss'}</small>
+      <div className="stage-detail-landscape-grid">
+        {/* Left ~56%: Stage Artwork / Boss Art */}
+        <section
+          className={`stage-landscape-art stage-art--world-${stage.worldId}`}
+          style={{ backgroundImage: `url(${getWorldBg(stage.worldId)})` }}
+        >
+          <div className="stage-landscape-art__overlay" />
+          <div className="stage-landscape-art__badge-row">
+            <span className="eyebrow">
+              WORLD {stage.worldId} &middot; {world?.name.toUpperCase() ?? stage.biome.toUpperCase()}
+            </span>
+            <span className={`stage-badge-tag ${stage.bossStage ? 'is-boss' : ''}`}>
+              {stage.bossStage ? 'WORLD BOSS ARENA' : 'SURVIVAL ADVENTURE'}
+            </span>
+          </div>
+
+          {boss ? (
+            <div className="stage-landscape-boss-feature" onClick={() => onBestiary(boss.id)}>
+              <div className="stage-landscape-boss-img-box">
+                <img src={getBossArt(boss.id)} alt={boss.name} className="stage-landscape-boss-img" />
+              </div>
+              <div className="stage-landscape-boss-details">
+                <span className="stage-boss-sub-tag">
+                  <Skull size={14} /> CLIMACTIC BOSS
+                </span>
+                <h2>{boss.name}</h2>
+                <p>{boss.description}</p>
+                <div className="stage-boss-inspect-link">
+                  <span>Inspect boss telegraphs & affinities in Codex</span>
+                  <ArrowRight size={14} />
+                </div>
+              </div>
             </div>
-            <ArrowRight size={18} className="stage-art__boss-arrow" />
-          </button>
-        )}
-      </section>
-
-      <section className="stage-info-card">
-        <div className="stage-info-card__stats">
-          <span><Clock3 size={15} /><small>SURVIVAL</small><strong>{duration}</strong></span>
-          <span><Shield size={15} /><small>POWER</small><strong>{stage.recommendedPower || '—'}</strong></span>
-          <span><Star size={15} fill="currentColor" /><small>BEST</small><strong>{best ? `${Math.floor(best / 60)}:${String(Math.floor(best % 60)).padStart(2, '0')}` : '—'}</strong></span>
-        </div>
-
-        <div className="stage-info-card__enemies">
-          <div className="stage-section-heading">
-            <h3>Enemies</h3>
-            <button type="button" onClick={() => onBestiary(stage.enemies[0])}><BookOpen size={14} /> CODEX</button>
-          </div>
-          <div className="enemy-previews">
-            {stage.enemies.map((enemy) => {
-              const thumbUrl = getCreatureThumb(enemy);
-              return (
-                <button type="button" className="enemy-preview" key={enemy} onClick={() => onBestiary(enemy)}>
-                  <span className={`creature-thumb creature-thumb--${enemy}`}>
-                    {thumbUrl ? (
-                      <img src={thumbUrl} alt={enemy} className="creature-thumb-img" />
-                    ) : (
-                      <CreatureIcon kind={enemy} />
-                    )}
-                  </span>
-                  <strong>{getMonsterDefinition(enemy).name}</strong>
-                  <small>{save.discoveredEnemies.includes(enemy) ? 'DISCOVERED' : 'CODEX'}</small>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="stage-reward-row">
-          <div className="stage-reward-box">
-            <span className="stage-reward-label">Rewards</span>
-            <div className="stage-reward-val">
-              <Coins size={18} className="text-gold" />
-              <strong>+{stage.coinReward}</strong>
+          ) : (
+            <div className="stage-landscape-world-info">
+              <h2>{stage.name}</h2>
+              <p>Survive the encroaching swarm across the {world?.name} battleground.</p>
             </div>
-          </div>
-          <div className="stage-reward-box">
-            <span className="stage-reward-label">Recommended Power</span>
-            <div className="stage-reward-val">
-              <Swords size={18} className="text-blue" />
+          )}
+        </section>
+
+        {/* Right ~44%: Intel & CTAs */}
+        <section className="stage-landscape-intel">
+          {/* Quick Metrics */}
+          <div className="stage-landscape-metrics">
+            <div className="stage-metric-box">
+              <Clock3 size={16} />
+              <small>SURVIVAL</small>
+              <strong>{duration}</strong>
+            </div>
+            <div className="stage-metric-box">
+              <Shield size={16} />
+              <small>REC. POWER</small>
               <strong>{stage.recommendedPower}</strong>
             </div>
+            <div className="stage-metric-box">
+              <Star size={16} fill="currentColor" />
+              <small>BEST RECORD</small>
+              <strong>
+                {best ? `${Math.floor(best / 60)}:${String(Math.floor(best % 60)).padStart(2, '0')}` : '—'}
+              </strong>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <div className="stage-detail__cta">
-        <PrimaryButton variant="gold" wide onClick={onStart}>
-          <Swords size={18} /> START
-        </PrimaryButton>
+          {/* Enemy Preview */}
+          <div className="stage-landscape-enemies">
+            <div className="stage-enemies-header">
+              <span className="eyebrow">ENCOUNTERED ENEMIES</span>
+              <button type="button" className="stage-codex-shortcut" onClick={() => onBestiary(stage.enemies[0])}>
+                <BookOpen size={13} />
+                <span>OPEN CODEX</span>
+              </button>
+            </div>
+
+            <div className="stage-enemies-row">
+              {stage.enemies.map((enemy) => {
+                const thumbUrl = getCreatureThumb(enemy);
+                const monster = getMonsterDefinition(enemy);
+                return (
+                  <button
+                    type="button"
+                    className="stage-enemy-chip"
+                    key={enemy}
+                    onClick={() => onBestiary(enemy)}
+                    title={`Inspect ${monster.name}`}
+                  >
+                    <div className="stage-enemy-chip__thumb">
+                      {thumbUrl ? (
+                        <img src={thumbUrl} alt={enemy} />
+                      ) : (
+                        <CreatureIcon kind={enemy} />
+                      )}
+                    </div>
+                    <span>{monster.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rewards */}
+          <div className="stage-landscape-rewards">
+            <div className="stage-reward-item">
+              <span className="stage-reward-label">BASE REWARD</span>
+              <div className="stage-reward-val">
+                <Coins size={18} className="text-gold" />
+                <strong>+{stage.coinReward} COINS</strong>
+              </div>
+            </div>
+            {stage.firstClearReward > 0 && !save.completedStages.includes(stage.id) && (
+              <div className="stage-reward-item stage-reward-item--first">
+                <span className="stage-reward-label">FIRST CLEAR</span>
+                <div className="stage-reward-val text-gem">
+                  <strong>+{stage.firstClearReward} GEMS</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Start Button CTA */}
+          <footer className="stage-landscape-cta">
+            <PrimaryButton variant="gold" wide onClick={onStart} className="stage-start-btn">
+              <Play size={22} fill="currentColor" />
+              <span>START BATTLE</span>
+            </PrimaryButton>
+          </footer>
+        </section>
       </div>
     </main>
   );
 }
 
 function CreatureIcon({ kind }: { kind: EnemyKind }) {
-  if (kind === 'bat' || kind === 'ghost') return <Ghost size={20} />;
-  if (kind === 'slime') return <Sparkles size={20} />;
-  if (kind === 'archer') return <Zap size={20} />;
-  if (kind === 'knight') return <Shield size={20} />;
-  if (kind === 'demon' || kind === 'imp') return <Flame size={20} />;
-  return <Skull size={20} />;
+  if (kind === 'bat' || kind === 'ghost') return <Ghost size={18} />;
+  if (kind === 'slime') return <Sparkles size={18} />;
+  if (kind === 'archer') return <Zap size={18} />;
+  if (kind === 'knight') return <Shield size={18} />;
+  if (kind === 'demon' || kind === 'imp') return <Flame size={18} />;
+  return <Skull size={18} />;
 }

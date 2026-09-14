@@ -29,9 +29,9 @@ export class CameraController {
   constructor(lowPerformanceMode: boolean, reducedEffects = false, screenShakeEnabled = true) {
     this.reducedEffects = reducedEffects || lowPerformanceMode;
     this.screenShakeEnabled = screenShakeEnabled;
-    this.camera = new THREE.PerspectiveCamera(43, 9 / 16, 0.1, 110);
-    this.camera.position.set(0, 12.8, 10.8);
-    this.currentLookAt.set(0, 0, -1.4);
+    this.camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 110);
+    this.camera.position.set(0, 13.0, 11.0);
+    this.currentLookAt.set(0, 0, -0.6);
     this.camera.lookAt(this.currentLookAt);
 
     if (typeof window !== 'undefined') {
@@ -63,7 +63,7 @@ export class CameraController {
   }
 
   resize(width: number, height: number): void {
-    this.camera.aspect = Math.max(0.45, width / Math.max(1, height));
+    this.camera.aspect = Math.max(1.0, width / Math.max(1, height));
     this.camera.updateProjectionMatrix();
   }
 
@@ -88,6 +88,8 @@ export class CameraController {
     playerX: number,
     playerY: number,
     movement = new THREE.Vector2(),
+    aim = new THREE.Vector2(),
+    isAiming = false,
     enabled = true,
     scene?: THREE.Scene,
     occluders: THREE.Object3D[] = []
@@ -96,7 +98,7 @@ export class CameraController {
 
     if (this.isOverviewDebug) {
       // Full Map Overview Debug View: high overhead perspective showing entire arena
-      this.desiredPosition.set(0, 44, 0.05);
+      this.desiredPosition.set(0, 42, 0.05);
       this.desiredLookAt.set(0, 0, 0);
       this.camera.position.lerp(this.desiredPosition, 0.18);
       this.currentLookAt.lerp(this.desiredLookAt, 0.18);
@@ -112,17 +114,22 @@ export class CameraController {
       this.debugGroup.visible = false;
     }
 
-    const lead = movement.clone().clampLength(0, 1).multiplyScalar(22);
-    // Margins ensure camera doesn't pan past the outer boundary walls
-    const horizontalMargin = Math.min(ARENA_WIDTH * 0.28, 4.2);
-    const depthMargin = Math.min(ARENA_DEPTH * 0.26, 7.2);
-    const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.015, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
-    // Keep hero framed at approximately 58-62% down the portrait viewport
-    const lookZ = THREE.MathUtils.clamp(player.z - 1.4 + lead.y * 0.012, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
+    // Camera lead: movement contributes subtle lead, aim contributes slightly stronger forward view
+    const moveLead = movement.clone().clampLength(0, 1).multiplyScalar(18);
+    const aimLead = (isAiming ? aim.clone().clampLength(0, 1) : new THREE.Vector2()).multiplyScalar(32);
+    const leadX = moveLead.x * 0.010 + aimLead.x * 0.022;
+    const leadZ = moveLead.y * 0.008 + aimLead.y * 0.018;
+
+    // Margins ensure camera doesn't pan past the outer boundary walls in landscape
+    const horizontalMargin = Math.min(ARENA_WIDTH * 0.28, 6.8);
+    const depthMargin = Math.min(ARENA_DEPTH * 0.26, 5.2);
+    const lookX = THREE.MathUtils.clamp(player.x + leadX, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
+    // Centralized framing with subtle look-ahead bias
+    const lookZ = THREE.MathUtils.clamp(player.z - 0.6 + leadZ, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
     this.desiredLookAt.set(lookX, 0, lookZ);
     const pullbackProgress = this.pullbackDuration > 0 ? this.pullbackTime / this.pullbackDuration : 0;
     const pullback = this.pullbackAmount * Math.sin(Math.min(1, pullbackProgress) * Math.PI);
-    this.desiredPosition.set(lookX, 12.8 + pullback * 0.7, lookZ + 10.8 + pullback * 0.85);
+    this.desiredPosition.set(lookX, 13.0 + pullback * 0.7, lookZ + 11.0 + pullback * 0.85);
 
     const follow = 1 - Math.pow(0.0004, Math.max(delta, 0.001));
     this.camera.position.lerp(this.desiredPosition, Math.min(1, follow * (enabled ? 1 : 0.32)));

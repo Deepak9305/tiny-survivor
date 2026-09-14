@@ -132,7 +132,8 @@ export class SurvivorGame3D {
     this.frameId = requestAnimationFrame(this.frame);
   }
 
-  setMovementVector(x: number, y: number): void { this.input.setJoystickVector(x, y); }
+  setMovementVector(x: number, y: number): void { this.input.setMovementVector(x, y); }
+  setAimVector(x: number, y: number): void { this.input.setAimVector(x, y); }
 
   selectUpgrade(id: string): void {
     if (!this.levelUpOpen || this.isFinished) return;
@@ -152,6 +153,7 @@ export class SurvivorGame3D {
       this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, 3));
       return;
     }
+    audioService.restoreMusicVolume();
     this.isRunPaused = false;
     this.runController.resumeRun();
     this.callbacks.onPaused(false);
@@ -173,6 +175,7 @@ export class SurvivorGame3D {
     this.cameraController.triggerPullback(0.45, 0.5);
     this.isRunPaused = false;
     this.input.reset();
+    audioService.restoreMusicVolume();
     this.callbacks.onPaused(false);
     this.callbacks.onSnapshot(this.getSnapshot());
     return true;
@@ -206,6 +209,7 @@ export class SurvivorGame3D {
     this.isRunPaused = false;
     this.input.reset();
     this.enemySpawner.stopSpawning();
+    audioService.crossfadeMusic('menu', 1.0);
     this.runController.quitRun();
   }
 
@@ -268,6 +272,8 @@ export class SurvivorGame3D {
         this.player.x,
         this.player.y,
         this.player.getMovementVector(),
+        this.input.getAimVector(),
+        this.input.isAimActive(),
         !this.isRunPaused,
         this.scene,
         (this.arena?.userData.occluders as THREE.Object3D[] | undefined) ?? []
@@ -301,17 +307,24 @@ export class SurvivorGame3D {
     this.xpSystem = new XPSystem();
     this.createSystems();
     this.runController.startRun();
+    audioService.crossfadeMusic('run');
     this.callbacks.onSnapshot(this.getSnapshot());
   }
 
   private createSystems(): void {
     this.weaponSystem = new WeaponSystem({
       getPlayerPosition: () => this.player.getPosition(),
-      findNearestTarget: () => this.findNearestTarget(),
-      findTargetsInRadius: (x, y, radius) => this.spatialGrid.queryRadius(x, y, radius).map((enemy) => ({ id: enemy.id, x: enemy.x, y: enemy.y })),
+      getAimVector: () => this.input.getAimVector(),
+      isAimActive: () => this.input.isAimActive(),
+      findAimAssistTarget: (originX, originY, dirX, dirY, maxAngleRad, maxDist) =>
+        this.findAimAssistTarget(originX, originY, dirX, dirY, maxAngleRad, maxDist),
+      findTargetsInRadius: (x, y, radius) =>
+        this.spatialGrid.queryRadius(x, y, radius).map((enemy) => ({ id: enemy.id, x: enemy.x, y: enemy.y })),
       fireProjectile: (spec) => this.fireProjectile(spec),
-      dealAreaDamage: (x, y, radius, damage, color, damageType) => this.dealAreaDamage(x, y, radius, damage, color, damageType),
-      dealOrbitDamage: (x, y, radius, damage, damageType) => this.dealOrbitDamage(x, y, radius, damage, damageType),
+      dealAreaDamage: (x, y, radius, damage, color, damageType) =>
+        this.dealAreaDamage(x, y, radius, damage, color, damageType),
+      dealOrbitDamage: (x, y, radius, damage, damageType) =>
+        this.dealOrbitDamage(x, y, radius, damage, damageType),
       getDamageMultiplier: () => this.player.stats.damageMultiplier,
       getCooldownMultiplier: () => this.player.stats.cooldownMultiplier,
     });
@@ -355,6 +368,8 @@ export class SurvivorGame3D {
     this.orbitAngle += delta * 1.8;
     const movement = this.input.getMovementVector();
     this.player.setMovementVector(movement.x, movement.y);
+    const aim = this.input.getAimVector();
+    this.player.setAimVector(aim.x, aim.y, this.input.isAimActive());
     this.player.updateMovement(delta, WORLD_WIDTH, WORLD_HEIGHT);
     this.enemySpawner.update(delta);
     this.spatialGrid.clear();
@@ -384,30 +399,110 @@ export class SurvivorGame3D {
   private updateEnemies(delta: number): void {
     const playerX = this.player.x;
     const playerY = this.player.y;
+
+    // Attack pressure budget: limit concurrent high-threat animations (max 3)
+    let highThreatActiveCount = 0;
+    for (let i = 0; i < this.enemies.length; i += 1) {
+      const e = this.enemies[i];
+      if (
+        (e.state === 'windup' || e.state === 'attack') &&
+        (e.kind === 'archer' || e.kind === 'bat' || e.kind === 'slime' || e.kind === 'imp')
+      ) {
+        highThreatActiveCount += 1;
+      }
+    }
+
     for (let index = this.enemies.length - 1; index >= 0; index -= 1) {
       const enemy = this.enemies[index];
-      enemy.update(playerX, playerY, delta, this.gameTime);
-      const dx = enemy.x - playerX;
-      const dy = enemy.y - playerY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance < enemy.radius + 24 && this.player.takeDamage(this.getPlayerDamage(enemy.contactDamage), this.gameTime, 0.72)) {
-        this.spawnDamageNumber(playerX, playerY - 30, Math.round(enemy.contactDamage), false, 0xff6673);
-        this.effects.burst(playerX, playerY, 0xff6673);
-        this.cameraController.triggerShake(0.12, 0.18);
-        audioService.playSFX('hurt', { throttle: 0.32 });
-        void HapticsService.medium(this.save.settings.haptics);
-        this.callbacks.onPlayerHit?.();
-        this.callbacks.onSnapshot(this.getSnapshot());
-        if (this.player.stats.currentHP <= 0) {
-          this.finishGameOver();
-          return;
+
+      // Inexpensive pairwise local separation against nearest neighbors
+      const neighbors = this.spatialGrid.queryRadius(enemy.x, enemy.y, enemy.radius * 2.1);
+      for (let n = 0; n < neighbors.length; n += 1) {
+        const other = neighbors[n];
+        if (other !== enemy) {
+          const sepX = enemy.x - other.x;
+          const sepY = enemy.y - other.y;
+          const distSq = sepX * sepX + sepY * sepY;
+          const minDist = enemy.radius + other.radius;
+          if (distSq > 0.001 && distSq < minDist * minDist) {
+            const dist = Math.sqrt(distSq);
+            const push = (minDist - dist) * 0.45 * 16 * delta;
+            enemy.x += (sepX / dist) * push;
+            enemy.y += (sepY / dist) * push;
+          }
         }
       }
-      if (enemy.kind === 'archer' && distance < 250 && Math.random() < delta * 0.25) this.fireEnemyProjectile(enemy);
-      if (enemy.kind === 'imp' && distance < enemy.radius + 22) {
-        this.dealAreaDamage(enemy.x, enemy.y, 88, enemy.contactDamage * 1.35, 0xff774b, 'fire');
-        this.removeEnemy(enemy, false);
-        this.onEnemyKilled(enemy.kind, enemy.elite);
+
+      // Execute combat state machine and receive any emitted attack event
+      const attackEvent = enemy.update(
+        playerX,
+        playerY,
+        delta,
+        this.gameTime,
+        () => highThreatActiveCount < 3
+      );
+
+      if (attackEvent) {
+        if (attackEvent.type === 'projectile') {
+          const pAngle = Math.atan2(
+            attackEvent.targetY - attackEvent.originY,
+            attackEvent.targetX - attackEvent.originX
+          );
+          this.spawnEnemyProjectile(
+            attackEvent.originX,
+            attackEvent.originY,
+            pAngle,
+            145,
+            attackEvent.damage,
+            attackEvent.color
+          );
+        } else if (attackEvent.type === 'explosion') {
+          this.dealAreaDamage(
+            attackEvent.originX,
+            attackEvent.originY,
+            attackEvent.radius,
+            attackEvent.damage,
+            attackEvent.color,
+            'fire'
+          );
+          this.effects.burst(attackEvent.originX, attackEvent.originY, attackEvent.color, true);
+          this.cameraController.triggerShake(0.18, 0.22);
+          const distToPlayer = Math.hypot(playerX - attackEvent.originX, playerY - attackEvent.originY);
+          if (
+            distToPlayer < attackEvent.radius &&
+            this.player.takeDamage(this.getPlayerDamage(attackEvent.damage), this.gameTime, 0.65)
+          ) {
+            this.spawnDamageNumber(playerX, playerY - 30, Math.round(attackEvent.damage), false, attackEvent.color);
+            audioService.playSFX('hurt', { throttle: 0.28 });
+            this.callbacks.onPlayerHit?.();
+            void HapticsService.medium(this.save.settings.haptics);
+            if (this.player.stats.currentHP <= 0) {
+              this.finishGameOver();
+              return;
+            }
+          }
+          this.removeEnemy(enemy, false);
+          this.onEnemyKilled(enemy.kind, enemy.elite);
+        } else {
+          // Melee, dive, leap
+          const hitDist = Math.hypot(playerX - attackEvent.targetX, playerY - attackEvent.targetY);
+          if (
+            hitDist < attackEvent.radius + 18 &&
+            this.player.takeDamage(this.getPlayerDamage(attackEvent.damage), this.gameTime, 0.58)
+          ) {
+            this.spawnDamageNumber(playerX, playerY - 30, Math.round(attackEvent.damage), false, attackEvent.color);
+            this.effects.burst(playerX, playerY, attackEvent.color);
+            this.cameraController.triggerShake(0.12, 0.18);
+            audioService.playSFX('hurt', { throttle: 0.32 });
+            void HapticsService.medium(this.save.settings.haptics);
+            this.callbacks.onPlayerHit?.();
+            this.callbacks.onSnapshot(this.getSnapshot());
+            if (this.player.stats.currentHP <= 0) {
+              this.finishGameOver();
+              return;
+            }
+          }
+        }
       }
     }
   }
@@ -440,29 +535,54 @@ export class SurvivorGame3D {
     if (dropXp) this.spawnXP(x, y, enemy.xpValue);
   }
 
-  private findNearestTarget(): TargetPoint | undefined {
-    const playerX = this.player.x;
-    const playerY = this.player.y;
-    const targets = this.spatialGrid.queryRadius(playerX, playerY, 570);
-    let nearest: TargetPoint | undefined;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const enemy of targets) {
-      const dx = enemy.x - playerX;
-      const dy = enemy.y - playerY;
-      const distance = dx * dx + dy * dy;
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = { id: enemy.id, x: enemy.x, y: enemy.y };
+  private findAimAssistTarget(
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number,
+    maxAngleRad = 0.22,
+    maxDist = 520
+  ): TargetPoint | undefined {
+    let bestTarget: TargetPoint | undefined;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    const candidates = this.spatialGrid.queryRadius(originX, originY, maxDist);
+    for (const enemy of candidates) {
+      const dx = enemy.x - originX;
+      const dy = enemy.y - originY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < 16) continue;
+      const dist = Math.sqrt(distSq);
+      const dot = (dx / dist) * dirX + (dy / dist) * dirY;
+      const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+      if (angle <= maxAngleRad) {
+        const score = angle * 2.0 + (dist / maxDist);
+        if (score < bestScore) {
+          bestScore = score;
+          bestTarget = { id: enemy.id, x: enemy.x, y: enemy.y };
+        }
       }
     }
-    const boss = this.bossSystem?.isActive() ? this.boss : undefined;
-    if (boss) {
-      const dx = boss.x - playerX;
-      const dy = boss.y - playerY;
-      const distance = dx * dx + dy * dy;
-      if (distance < nearestDistance) nearest = { id: 'boss', x: boss.x, y: boss.y };
+
+    if (this.bossSpawned && this.bossSystem?.isActive() && this.boss) {
+      const dx = this.boss.x - originX;
+      const dy = this.boss.y - originY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= maxDist * maxDist) {
+        const dist = Math.sqrt(distSq);
+        const dot = (dx / dist) * dirX + (dy / dist) * dirY;
+        const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+        if (angle <= maxAngleRad) {
+          const score = angle * 2.0 + (dist / maxDist);
+          if (score < bestScore) {
+            bestScore = score;
+            bestTarget = { id: 'boss', x: this.boss.x, y: this.boss.y };
+          }
+        }
+      }
     }
-    return nearest;
+
+    return bestTarget;
   }
 
   private fireProjectile(spec: ProjectileSpec): void {
@@ -476,7 +596,7 @@ export class SurvivorGame3D {
       const projectile = this.projectiles[projectileIndex];
       projectile.update(delta);
       let hit = false;
-      if (projectile.spec.target?.id === 'boss' && this.bossSpawned && this.bossSystem.isActive() && this.boss) {
+      if (this.bossSpawned && this.bossSystem.isActive() && this.boss) {
         const dx = projectile.x - this.boss.x;
         const dy = projectile.y - this.boss.y;
         if (Math.sqrt(dx * dx + dy * dy) < 42 + projectile.spec.radius) {
@@ -492,7 +612,7 @@ export class SurvivorGame3D {
           const dx = projectile.x - enemy.x;
           const dy = projectile.y - enemy.y;
           if (Math.sqrt(dx * dx + dy * dy) > enemy.radius + projectile.spec.radius + 2) continue;
-          this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color, projectile.spec.damageType);
+          this.damageEnemy(enemy, projectile.spec.damage, projectile.spec.color, projectile.spec.damageType, projectile.x, projectile.y);
           if (projectile.spec.explosive) this.dealAreaDamage(projectile.x, projectile.y, 68, projectile.spec.damage * 0.64, projectile.spec.color, projectile.spec.damageType);
           this.effects.projectileImpact(projectile.x, projectile.y, projectile.spec.color);
           audioService.playSFX('hit', { pitch: projectile.spec.explosive ? 0.76 : 1, throttle: 0.08 });
@@ -507,9 +627,32 @@ export class SurvivorGame3D {
     }
   }
 
-  private damageEnemy(enemy: Enemy3D, baseDamage: number, color: number, damageType: DamageType): void {
+  private damageEnemy(
+    enemy: Enemy3D,
+    baseDamage: number,
+    color: number,
+    damageType: DamageType,
+    sourceX?: number,
+    sourceY?: number
+  ): void {
     const monster = getMonsterDefinition(enemy.kind);
-    const result = calculateDamage({ baseDamage, damageType, weakness: monster.weakness, resistance: monster.resistance, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
+    let finalBase = baseDamage;
+
+    // Cursed Knight frontal shield reduces incoming frontal damage by 45%
+    if (sourceX !== undefined && sourceY !== undefined && enemy.checkFrontShield(sourceX, sourceY)) {
+      finalBase *= 0.55;
+      this.effects.burst(enemy.x, enemy.y, 0x5ea4ff);
+    }
+
+    const result = calculateDamage({
+      baseDamage: finalBase,
+      damageType,
+      weakness: monster.weakness,
+      resistance: monster.resistance,
+      canCrit: true,
+      critChance: this.player.stats.critChance,
+      critMultiplier: this.player.stats.critMultiplier,
+    });
     const killed = enemy.damage(result.finalDamage);
     this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, result.critical ? 0xffd37c : color);
     this.effects.burst(enemy.x, enemy.y, result.critical ? 0xffd37c : color, result.critical);
@@ -640,6 +783,7 @@ export class SurvivorGame3D {
     this.levelUpOpen = true;
     this.isRunPaused = true;
     this.input.reset();
+    audioService.duckMusic(0.38, 60);
     this.runController.pauseRun();
     this.callbacks.onPaused(true);
     this.callbacks.onLevelUp(generateUpgradeChoices(this.weaponSystem.getLevels(), this.passiveLevels, 3));
@@ -663,6 +807,7 @@ export class SurvivorGame3D {
       this.bossWarningShown = true;
       this.bossSpawnCountdown = 3.4;
       this.callbacks.onBossWarning();
+      audioService.duckMusic(0.32, 3.4);
       audioService.playSFX('boss-warning', { throttle: 0.5 });
       void HapticsService.heavy(this.save.settings.haptics);
     }
@@ -830,6 +975,7 @@ export class SurvivorGame3D {
     const result = this.buildRunResult(this.stage.coinReward + Math.round(this.gameTime / 10) + this.enemies.length + 30);
     this.callbacks.onSnapshot(this.getSnapshot());
     audioService.playSFX('stage-clear', { throttle: 0.4 });
+    audioService.crossfadeMusic('menu', 1.2);
     void HapticsService.success(this.save.settings.haptics);
     this.pendingResultTimer = window.setTimeout(() => { this.pendingResultTimer = undefined; this.callbacks.onStageClear(result); }, 800);
   }
@@ -843,6 +989,7 @@ export class SurvivorGame3D {
     const result = this.buildRunResult(Math.max(6, Math.round(this.gameTime / 14) + Math.round(this.enemies.length / 8)));
     this.callbacks.onSnapshot(this.getSnapshot());
     audioService.playSFX('game-over', { throttle: 0.4 });
+    audioService.crossfadeMusic('menu', 1.2);
     this.pendingResultTimer = window.setTimeout(() => { this.pendingResultTimer = undefined; this.callbacks.onGameOver(result); }, 500);
   }
 
