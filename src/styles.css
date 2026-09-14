@@ -1696,4 +1696,106 @@ main { min-height: 100svh; width: min(100%, 540px); margin: 0 auto; overflow: hi
   letter-spacing: 0.5px;
 }
 
+/* Home Screen quick actions & Codex shortcut */
+.home-stage-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+.home-stage-row .home-stage-link {
+  flex: 1;
+}
+.home-codex-shortcut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 58px;
+  min-height: 58px;
+  border-radius: 14px;
+  background: rgba(8, 26, 46, 0.85);
+  border: 1.5px solid rgba(80, 185, 235, 0.45);
+  color: #75dbff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.home-codex-shortcut:active {
+  transform: scale(0.94);
+  border-color: #62ecff;
+}
+.home-codex-shortcut span {
+  font: 800 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+  color: #cbeefb;
+}
+
+/* Stage 5 World Boss Feature Card */
+.stage-art__boss-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: auto;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(38, 12, 18, 0.92), rgba(18, 6, 10, 0.95));
+  border: 1.5px solid rgba(248, 113, 113, 0.6);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.25), inset 0 0 16px rgba(248, 113, 113, 0.15);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.stage-art__boss-feature:active {
+  transform: scale(0.985);
+  border-color: #fca5a5;
+}
+.stage-art__boss-portrait {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1.5px solid rgba(248, 113, 113, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.stage-art__boss-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.stage-art__boss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f87171;
+  font: 800 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
+}
+.stage-art__boss-title {
+  color: #fef2f2;
+  font: 800 18px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.5px;
+}
+.stage-art__boss-sub {
+  color: #fca5a5;
+  font-size: 10px;
+}
+.stage-art__boss-arrow {
+  color: #f87171;
+  margin-left: auto;
+}
+
+/* World Map Diorama Backdrop */
+.map-world-view__backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.45;
+  filter: saturate(1.1) brightness(0.85);
+}
+
 

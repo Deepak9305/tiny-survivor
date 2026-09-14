@@ -2,8 +2,20 @@ import * as THREE from 'three';
 import { logicalToWorld } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 
-type Particle = { mesh: THREE.Mesh; velocity: THREE.Vector3; life: number; maxLife: number };
-type Effect = { group: THREE.Group; life: number; maxLife: number; kind: 'ring' | 'burst' | 'lightning' };
+type Particle = {
+  mesh: THREE.Mesh;
+  velocity: THREE.Vector3;
+  life: number;
+  maxLife: number;
+  baseScale: number;
+};
+
+type Effect = {
+  group: THREE.Group;
+  life: number;
+  maxLife: number;
+  kind: 'ring' | 'burst' | 'lightning' | 'deathCorpse';
+};
 
 export class CombatEffects3D {
   private readonly effects: Effect[] = [];
@@ -21,14 +33,22 @@ export class CombatEffects3D {
   ring(x: number, y: number, radius: number, color: number): void {
     const group = new THREE.Group();
     // Outer colored shockwave ring
-    const ringMaterial = this.resources.basicMaterial(`effect-ring-${color}`, color, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }).clone();
+    const ringMaterial = this.resources.basicMaterial(`effect-ring-${color}`, color, {
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+    }).clone();
     ringMaterial.opacity = 0.85;
     const ring = addMesh(group, this.resources.ring(`effect-ring-${radius}`, Math.max(0.12, radius * 0.72), Math.max(0.16, radius * 0.82)), ringMaterial);
     ring.userData.baseOpacity = 0.85;
     ring.rotation.x = -Math.PI / 2;
 
     // Inner bright white-hot shockwave pulse
-    const innerMaterial = this.resources.basicMaterial(`effect-ring-inner-${color}`, 0xffffff, { transparent: true, opacity: 0.95, side: THREE.DoubleSide }).clone();
+    const innerMaterial = this.resources.basicMaterial(`effect-ring-inner-${color}`, 0xffffff, {
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    }).clone();
     innerMaterial.opacity = 0.95;
     const innerRing = addMesh(group, this.resources.ring(`effect-ring-in-${radius}`, Math.max(0.08, radius * 0.45), Math.max(0.11, radius * 0.55)), innerMaterial);
     innerRing.userData.baseOpacity = 0.95;
@@ -47,18 +67,23 @@ export class CombatEffects3D {
     for (let index = 0; index < count; index += 1) {
       const isCore = index % 3 === 0;
       const pColor = isCore ? 0xffffff : color;
-      const particleMaterial = this.resources.basicMaterial(`effect-p-${pColor}`, pColor, { transparent: true, opacity: 0.95 }).clone();
+      const particleMaterial = this.resources.basicMaterial(`effect-p-${pColor}`, pColor, {
+        transparent: true,
+        opacity: 0.95,
+      }).clone();
       particleMaterial.opacity = 0.95;
       const mesh = addMesh(this.parent, this.resources.octa('effect-particle'), particleMaterial);
-      const angle = index / count * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+      const angle = (index / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
       const speed = (critical ? 1.4 : 0.9) + Math.random() * (critical ? 1.6 : 0.95);
+      const baseScale = (critical ? 0.16 : 0.1) * (isCore ? 0.75 : 1.0);
       mesh.position.set(point.x, 0.45 + Math.random() * 0.5, point.z);
-      mesh.scale.setScalar((critical ? 0.14 : 0.09) * (isCore ? 0.75 : 1.0));
+      mesh.scale.setScalar(baseScale);
       this.particles.push({
         mesh,
         velocity: new THREE.Vector3(Math.cos(angle) * speed, 0.9 + Math.random() * 1.1, Math.sin(angle) * speed),
         life: 0,
         maxLife: this.reducedEffects ? 0.3 : 0.52,
+        baseScale,
       });
     }
   }
@@ -113,54 +138,94 @@ export class CombatEffects3D {
     this.burst(x, y, 0xffffff, false);
   }
 
+  /**
+   * High-visibility Chain Lightning Beam (Camera-facing ribbon segments with dual glow & core)
+   * Does NOT rely on browser LineBasicMaterial linewidth bug.
+   */
   lightning(fromX: number, fromY: number, toX: number, toY: number, color: number): void {
     const start = logicalToWorld(fromX, fromY);
     const end = logicalToWorld(toX, toY);
     const distance = start.distanceTo(end);
     const segments = Math.max(4, Math.min(8, Math.ceil(distance * 1.8)));
     const points: THREE.Vector3[] = [];
+
     for (let index = 0; index <= segments; index += 1) {
       const progress = index / segments;
-      const jitter = index === 0 || index === segments ? 0 : 0.18;
-      points.push(new THREE.Vector3(
-        THREE.MathUtils.lerp(start.x, end.x, progress) + (Math.random() - 0.5) * jitter,
-        0.78 + (Math.random() - 0.5) * 0.12,
-        THREE.MathUtils.lerp(start.z, end.z, progress) + (Math.random() - 0.5) * jitter,
-      ));
+      const jitter = index === 0 || index === segments ? 0 : 0.22;
+      points.push(
+        new THREE.Vector3(
+          THREE.MathUtils.lerp(start.x, end.x, progress) + (Math.random() - 0.5) * jitter,
+          0.78 + (Math.random() - 0.5) * 0.15,
+          THREE.MathUtils.lerp(start.z, end.z, progress) + (Math.random() - 0.5) * jitter
+        )
+      );
     }
-    const group = new THREE.Group();
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    
-    // Outer colored glow line
-    const outerMaterial = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, linewidth: 2 });
-    group.add(new THREE.Line(geometry, outerMaterial));
 
-    // Inner bright white-hot core line
-    const innerMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false });
-    group.add(new THREE.Line(geometry.clone(), innerMaterial));
+    const group = new THREE.Group();
+
+    // Build connected cylindrical / quad segments for thick visible lightning arc
+    const outerMat = this.resources.basicMaterial(`beam-outer-${color}`, color, {
+      transparent: true,
+      opacity: 0.85,
+    });
+    const coreMat = this.resources.basicMaterial('beam-core-white', 0xffffff, {
+      transparent: true,
+      opacity: 0.95,
+    });
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const pA = points[i];
+      const pB = points[i + 1];
+      const segLen = pA.distanceTo(pB);
+      const segMid = pA.clone().lerp(pB, 0.5);
+
+      // Outer glow beam segment
+      const outerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, segLen, 6), outerMat);
+      outerMesh.position.copy(segMid);
+      outerMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pB.clone().sub(pA).normalize());
+      group.add(outerMesh);
+
+      // Inner white-hot core segment
+      const coreMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, segLen, 6), coreMat);
+      coreMesh.position.copy(segMid);
+      coreMesh.quaternion.copy(outerMesh.quaternion);
+      group.add(coreMesh);
+    }
 
     this.parent.add(group);
-    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.12 : 0.18, kind: 'lightning' });
-    
+    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.14 : 0.2, kind: 'lightning' });
+
     // Impact spark at target
     this.burst(toX, toY, color, false);
   }
 
   update(delta: number): void {
+    // Update active effects (rings, lightning beams, death corpses)
     for (let index = this.effects.length - 1; index >= 0; index -= 1) {
       const effect = this.effects[index];
       effect.life += delta;
       const progress = Math.min(1, effect.life / effect.maxLife);
-      effect.group.scale.setScalar(effect.kind === 'ring' ? 0.38 + progress * 1.05 : 1);
+
+      if (effect.kind === 'ring') {
+        effect.group.scale.setScalar(0.38 + progress * 1.05);
+      } else if (effect.kind === 'lightning') {
+        effect.group.scale.setScalar(1 + (Math.random() - 0.5) * 0.08);
+      }
+
       effect.group.traverse((child) => {
-        if ((child instanceof THREE.Mesh || child instanceof THREE.Line) && child.material instanceof THREE.Material) child.material.opacity = (child.userData.baseOpacity as number | undefined ?? 0.95) * (1 - progress);
+        if ((child instanceof THREE.Mesh || child instanceof THREE.Line) && child.material instanceof THREE.Material) {
+          child.material.opacity = (child.userData.baseOpacity as number | undefined ?? 0.95) * (1 - progress);
+        }
       });
+
       if (effect.life >= effect.maxLife) {
         disposeTransientMaterials(effect.group);
         effect.group.removeFromParent();
         this.effects.splice(index, 1);
       }
     }
+
+    // Update active particles (sparks, bursts)
     for (let index = this.particles.length - 1; index >= 0; index -= 1) {
       const particle = this.particles[index];
       particle.life += delta;
@@ -169,9 +234,15 @@ export class CombatEffects3D {
       particle.mesh.rotation.x += delta * 8;
       particle.mesh.rotation.z += delta * 5;
       const progress = particle.life / particle.maxLife;
-      particle.mesh.scale.setScalar(Math.max(0.001, (1 - progress) * 0.08));
+
+      // Preserves original baseScale so critical hits stay visibly larger!
+      particle.mesh.scale.setScalar(Math.max(0.001, (1 - progress) * particle.baseScale));
+
       const material = particle.mesh.material;
-      if (material instanceof THREE.Material) material.opacity = Math.max(0, 0.9 * (1 - progress));
+      if (material instanceof THREE.Material) {
+        material.opacity = Math.max(0, 0.95 * (1 - progress));
+      }
+
       if (particle.life >= particle.maxLife) {
         disposeMeshMaterials(particle.mesh);
         particle.mesh.removeFromParent();

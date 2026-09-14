@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Clock3, Coins, Flame, Gem, Ghost, Shield, Skull, Sparkles, Star, Swords, Zap } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock3, Coins, Ghost, Flame, Shield, Skull, Sparkles, Star, Swords, Zap } from 'lucide-react';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { BOSS_DEFINITIONS } from '../data/bosses';
@@ -6,7 +6,13 @@ import { getMonsterDefinition } from '../data/monsters';
 import { getStage, WORLD_META } from '../data/stages';
 import type { EnemyKind, SaveData } from '../types';
 
-interface StageDetailScreenProps { stageId: string; save: SaveData; onBack: () => void; onStart: () => void; onBestiary: (id: string) => void }
+interface StageDetailScreenProps {
+  stageId: string;
+  save: SaveData;
+  onBack: () => void;
+  onStart: () => void;
+  onBestiary: (id: string) => void;
+}
 
 function getWorldBg(worldId: number): string {
   if (worldId === 2) return '/assets/images/bg_forest.jpg';
@@ -16,13 +22,27 @@ function getWorldBg(worldId: number): string {
 }
 
 function getCreatureThumb(kind: EnemyKind): string | undefined {
-  const map: Partial<Record<EnemyKind, string>> = {
+  const map: Record<EnemyKind, string> = {
     skeleton: '/assets/images/creature_skeleton.jpg',
     bat: '/assets/images/creature_bat.jpg',
     slime: '/assets/images/creature_slime.jpg',
     ghost: '/assets/images/creature_ghost.jpg',
+    archer: '/assets/images/creature_archer.jpg',
+    knight: '/assets/images/creature_knight.jpg',
+    demon: '/assets/images/creature_demon.jpg',
+    imp: '/assets/images/creature_imp.jpg',
   };
   return map[kind];
+}
+
+function getBossArt(bossId: string): string {
+  const map: Record<string, string> = {
+    'skeleton-king': '/assets/images/boss_skeleton_king.jpg',
+    'forest-witch': '/assets/images/boss_forest_witch.jpg',
+    'frost-golem': '/assets/images/boss_frost_golem.jpg',
+    'demon-lord': '/assets/images/boss_demon_lord.jpg',
+  };
+  return map[bossId] ?? '/assets/images/boss_skeleton_king.jpg';
 }
 
 export function StageDetailScreen({ stageId, save, onBack, onStart, onBestiary }: StageDetailScreenProps) {
@@ -42,15 +62,18 @@ export function StageDetailScreen({ stageId, save, onBack, onStart, onBestiary }
         <div className="stage-art__shade" />
         <div className="stage-art__topline">
           <span className="eyebrow">WORLD {stage.worldId} · {world?.name ?? stage.biome}</span>
-          <span className="stage-art__tag">{stage.bossStage ? 'BOSS STAGE' : 'ADVENTURE'}</span>
+          <span className="stage-art__tag">{stage.bossStage ? 'WORLD BOSS' : 'ADVENTURE'}</span>
         </div>
-        <div className="stage-art__copy">
-          <h1>{stage.name}</h1>
-          <p>{stage.description}</p>
-        </div>
+
         {boss && (
-          <button type="button" className="stage-art__boss" onClick={() => onBestiary(boss.id)}>
-            <Skull size={15} /> WORLD BOSS · {boss.name.toUpperCase()} <ArrowRight size={14} />
+          <button type="button" className="stage-art__boss-feature" onClick={() => onBestiary(boss.id)}>
+            <img src={getBossArt(boss.id)} alt={boss.name} className="stage-art__boss-portrait" />
+            <div className="stage-art__boss-info">
+              <span className="stage-art__boss-badge"><Skull size={13} /> STAGE 5 WORLD BOSS</span>
+              <strong className="stage-art__boss-title">{boss.name}</strong>
+              <small className="stage-art__boss-sub">{boss.description || 'Supreme Boss'}</small>
+            </div>
+            <ArrowRight size={18} className="stage-art__boss-arrow" />
           </button>
         )}
       </section>

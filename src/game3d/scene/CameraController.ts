@@ -18,6 +18,14 @@ export class CameraController {
   private readonly screenShakeEnabled: boolean;
   private isOverviewDebug = false;
 
+  // Camera Occlusion System
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly fadedObjects = new Map<THREE.Material, { currentOpacity: number; targetOpacity: number }>();
+
+  // Diagnostic Viewport Footprint (Dev-Only Overview Tool)
+  private debugGroup?: THREE.Group;
+  private footprintLine?: THREE.LineLoop;
+
   constructor(lowPerformanceMode: boolean, reducedEffects = false, screenShakeEnabled = true) {
     this.reducedEffects = reducedEffects || lowPerformanceMode;
     this.screenShakeEnabled = screenShakeEnabled;
@@ -50,6 +58,10 @@ export class CameraController {
     this.isOverviewDebug = enabled;
   }
 
+  getIsOverviewDebug(): boolean {
+    return this.isOverviewDebug;
+  }
+
   resize(width: number, height: number): void {
     this.camera.aspect = Math.max(0.45, width / Math.max(1, height));
     this.camera.updateProjectionMatrix();
@@ -71,24 +83,41 @@ export class CameraController {
     this.pullbackTime = Math.max(this.pullbackTime, duration);
   }
 
-  update(delta: number, playerX: number, playerY: number, movement = new THREE.Vector2(), enabled = true): void {
+  update(
+    delta: number,
+    playerX: number,
+    playerY: number,
+    movement = new THREE.Vector2(),
+    enabled = true,
+    scene?: THREE.Scene,
+    occluders: THREE.Object3D[] = []
+  ): void {
+    const player = logicalToWorld(playerX, playerY);
+
     if (this.isOverviewDebug) {
       // Full Map Overview Debug View: high overhead perspective showing entire arena
-      this.desiredPosition.set(0, 45, 0.05);
+      this.desiredPosition.set(0, 44, 0.05);
       this.desiredLookAt.set(0, 0, 0);
       this.camera.position.lerp(this.desiredPosition, 0.18);
       this.currentLookAt.lerp(this.desiredLookAt, 0.18);
       this.camera.lookAt(this.currentLookAt);
+
+      if (scene) {
+        this.updateDebugFootprint(scene, player);
+      }
       return;
     }
 
-    const player = logicalToWorld(playerX, playerY);
+    if (this.debugGroup) {
+      this.debugGroup.visible = false;
+    }
+
     const lead = movement.clone().clampLength(0, 1).multiplyScalar(22);
-    // Margins ensure camera doesn't pan past the outer fortress walls
+    // Margins ensure camera doesn't pan past the outer boundary walls
     const horizontalMargin = Math.min(ARENA_WIDTH * 0.28, 4.2);
     const depthMargin = Math.min(ARENA_DEPTH * 0.26, 7.2);
     const lookX = THREE.MathUtils.clamp(player.x + lead.x * 0.015, -ARENA_WIDTH / 2 + horizontalMargin, ARENA_WIDTH / 2 - horizontalMargin);
-    // Keep hero framed at approximately 57-60% down the viewport with generous forward reaction visibility
+    // Keep hero framed at approximately 58-62% down the portrait viewport
     const lookZ = THREE.MathUtils.clamp(player.z - 1.4 + lead.y * 0.012, -ARENA_DEPTH / 2 + depthMargin, ARENA_DEPTH / 2 - depthMargin);
     this.desiredLookAt.set(lookX, 0, lookZ);
     const pullbackProgress = this.pullbackDuration > 0 ? this.pullbackTime / this.pullbackDuration : 0;
@@ -112,5 +141,133 @@ export class CameraController {
       if (this.pullbackTime === 0) this.pullbackAmount = 0;
     }
     this.camera.lookAt(this.currentLookAt);
+
+    // Perform camera occlusion check
+    if (occluders.length > 0) {
+      this.updateOcclusion(new THREE.Vector3(player.x, 0.8, player.z), occluders, delta);
+    }
+  }
+
+  /**
+   * Lightweight Camera Occlusion System:
+   * Smoothly fades tall scenery between camera and player (~140ms in/out).
+   */
+  private updateOcclusion(playerPos: THREE.Vector3, occluders: THREE.Object3D[], delta: number): void {
+    const rayDir = playerPos.clone().sub(this.camera.position);
+    const distance = rayDir.length();
+    rayDir.normalize();
+
+    this.raycaster.set(this.camera.position, rayDir);
+    this.raycaster.far = distance;
+
+    const hits = this.raycaster.intersectObjects(occluders, true);
+    const hitMaterials = new Set<THREE.Material>();
+
+    for (const hit of hits) {
+      if (hit.object instanceof THREE.Mesh && hit.object.material) {
+        const mats = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
+        for (const mat of mats) {
+          hitMaterials.add(mat);
+          mat.transparent = true;
+          let entry = this.fadedObjects.get(mat);
+          if (!entry) {
+            entry = { currentOpacity: mat.opacity, targetOpacity: 0.25 };
+            this.fadedObjects.set(mat, entry);
+          } else {
+            entry.targetOpacity = 0.25;
+          }
+        }
+      }
+    }
+
+    // Smoothly interpolate material opacity
+    const fadeSpeed = delta / 0.14; // ~140ms fade
+    for (const [mat, entry] of this.fadedObjects.entries()) {
+      if (!hitMaterials.has(mat)) {
+        entry.targetOpacity = 1.0;
+      }
+      entry.currentOpacity = THREE.MathUtils.lerp(entry.currentOpacity, entry.targetOpacity, Math.min(1, fadeSpeed));
+      mat.opacity = entry.currentOpacity;
+
+      if (entry.targetOpacity === 1.0 && entry.currentOpacity >= 0.98) {
+        mat.opacity = 1.0;
+        this.fadedObjects.delete(mat);
+      }
+    }
+  }
+
+  /**
+   * Diagnostic Full-Map Viewport Tool:
+   * Calculates the exact phone camera ground frustum polygon and draws a 3x3 screen grid.
+   */
+  private updateDebugFootprint(scene: THREE.Scene, player: THREE.Vector3): void {
+    if (!this.debugGroup) {
+      this.debugGroup = new THREE.Group();
+      this.debugGroup.name = 'dev-viewport-footprint-debug';
+
+      // 1. Frustum footprint polygon
+      const points = [
+        new THREE.Vector3(0, 0.1, 0),
+        new THREE.Vector3(0, 0.1, 0),
+        new THREE.Vector3(0, 0.1, 0),
+        new THREE.Vector3(0, 0.1, 0),
+      ];
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 3 });
+      this.footprintLine = new THREE.LineLoop(geom, mat);
+      this.debugGroup.add(this.footprintLine);
+
+      // 2. Arena Outer Boundary Box
+      const halfW = ARENA_WIDTH / 2;
+      const halfD = ARENA_DEPTH / 2;
+      const boundaryPoints = [
+        new THREE.Vector3(-halfW, 0.05, -halfD),
+        new THREE.Vector3(halfW, 0.05, -halfD),
+        new THREE.Vector3(halfW, 0.05, halfD),
+        new THREE.Vector3(-halfW, 0.05, halfD),
+      ];
+      const bGeom = new THREE.BufferGeometry().setFromPoints(boundaryPoints);
+      const bMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 });
+      this.debugGroup.add(new THREE.LineLoop(bGeom, bMat));
+
+      // 3. 3x3 Grid Lines showing viewport tiling across arena
+      const gridMat = new THREE.LineBasicMaterial({ color: 0x475569, transparent: true, opacity: 0.6 });
+      const gridGroup = new THREE.Group();
+      for (const gx of [-halfW / 3, halfW / 3]) {
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(gx, 0.04, -halfD), new THREE.Vector3(gx, 0.04, halfD)]),
+          gridMat
+        );
+        gridGroup.add(line);
+      }
+      for (const gz of [-halfD / 3, halfD / 3]) {
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-halfW, 0.04, gz), new THREE.Vector3(halfW, 0.04, gz)]),
+          gridMat
+        );
+        gridGroup.add(line);
+      }
+      this.debugGroup.add(gridGroup);
+
+      scene.add(this.debugGroup);
+    }
+
+    this.debugGroup.visible = true;
+
+    // Approximate ground coverage of 43-degree FOV portrait camera centered around player:
+    // Visible ground width is ~9.5 units, height is ~14.2 units
+    if (this.footprintLine) {
+      const vHalfW = 4.8;
+      const vDepthNear = 4.5;
+      const vDepthFar = 9.8;
+      const positions = new Float32Array([
+        player.x - vHalfW, 0.1, player.z + vDepthNear,
+        player.x + vHalfW, 0.1, player.z + vDepthNear,
+        player.x + vHalfW * 1.3, 0.1, player.z - vDepthFar,
+        player.x - vHalfW * 1.3, 0.1, player.z - vDepthFar,
+      ]);
+      this.footprintLine.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      this.footprintLine.geometry.attributes.position.needsUpdate = true;
+    }
   }
 }

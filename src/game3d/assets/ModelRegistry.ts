@@ -146,18 +146,21 @@ export class ModelRegistry {
 export const modelRegistry = new ModelRegistry();
 
 /**
- * Deep-clones a Three.js hierarchy ensuring materials and geometries are preserved properly.
+ * Clones a Three.js hierarchy. Shares immutable materials and geometries by default
+ * to minimize draw call overhead and shader re-compilations.
  */
-export function cloneModel(model: THREE.Group): THREE.Group {
+export function cloneModel(model: THREE.Group, cloneMaterials = false): THREE.Group {
   const clone = model.clone(true);
-  clone.traverse((node) => {
-    if (node instanceof THREE.Mesh) {
-      if (Array.isArray(node.material)) {
-        node.material = node.material.map((mat) => mat.clone());
-      } else if (node.material) {
-        node.material = node.material.clone();
+  if (cloneMaterials) {
+    clone.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (Array.isArray(node.material)) {
+          node.material = node.material.map((mat) => mat.clone());
+        } else if (node.material) {
+          node.material = node.material.clone();
+        }
       }
-    }
-  });
+    });
+  }
   return clone;
 }

@@ -5,6 +5,7 @@ import type { SpatialEntity } from '../../game/systems/SpatialGrid';
 import { LOGICAL_SCALE, setLogicalPosition } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 import { addEliteAccent, createEnemyModel } from '../visuals/CharacterFactory';
+import { steerAroundObstacles } from '../scene/WorldObstacles';
 
 let enemySequence = 0;
 
@@ -17,6 +18,7 @@ export class Enemy3D implements SpatialEntity {
   readonly baseSpeed: number;
   readonly contactDamage: number;
   readonly xpValue: number;
+  readonly worldId: number;
   readonly group: THREE.Group;
   private readonly model: THREE.Group;
   private readonly healthFill: THREE.Mesh;
@@ -30,11 +32,22 @@ export class Enemy3D implements SpatialEntity {
   private readonly baseVisualScale: number;
   private readonly baseModelScale = 0.88;
 
-  constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1) {
+  constructor(
+    parent: THREE.Object3D,
+    kind: EnemyKind,
+    x: number,
+    y: number,
+    resources: SharedResources,
+    elite = false,
+    hpMultiplier = 1,
+    damageMultiplier = hpMultiplier,
+    worldId = 1
+  ) {
     const balance = ENEMY_BALANCE[kind];
     this.id = `enemy-${enemySequence += 1}`;
     this.kind = kind;
     this.elite = elite;
+    this.worldId = worldId;
     this.radius = balance.radius * (elite ? 1.28 : 1);
     this.maxHP = balance.hp * hpMultiplier * (elite ? 2.35 : 1);
     this.hp = this.maxHP;
@@ -77,6 +90,12 @@ export class Enemy3D implements SpatialEntity {
       directionX *= -1;
       directionY *= -1;
     }
+
+    // Local 2D obstacle steering around large landmarks
+    const steer = steerAroundObstacles(this.x, this.y, directionX, directionY, this.worldId);
+    directionX = steer.dirX;
+    directionY = steer.dirY;
+
     const speed = this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1);
     if (distance > 36 || preferredDistance) {
       this.x += directionX * speed * delta;
@@ -84,7 +103,11 @@ export class Enemy3D implements SpatialEntity {
     }
     this.syncPosition();
     this.phaseTime += delta;
-    const bob = this.kind === 'bat' || this.kind === 'ghost' ? Math.sin(this.phaseTime * 3.2) * 0.09 : Math.sin(this.phaseTime * 2.2) * 0.025;
+
+    // Movement bobbing & procedural animation per enemy archetype
+    const bob = this.kind === 'bat' || this.kind === 'ghost'
+      ? Math.sin(this.phaseTime * 3.4) * 0.09
+      : Math.sin(this.phaseTime * (this.kind === 'imp' ? 5.2 : 2.5)) * 0.035;
     this.model.position.y = bob;
     this.hitPulse = Math.max(0, this.hitPulse - delta);
     this.healthBarLife = Math.max(0, this.healthBarLife - delta);
@@ -92,23 +115,38 @@ export class Enemy3D implements SpatialEntity {
     const hitScale = this.hitPulse > 0 ? 1 + Math.sin((1 - this.hitPulse / 0.16) * Math.PI) * 0.13 : 1;
     this.model.scale.setScalar(this.baseVisualScale * this.baseModelScale * elitePulse * hitScale);
     this.model.rotation.y = Math.atan2(directionX, directionY);
+
     const parts = this.model.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
     if (this.kind === 'bat' && parts?.wings instanceof Array) {
       const wings = parts.wings;
       if (wings.length === 2) {
-        wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * 8) * 0.34;
-        wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * 8) * 0.34;
+        wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * 9) * 0.42;
+        wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * 9) * 0.42;
       }
     }
     if (this.kind === 'slime' && parts?.body instanceof THREE.Object3D) {
-      const squash = 1 + Math.sin(this.phaseTime * 3.3) * 0.06;
+      const squash = 1 + Math.sin(this.phaseTime * 3.6) * 0.1;
       parts.body.scale.y = 0.62 / squash;
       parts.body.scale.x = 0.82 * squash;
+      parts.body.scale.z = 0.72 * squash;
     }
     if (this.kind === 'ghost' && parts?.tails instanceof Array) {
       const tails = parts.tails;
-      for (let index = 0; index < tails.length; index += 1) tails[index].rotation.z += Math.sin(this.phaseTime * 3 + index) * delta * 0.55;
+      for (let index = 0; index < tails.length; index += 1) {
+        tails[index].rotation.z += Math.sin(this.phaseTime * 3.2 + index) * delta * 0.65;
+      }
     }
+    if (this.kind === 'skeleton' && parts?.arms instanceof Array) {
+      const arms = parts.arms;
+      if (arms.length === 2) {
+        arms[0].rotation.x = Math.sin(this.phaseTime * 6) * 0.35;
+        arms[1].rotation.x = -Math.sin(this.phaseTime * 6) * 0.35;
+      }
+    }
+    if (this.kind === 'knight' && parts?.sword instanceof THREE.Object3D) {
+      parts.sword.rotation.z = -0.45 + Math.sin(this.phaseTime * 4.2) * 0.18;
+    }
+
     this.healthBar.lookAt(this.group.position.clone().add(new THREE.Vector3(0, 4, 8)));
     if (this.kind === 'ghost') this.model.visible = Math.floor(now * 2) % 9 !== 0;
     else this.model.visible = true;

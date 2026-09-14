@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { clampLogicalPosition, setLogicalPosition } from '../core/coordinates';
+import { setLogicalPosition } from '../core/coordinates';
 import { SharedResources } from '../core/SharedResources';
 import { createShadowMage } from '../visuals/CharacterFactory';
+import { resolveObstacleCollision } from '../scene/WorldObstacles';
 
 export interface PlayerStats {
   maxHP: number;
@@ -19,6 +20,7 @@ export interface PlayerStats {
 export class Player3D {
   readonly group: THREE.Group;
   readonly stats: PlayerStats;
+  readonly worldId: number;
   private readonly character: THREE.Group;
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
@@ -36,10 +38,11 @@ export class Player3D {
   x: number;
   y: number;
 
-  constructor(parent: THREE.Object3D, x: number, y: number, stats: PlayerStats, resources: SharedResources) {
+  constructor(parent: THREE.Object3D, x: number, y: number, stats: PlayerStats, resources: SharedResources, worldId = 1) {
     this.x = x;
     this.y = y;
     this.stats = stats;
+    this.worldId = worldId;
     const visual = createShadowMage(resources);
     this.character = visual.root;
     this.aura = visual.aura;
@@ -48,6 +51,13 @@ export class Player3D {
     this.group = new THREE.Group();
     this.group.name = 'player';
     this.group.add(this.character);
+
+    // Subtle Cyan Focal Light attached directly to Player Group (Follows player everywhere)
+    const heroPointLight = new THREE.PointLight(0x38bdf8, 0.85, 4.8, 1.8);
+    heroPointLight.name = 'hero-point-light';
+    heroPointLight.position.set(0, 1.2, 0.2);
+    this.group.add(heroPointLight);
+
     parent.add(this.group);
     this.syncPosition();
   }
@@ -67,16 +77,23 @@ export class Player3D {
     const length = this.movement.length();
     if (length > 0.02) {
       const direction = this.movement.clone().normalize();
-      this.x = THREE.MathUtils.clamp(this.x + direction.x * this.stats.moveSpeed * delta, 48, worldWidth - 48);
-      this.y = THREE.MathUtils.clamp(this.y + direction.y * this.stats.moveSpeed * delta, 64, worldHeight - 64);
+      let nextX = THREE.MathUtils.clamp(this.x + direction.x * this.stats.moveSpeed * delta, 48, worldWidth - 48);
+      let nextY = THREE.MathUtils.clamp(this.y + direction.y * this.stats.moveSpeed * delta, 64, worldHeight - 64);
+
+      // 2D Static Obstacle Collision resolution
+      const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);
+      this.x = resolved.x;
+      this.y = resolved.y;
       this.direction = Math.atan2(direction.x, direction.y);
     }
     this.syncPosition();
     this.visualTime += delta;
     const moving = length > 0.02;
-    const bob = Math.sin(this.visualTime * (moving ? 8 : 4.8)) * (moving ? 0.055 : 0.028);
+
+    // Idle breathing & walk bounce
+    const bob = Math.sin(this.visualTime * (moving ? 8.5 : 3.8)) * (moving ? 0.055 : 0.022);
     this.character.position.y = bob;
-    this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, this.direction, Math.min(1, delta * 8));
+    this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, this.direction, Math.min(1, delta * 9));
     this.attackTime = Math.max(0, this.attackTime - delta);
     this.reviveTime = Math.max(0, this.reviveTime - delta);
     this.levelUpTime = Math.max(0, this.levelUpTime - delta);
@@ -97,11 +114,17 @@ export class Player3D {
     if (crystal instanceof THREE.Object3D) crystal.rotation.y += delta * (moving ? 4.5 : (celebrateProgress > 0 ? 8 : 2.2));
     const crystalHalo = this.parts.crystalHalo;
     if (crystalHalo instanceof THREE.Object3D) crystalHalo.rotation.z += delta * (celebrateProgress > 0 ? 5 : 2.4);
+
+    // Scarf trailing physics simulation
     const scarfTail = this.parts.scarfTail;
-    if (scarfTail instanceof THREE.Object3D) scarfTail.rotation.x = -0.22 + Math.sin(this.visualTime * 5.2) * (moving ? 0.24 : 0.1);
+    if (scarfTail instanceof THREE.Object3D) {
+      scarfTail.rotation.x = -0.22 + Math.sin(this.visualTime * 5.2) * (moving ? 0.28 : 0.1);
+      scarfTail.rotation.z = Math.cos(this.visualTime * 4.2) * (moving ? 0.15 : 0.05);
+    }
+
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
     this.aura.scale.setScalar(1 + Math.sin(this.visualTime * (lowHealth ? 5.6 : 3)) * (lowHealth ? 0.11 : 0.06) + celebrateProgress * 0.35);
-    this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * (moving ? 8 : 4.8))) * 0.045;
+    this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * (moving ? 8.5 : 3.8))) * 0.045;
     this.hitFlash = Math.max(0, this.hitFlash - delta);
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;

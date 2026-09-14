@@ -54,6 +54,7 @@ export class SurvivorGame3D {
   private readonly input: InputController;
   private readonly clock = new THREE.Clock();
   private readonly resizeObserver: ResizeObserver;
+  private arena?: THREE.Group;
   private readonly lowPerformanceMode: boolean;
   private player!: Player3D;
   private xpSystem = new XPSystem();
@@ -111,7 +112,7 @@ export class SurvivorGame3D {
     this.scene.add(this.actors, this.effectsRoot);
     this.cameraController = new CameraController(this.lowPerformanceMode, save.settings.reducedEffects, save.settings.screenShake);
     createLighting(this.scene, stage, this.lowPerformanceMode);
-    createArena(this.scene, stage, this.resources, this.lowPerformanceMode);
+    this.arena = createArena(this.scene, stage, this.resources, this.lowPerformanceMode);
     this.effects = new CombatEffects3D(this.effectsRoot, this.resources, save.settings.reducedEffects || this.lowPerformanceMode);
     this.damageText = new DamageText3D(this.effectsRoot, this.lowPerformanceMode);
     this.telegraphs = new Telegraph3D(this.effectsRoot, this.resources);
@@ -261,7 +262,20 @@ export class SurvivorGame3D {
     this.effects.update(delta);
     this.telegraphs.update(delta);
     this.damageText.update(delta);
-    if (this.player) this.cameraController.update(delta, this.player.x, this.player.y, this.player.getMovementVector(), !this.isRunPaused);
+    if (this.player) {
+      this.cameraController.update(
+        delta,
+        this.player.x,
+        this.player.y,
+        this.player.getMovementVector(),
+        !this.isRunPaused,
+        this.scene,
+        (this.arena?.userData.occluders as THREE.Object3D[] | undefined) ?? []
+      );
+      if (typeof this.arena?.userData.update === 'function') {
+        this.arena.userData.update(this.cameraController.camera.position, this.player.group.position, delta);
+      }
+    }
     this.renderer.render(this.scene, this.cameraController.camera);
     this.frameId = requestAnimationFrame(this.frame);
   };
@@ -281,7 +295,7 @@ export class SurvivorGame3D {
       critMultiplier: PLAYER_BALANCE.critMultiplier,
       xpMultiplier: 1 + (upgrades.xpGain ?? 0) * 0.08,
     };
-    this.player = new Player3D(this.actors, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, stats, this.resources);
+    this.player = new Player3D(this.actors, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, stats, this.resources, this.stage.worldId);
     this.player.initializePlayer();
     this.runController = new RunController(this.stage.id, this.stage.name);
     this.xpSystem = new XPSystem();
