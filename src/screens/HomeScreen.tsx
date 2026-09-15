@@ -177,7 +177,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                 {survivalUnlocked ? (
                   <ChevronRight size={18} className="home-menu-row__arrow" />
                 ) : (
-                  <span className="home-menu-row__locked-badge">LOCKED</span>
+                  <Lock size={16} className="home-menu-row__arrow" />
                 )}
               </button>
             </div>

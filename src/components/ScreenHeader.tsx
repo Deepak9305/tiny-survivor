@@ -1,17 +1,35 @@
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface ScreenHeaderProps {
   title: string;
   onBack: () => void;
-  right?: React.ReactNode;
+  right?: ReactNode;
 }
 
 export function ScreenHeader({ title, onBack, right }: ScreenHeaderProps) {
   return (
-    <header className="screen-header">
-      <button type="button" className="icon-button" onClick={onBack} aria-label="Back"><ArrowLeft size={21} /></button>
-      <div className="screen-header__title">{title}</div>
-      {right ?? <span className="screen-header__spacer" aria-hidden="true" />}
+    <header className="dark-fantasy-header">
+      <button
+        type="button"
+        className="dark-fantasy-back-btn"
+        onClick={onBack}
+        aria-label="Back"
+      >
+        <ChevronLeft size={24} />
+      </button>
+
+      <div className="dark-fantasy-title-wrap">
+        <h1 className="dark-fantasy-main-title">{title}</h1>
+        <div className="dark-fantasy-title-ornament">
+          <span className="dark-fantasy-title-diamond" />
+        </div>
+      </div>
+
+      <div className="dark-fantasy-right-slot">
+        {right ?? <span className="dark-fantasy-spacer" aria-hidden="true" />}
+      </div>
     </header>
   );
 }
+

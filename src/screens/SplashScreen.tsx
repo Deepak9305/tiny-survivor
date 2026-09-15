@@ -50,16 +50,16 @@ export function SplashScreen({ ready, onDone }: SplashScreenProps) {
   return (
     <main
       className="splash-screen"
-      style={{ backgroundImage: "url('/assets/tiny-survivor-key-art.png')", cursor: ready ? 'pointer' : 'default' }}
+      style={{ backgroundImage: "url('/assets/images/bg_gothic_cemetery.jpg')", cursor: ready ? 'pointer' : 'default' }}
       onClick={() => { if (ready) finish(); }}
     >
       <div className="splash-screen__shade" />
       <div className="splash-screen__content">
         <GameLogo />
-        <p className="splash-screen__kicker">SMALL HERO. BIG BATTLES.</p>
+        <p className="splash-screen__kicker">SURVIVE &bull; UPGRADE &bull; GET STRONGER</p>
         <div className="splash-screen__loading">
           <div style={{ width: `${progress}%` }} />
-          <span>{progress < 100 ? `Preparing the dark realms · ${progress}%` : 'Entering the fray...'}</span>
+          <span>{progress < 100 ? `Entering the dark realm &bull; ${progress}%` : 'Entering the fray...'}</span>
         </div>
       </div>
     </main>
