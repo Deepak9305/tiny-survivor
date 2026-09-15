@@ -19,9 +19,7 @@ export interface PlayerStats {
 }
 
 function lerpAngle(current: number, target: number, t: number): number {
-  let diff = (target - current) % (Math.PI * 2);
-  if (diff > Math.PI) diff -= Math.PI * 2;
-  if (diff < -Math.PI) diff += Math.PI * 2;
+  const diff = ((target - current + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
   return current + diff * t;
 }
 
@@ -37,7 +35,8 @@ export class Player3D {
   private readonly petObject?: THREE.Group;
   private readonly petFollowPos = new THREE.Vector2();
   private readonly baseCharacterScale = 0.92;
-  private movement = new THREE.Vector2();
+  private readonly movement = new THREE.Vector2();
+  private readonly velocity = new THREE.Vector2();
   private invulnerableUntil = 0;
   private visualTime = 0;
   private hitFlash = 0;
@@ -52,6 +51,13 @@ export class Player3D {
   private aimIndicator?: THREE.Group;
   private chillTimer = 0;
   private chillMultiplier = 1.0;
+  private stridePhase = 0;
+  private pitchAngle = 0;
+  private bankAngle = 0;
+  private legBaseY: number[] = [0.44, 0.44];
+  private armBaseRotZ: number[] = [-0.32, 0.32];
+  private lastFootstepPhase = 0;
+  private readonly onFootstep?: (x: number, y: number) => void;
   x: number;
   y: number;
 
@@ -63,18 +69,32 @@ export class Player3D {
     resources: SharedResources,
     worldId = 1,
     heroId: HeroId = 'shadow',
-    loadout?: HeroLoadout
+    loadout?: HeroLoadout,
+    onFootstep?: (x: number, y: number) => void
   ) {
     this.x = x;
     this.y = y;
     this.stats = stats;
     this.worldId = worldId;
     this.heroId = heroId;
+    this.onFootstep = onFootstep;
     const visual = createHeroVisual(heroId, resources);
     this.character = visual.root;
+    // Set Euler order to 'YXZ' so pitch (X) and roll/banking (Z) follow the character's facing direction (Y)
+    this.character.rotation.order = 'YXZ';
     this.aura = visual.aura;
     this.shadow = visual.shadow;
     this.parts = this.character.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>;
+
+    const legs = this.parts.legs as THREE.Group[] | undefined;
+    if (legs && legs.length === 2) {
+      this.legBaseY = [legs[0].position.y, legs[1].position.y];
+    }
+    const arms = this.parts.arms as THREE.Object3D[] | undefined;
+    if (arms && arms.length === 2) {
+      this.armBaseRotZ = [arms[0].rotation.z, arms[1].rotation.z];
+    }
+
     this.group = new THREE.Group();
     this.group.name = `player-${heroId}`;
     this.group.add(this.shadow);
@@ -141,6 +161,11 @@ export class Player3D {
   initializePlayer(): void {
     this.stats.currentHP = this.stats.maxHP;
     this.movement.set(0, 0);
+    this.velocity.set(0, 0);
+    this.stridePhase = 0;
+    this.pitchAngle = 0;
+    this.bankAngle = 0;
+    this.lastFootstepPhase = 0;
     this.invulnerableUntil = 0;
     this.hitFlash = 0;
     this.attackTime = 0;
@@ -163,63 +188,135 @@ export class Player3D {
         this.chillMultiplier = 1.0;
       }
     }
-    const length = this.movement.length();
-    if (length > 0.02) {
-      const direction = this.movement.clone().normalize();
-      const currentSpeed = this.stats.moveSpeed * this.chillMultiplier;
-      let nextX = THREE.MathUtils.clamp(this.x + direction.x * currentSpeed * delta, 48, worldWidth - 48);
-      let nextY = THREE.MathUtils.clamp(this.y + direction.y * currentSpeed * delta, 64, worldHeight - 64);
 
-      // 2D Static Obstacle Collision resolution
+    // 1. Deadzone filtering & curved non-linear analog response
+    const rawLen = this.movement.length();
+    let targetSpeed = 0;
+    const targetVel = new THREE.Vector2(0, 0);
+    const DEADZONE = 0.08;
+
+    if (rawLen > DEADZONE) {
+      const normalizedMagnitude = Math.min(1, (rawLen - DEADZONE) / (1 - DEADZONE));
+      // Organic response curve: precision at slight tilts, athletic sprint at full tilt
+      const curve = normalizedMagnitude * (0.35 + 0.65 * normalizedMagnitude);
+      const topSpeed = this.stats.moveSpeed * this.chillMultiplier;
+      targetSpeed = topSpeed * curve;
+      targetVel.set((this.movement.x / rawLen) * targetSpeed, (this.movement.y / rawLen) * targetSpeed);
+    }
+
+    // 2. Physical acceleration, traction & braking physics
+    const currentSpeed = this.velocity.length();
+    const isStopping = targetSpeed < 0.001;
+    const isReversing = !isStopping && this.velocity.dot(targetVel) < 0;
+    // Snappy acceleration (~0.08s ramp), crisp foot-plant braking (~0.06s stop)
+    const accelRate = isStopping ? 26 : (isReversing ? 32 : 20);
+    this.velocity.lerp(targetVel, Math.min(1, delta * accelRate));
+    if (isStopping && this.velocity.lengthSq() < 0.2) {
+      this.velocity.set(0, 0);
+    }
+
+    // 3. Movement integration and obstacle sliding
+    const effectiveSpeed = this.velocity.length();
+    if (effectiveSpeed > 0.02) {
+      const nextX = THREE.MathUtils.clamp(this.x + this.velocity.x * delta, 48, worldWidth - 48);
+      const nextY = THREE.MathUtils.clamp(this.y + this.velocity.y * delta, 64, worldHeight - 64);
+
+      // 2D Static Obstacle Collision resolution with tangential sliding
       const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);
+      const pushX = resolved.x - nextX;
+      const pushY = resolved.y - nextY;
+      const pushDistSq = pushX * pushX + pushY * pushY;
+
+      if (pushDistSq > 0.0001) {
+        // Wall sliding: project velocity onto collision tangent to preserve fluid glide along boundaries & pillars
+        const pushDist = Math.sqrt(pushDistSq);
+        const normalX = pushX / pushDist;
+        const normalY = pushY / pushDist;
+        const vDotN = this.velocity.x * normalX + this.velocity.y * normalY;
+        if (vDotN < 0) {
+          this.velocity.x -= vDotN * normalX;
+          this.velocity.y -= vDotN * normalY;
+        }
+      }
+
       this.x = resolved.x;
       this.y = resolved.y;
-      if (!this.hasAimed) {
-        this.direction = Math.atan2(direction.x, direction.y);
-      }
+
+      // Update movement heading based on actual travel velocity
+      this.direction = Math.atan2(this.velocity.x, this.velocity.y);
     }
+
     this.syncPosition();
     this.visualTime += delta;
-    const moving = length > 0.02;
 
-    // Walk cycle & leg stride
-    const walkCadence = 11.5;
+    // 4. Stride phase and cadence scaling
+    const speedRatio = THREE.MathUtils.clamp(effectiveSpeed / Math.max(1, this.stats.moveSpeed), 0, 1.25);
+    const moving = speedRatio > 0.03;
+    const walkCadence = THREE.MathUtils.lerp(8.0, 13.0, Math.min(1, speedRatio));
+    this.stridePhase += delta * walkCadence * speedRatio;
+
+    // Footstep dust trigger on foot plant (each half-stride cycle)
+    if (moving && speedRatio > 0.3) {
+      const currentStepIndex = Math.floor(this.stridePhase / Math.PI);
+      if (currentStepIndex > this.lastFootstepPhase) {
+        this.lastFootstepPhase = currentStepIndex;
+        this.onFootstep?.(this.x, this.y);
+      }
+    }
+
+    // 5. Hip-pivoted leg stride animation
     const legs = this.parts.legs as THREE.Group[] | undefined;
     if (legs && legs.length === 2) {
       if (moving) {
-        const stride = Math.sin(this.visualTime * walkCadence);
-        legs[0].rotation.x = stride * 0.65;
-        legs[1].rotation.x = -stride * 0.65;
-        legs[0].position.y = 0.44 + Math.max(0, stride) * 0.09;
-        legs[1].position.y = 0.44 + Math.max(0, -stride) * 0.09;
+        const stride = Math.sin(this.stridePhase) * 0.62 * speedRatio;
+        legs[0].rotation.x = stride;
+        legs[1].rotation.x = -stride;
+        legs[0].position.y = this.legBaseY[0] + Math.max(0, stride) * 0.08 * speedRatio;
+        legs[1].position.y = this.legBaseY[1] + Math.max(0, -stride) * 0.08 * speedRatio;
       } else {
-        legs[0].rotation.x = THREE.MathUtils.lerp(legs[0].rotation.x, 0, Math.min(1, delta * 12));
-        legs[1].rotation.x = THREE.MathUtils.lerp(legs[1].rotation.x, 0, Math.min(1, delta * 12));
-        legs[0].position.y = 0.44;
-        legs[1].position.y = 0.44;
+        legs[0].rotation.x = THREE.MathUtils.lerp(legs[0].rotation.x, 0, Math.min(1, delta * 14));
+        legs[1].rotation.x = THREE.MathUtils.lerp(legs[1].rotation.x, 0, Math.min(1, delta * 14));
+        legs[0].position.y = THREE.MathUtils.lerp(legs[0].position.y, this.legBaseY[0], Math.min(1, delta * 14));
+        legs[1].position.y = THREE.MathUtils.lerp(legs[1].position.y, this.legBaseY[1], Math.min(1, delta * 14));
       }
     }
 
-    // Dynamic running lean & sway
-    const targetLean = moving ? 0.16 : 0;
-    this.character.rotation.x = THREE.MathUtils.lerp(this.character.rotation.x, targetLean, Math.min(1, delta * 10));
-    const sway = moving ? Math.cos(this.visualTime * walkCadence) * 0.06 : 0;
-    this.character.rotation.z = THREE.MathUtils.lerp(this.character.rotation.z, sway, Math.min(1, delta * 10));
+    // 6. Natural running bounce & idle breathing
+    const bounce = Math.abs(Math.sin(this.stridePhase)) * 0.040 * speedRatio;
+    const idleBreathe = Math.sin(this.visualTime * 3.2) * 0.016 * (1 - Math.min(1, speedRatio * 1.6));
+    this.character.position.y = bounce + idleBreathe;
 
-    // Idle breathing & walk bounce
-    const bob = moving
-      ? Math.abs(Math.sin(this.visualTime * walkCadence)) * 0.045
-      : Math.sin(this.visualTime * 3.5) * 0.018;
-    this.character.position.y = bob;
-
-    // Grounded contact shadow stays strictly on terrain
+    // Grounded contact shadow stays strictly on terrain, pulsing with stride bounce
     this.shadow.position.y = 0.006;
-    const shadowContract = Math.max(0, bob * 1.6);
-    this.shadow.scale.set(1.05 - shadowContract * 0.35, 0.65 - shadowContract * 0.22, 1);
+    const shadowContract = Math.max(0, bounce * 1.5);
+    this.shadow.scale.set(1.05 - shadowContract * 0.32, 0.65 - shadowContract * 0.20, 1);
 
+    // 7. Heading, banking into turns & forward running lean
     const targetFacing = this.aimActive ? this.aimDirection : this.direction;
-    this.character.rotation.y = lerpAngle(this.character.rotation.y, targetFacing, Math.min(1, delta * 14));
+    const prevHeading = this.character.rotation.y;
+    const turnSpeed = this.aimActive ? 22 : 16;
+    this.character.rotation.y = lerpAngle(this.character.rotation.y, targetFacing, Math.min(1, delta * turnSpeed));
 
+    // Angular turn velocity calculation for centrifugal banking
+    let angleDelta = this.character.rotation.y - prevHeading;
+    if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+    if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+    const turnRate = angleDelta / Math.max(0.0001, delta);
+    const targetBank = THREE.MathUtils.clamp(-turnRate * 0.032 * speedRatio, -0.16, 0.16);
+    this.bankAngle = THREE.MathUtils.lerp(this.bankAngle, targetBank, Math.min(1, delta * 12));
+
+    // Forward lean when running, subtle backward pitch during sharp braking
+    const targetLean = 0.15 * Math.min(1, speedRatio);
+    const isBraking = speedRatio > 0.18 && targetSpeed < 1.0;
+    const targetPitch = isBraking ? -0.06 : targetLean;
+    this.pitchAngle = THREE.MathUtils.lerp(this.pitchAngle, targetPitch, Math.min(1, delta * 10));
+
+    // Lateral sway from stride rhythm
+    const strideSway = Math.cos(this.stridePhase) * 0.042 * speedRatio;
+    this.character.rotation.x = this.pitchAngle;
+    this.character.rotation.z = this.bankAngle + strideSway;
+
+    // 8. Aim indicator updates
     if (this.aimIndicator) {
       this.aimIndicator.rotation.y = this.aimDirection;
       const targetIndicatorOpacity = this.aimActive ? 0.88 : (this.hasAimed ? 0.28 : 0);
@@ -233,6 +330,7 @@ export class Player3D {
         }
       }
     }
+
     this.attackTime = Math.max(0, this.attackTime - delta);
     this.reviveTime = Math.max(0, this.reviveTime - delta);
     this.levelUpTime = Math.max(0, this.levelUpTime - delta);
@@ -242,26 +340,26 @@ export class Player3D {
     const attackSwing = attackProgress > 0 ? Math.sin(Math.min(1, attackProgress) * Math.PI) : 0;
     const celebrateProgress = this.levelUpTime > 0 ? Math.sin((1 - this.levelUpTime / 0.8) * Math.PI) : (this.victoryTime > 0 ? 1 : 0);
 
-    // Natural running arm swing counter-phases legs
+    // 9. Arm counter-swing counter-phases legs
     const arms = this.parts.arms as THREE.Object3D[] | undefined;
     if (arms?.length === 2) {
-      const armSwing = moving ? Math.sin(this.visualTime * walkCadence) * 0.52 : 0;
+      const armSwing = moving ? Math.sin(this.stridePhase) * 0.48 * speedRatio : 0;
       arms[0].rotation.x = -armSwing;
       arms[1].rotation.x = armSwing;
-      arms[0].rotation.z = -0.32 - attackSwing * 0.35 - celebrateProgress * 0.5;
-      arms[1].rotation.z = 0.32 + attackSwing * 0.65 + celebrateProgress * 0.7;
+      arms[0].rotation.z = this.armBaseRotZ[0] - attackSwing * 0.35 - celebrateProgress * 0.5;
+      arms[1].rotation.z = this.armBaseRotZ[1] + attackSwing * 0.65 + celebrateProgress * 0.7;
     }
 
-    // Dynamic cloak flutter during movement
+    // 10. Cloak flutter and scarf trailing wind physics
     const cloak = this.parts.cloak as THREE.Object3D | undefined;
     if (cloak) {
-      const cloakFlutter = moving ? 0.18 + Math.sin(this.visualTime * walkCadence * 2) * 0.08 : 0;
-      cloak.rotation.x = THREE.MathUtils.lerp(cloak.rotation.x, cloakFlutter, Math.min(1, delta * 10));
+      const cloakFlutter = (0.16 + Math.sin(this.visualTime * 14) * 0.06) * speedRatio;
+      cloak.rotation.x = THREE.MathUtils.lerp(cloak.rotation.x, cloakFlutter, Math.min(1, delta * 12));
     }
 
     const staff = this.parts.staff;
     if (staff instanceof THREE.Object3D) {
-      const staffBob = moving ? Math.sin(this.visualTime * walkCadence) * 0.22 : 0;
+      const staffBob = moving ? Math.sin(this.stridePhase) * 0.20 * speedRatio : 0;
       staff.rotation.x = staffBob;
       staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
     }
@@ -270,11 +368,10 @@ export class Player3D {
     const crystalHalo = this.parts.crystalHalo;
     if (crystalHalo instanceof THREE.Object3D) crystalHalo.rotation.z += delta * (celebrateProgress > 0 ? 5 : 2.4);
 
-    // Scarf trailing wind physics
     const scarfTail = this.parts.scarfTail;
     if (scarfTail instanceof THREE.Object3D) {
-      scarfTail.rotation.x = -0.26 + Math.sin(this.visualTime * 6.5) * (moving ? 0.38 : 0.12);
-      scarfTail.rotation.z = Math.cos(this.visualTime * 5.2) * (moving ? 0.22 : 0.06);
+      scarfTail.rotation.x = -0.24 + Math.sin(this.visualTime * 7.0) * (0.12 + 0.28 * speedRatio);
+      scarfTail.rotation.z = Math.cos(this.visualTime * 5.5) * (0.06 + 0.16 * speedRatio);
     }
 
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
@@ -285,11 +382,13 @@ export class Player3D {
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;
     this.character.scale.setScalar(this.baseCharacterScale * (this.hitFlash > 0 ? 1.055 : 1) * revivePop * levelUpPulse);
 
-    // Pet follower physics/smoothing
+    // 11. Pet follower physics/smoothing (trailing directly behind player facing direction)
     if (this.petObject) {
-      const targetPetX = this.x - Math.cos(this.direction) * 26 + Math.sin(this.visualTime * 2.5) * 6;
-      const targetPetY = this.y - Math.sin(this.direction) * 26 + Math.cos(this.visualTime * 2.5) * 6;
-      this.petFollowPos.lerp(new THREE.Vector2(targetPetX, targetPetY), Math.min(1, delta * 5.5));
+      const behindX = -Math.sin(this.direction);
+      const behindY = -Math.cos(this.direction);
+      const targetPetX = this.x + behindX * 28 + Math.cos(this.visualTime * 2.5) * 6;
+      const targetPetY = this.y + behindY * 28 + Math.sin(this.visualTime * 2.5) * 6;
+      this.petFollowPos.lerp(new THREE.Vector2(targetPetX, targetPetY), Math.min(1, delta * 6.0));
       setLogicalPosition(this.petObject, this.petFollowPos.x, this.petFollowPos.y);
       this.petObject.position.y = 0.22 + Math.sin(this.visualTime * 3.8) * 0.05;
       this.petObject.rotation.y = this.direction;
@@ -298,7 +397,7 @@ export class Player3D {
 
   setMovementVector(x: number, y: number): void {
     const vector = new THREE.Vector2(x, y);
-    if (vector.length() < 0.12) vector.set(0, 0);
+    if (vector.length() < 0.08) vector.set(0, 0);
     this.movement.copy(vector).clampLength(0, 1);
   }
 
@@ -321,7 +420,22 @@ export class Player3D {
     return this.aimDirection;
   }
 
-  getMovementVector(): THREE.Vector2 { return this.movement.clone(); }
+  getMovementVector(): THREE.Vector2 {
+    const spd = this.velocity.length();
+    if (spd < 0.01) return new THREE.Vector2(0, 0);
+    const maxSpd = Math.max(1, this.stats.moveSpeed);
+    const ratio = Math.min(1, spd / maxSpd);
+    return new THREE.Vector2((this.velocity.x / spd) * ratio, (this.velocity.y / spd) * ratio);
+  }
+
+  getVelocity(): THREE.Vector2 {
+    return this.velocity.clone();
+  }
+
+  getSpeedRatio(): number {
+    return this.velocity.length() / Math.max(1, this.stats.moveSpeed);
+  }
+
   getPosition(): { x: number; y: number } { return { x: this.x, y: this.y }; }
 
   triggerAttack(): void { this.attackTime = 0.24; }
@@ -335,6 +449,8 @@ export class Player3D {
     this.applyInvulnerability(now, invulnerabilityDuration);
     this.hitFlash = invulnerabilityDuration;
     this.attackTime = 0;
+    // Micro hit-flinch that dampens velocity slightly without freezing
+    this.velocity.multiplyScalar(0.72);
     return true;
   }
 

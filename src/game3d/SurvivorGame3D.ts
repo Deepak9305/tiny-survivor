@@ -352,7 +352,17 @@ export class SurvivorGame3D {
       critMultiplier: this.resolvedStats.critMultiplier,
       xpMultiplier: this.resolvedStats.xpMultiplier,
     };
-    this.player = new Player3D(this.actors, WORLD_WIDTH / 2, WORLD_HEIGHT / 2, stats, this.resources, this.stage.worldId, heroId, loadout);
+    this.player = new Player3D(
+      this.actors,
+      WORLD_WIDTH / 2,
+      WORLD_HEIGHT / 2,
+      stats,
+      this.resources,
+      this.stage.worldId,
+      heroId,
+      loadout,
+      (x, y) => this.effects.dustPuff(x, y)
+    );
     this.player.initializePlayer();
     this.runController = new RunController(this.stage.id, this.mode === 'survival' ? 'Survival Mode' : this.stage.name);
     this.xpSystem = new XPSystem();

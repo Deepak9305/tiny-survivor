@@ -88,6 +88,31 @@ export class CombatEffects3D {
     }
   }
 
+  dustPuff(x: number, y: number, count = 3): void {
+    if (this.reducedEffects) return;
+    const point = logicalToWorld(x, y);
+    for (let index = 0; index < count; index += 1) {
+      const particleMaterial = this.resources.basicMaterial('dust-puff-mat', 0xa0aec0, {
+        transparent: true,
+        opacity: 0.35,
+      }).clone();
+      particleMaterial.opacity = 0.35;
+      const mesh = addMesh(this.parent, this.resources.sphere('dust-particle-geom'), particleMaterial);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.18 + Math.random() * 0.28;
+      const baseScale = 0.06 + Math.random() * 0.05;
+      mesh.position.set(point.x + (Math.random() - 0.5) * 0.25, 0.04, point.z + (Math.random() - 0.5) * 0.25);
+      mesh.scale.setScalar(baseScale);
+      this.particles.push({
+        mesh,
+        velocity: new THREE.Vector3(Math.cos(angle) * speed, 0.22 + Math.random() * 0.25, Math.sin(angle) * speed),
+        life: 0,
+        maxLife: 0.28,
+        baseScale,
+      });
+    }
+  }
+
   projectileImpact(x: number, y: number, color: number): void {
     this.ring(x, y, 0.72, color);
     this.burst(x, y, color, false);
