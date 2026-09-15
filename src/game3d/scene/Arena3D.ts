@@ -8,6 +8,7 @@ import { buildGraveyardArena, buildGraveyardGroundTexture } from './worlds/Grave
 import { buildHauntedForestArena, buildForestGroundTexture } from './worlds/HauntedForestArena';
 import { buildFrozenRuinsArena, buildFrozenGroundTexture } from './worlds/FrozenRuinsArena';
 import { buildDemonCastleArena, buildCastleGroundTexture } from './worlds/DemonCastleArena';
+import { getObstaclesForWorld } from './WorldObstacles';
 
 export function paletteFor(stage: StageDefinition): BiomeTheme {
   return biomeThemeFor(stage);
@@ -99,7 +100,16 @@ export function createArena(
     mistUpdate = createAtmosphericMist(arena, theme, stage.worldId);
   }
 
-  // 6. UserData wiring for simulation loop
+  // 6. Optional Dev-Only Debug Collider Visualization
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('debugColliders') === '1' || (window as unknown as { __debugColliders?: boolean }).__debugColliders) {
+      const debugGroup = createDebugColliderVisualization(stage.worldId);
+      arena.add(debugGroup);
+    }
+  }
+
+  // 7. UserData wiring for simulation loop
   arena.userData.theme = theme;
   arena.userData.mapSeed = mapSeed;
   arena.userData.mapSignature = getWorldMapSignature(stage.worldId);
@@ -301,4 +311,70 @@ function createAtmosphericMist(
 
 function rgba(color: number, alpha: number): string {
   return `rgba(${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff}, ${alpha})`;
+}
+
+function createDebugColliderVisualization(worldId: number): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'debug-colliders-visual';
+  const obstacles = getObstaclesForWorld(worldId);
+
+  const circleOutlineMat = new THREE.MeshBasicMaterial({
+    color: 0x00f0ff,
+    transparent: true,
+    opacity: 0.85,
+    side: THREE.DoubleSide,
+  });
+  const circleFillMat = new THREE.MeshBasicMaterial({
+    color: 0x00a0e0,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide,
+  });
+
+  const boxMat = new THREE.MeshBasicMaterial({
+    color: 0xff4040,
+    transparent: true,
+    opacity: 0.26,
+    side: THREE.DoubleSide,
+  });
+  const boxEdgeMat = new THREE.LineBasicMaterial({
+    color: 0xff2020,
+    linewidth: 2,
+  });
+
+  for (const obs of obstacles) {
+    if (obs.type === 'circle') {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(Math.max(0.1, obs.radius - 0.06), obs.radius + 0.06, 32),
+        circleOutlineMat
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(obs.x, 0.06, obs.z);
+      group.add(ring);
+
+      const fill = new THREE.Mesh(new THREE.CircleGeometry(obs.radius, 32), circleFillMat);
+      fill.rotation.x = -Math.PI / 2;
+      fill.position.set(obs.x, 0.05, obs.z);
+      group.add(fill);
+    } else if (obs.type === 'box') {
+      const w = obs.maxX - obs.minX;
+      const d = obs.maxZ - obs.minZ;
+      const cx = (obs.minX + obs.maxX) / 2;
+      const cz = (obs.minZ + obs.maxZ) / 2;
+
+      const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, d), boxMat);
+      fill.rotation.x = -Math.PI / 2;
+      fill.position.set(cx, 0.05, cz);
+      group.add(fill);
+
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 0.08, d)),
+        boxEdgeMat
+      );
+      edges.position.set(cx, 0.06, cz);
+      group.add(edges);
+    }
+  }
+
+  return group;
 }

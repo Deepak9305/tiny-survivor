@@ -29,6 +29,7 @@ import { CameraController } from './scene/CameraController';
 import { createArena } from './scene/Arena3D';
 import { createLighting } from './scene/Lighting3D';
 import { biomeThemeFor } from './scene/BiomeTheme';
+import { resolveObstacleCollision, resolveSafeSpawnPosition } from './scene/WorldObstacles';
 import { logicalToWorld, WORLD_HEIGHT, WORLD_WIDTH } from './core/coordinates';
 import { SharedResources, addMesh } from './core/SharedResources';
 import { CombatEffects3D } from './visuals/CombatEffects3D';
@@ -652,7 +653,8 @@ export class SurvivorGame3D {
       hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.96 + progress * 0.16);
       damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.96 + progress * 0.12);
     }
-    const enemy = new Enemy3D(this.actors, type, x, y, this.resources, elite, hpMultiplier, damageMultiplier, this.stage.worldId);
+    const safe = resolveSafeSpawnPosition(x, y, 16, this.stage.worldId);
+    const enemy = new Enemy3D(this.actors, type, safe.x, safe.y, this.resources, elite, hpMultiplier, damageMultiplier, this.stage.worldId);
     this.enemies.push(enemy);
     this.spatialGrid.insert(enemy);
     if (elite) {
@@ -1178,8 +1180,11 @@ export class SurvivorGame3D {
     this.encounteredBosses.add(bossDefinition.id);
     this.enemySpawner.stopSpawning();
     const angle = Math.atan2(WORLD_HEIGHT / 2 - this.player.y, WORLD_WIDTH / 2 - this.player.x);
-    const x = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * 190, 100, WORLD_WIDTH - 100);
-    const y = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
+    const rawX = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * 190, 100, WORLD_WIDTH - 100);
+    const rawY = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
+    const safe = resolveSafeSpawnPosition(rawX, rawY, 32, this.stage.worldId);
+    const x = safe.x;
+    const y = safe.y;
     this.boss = new Boss3D(this.actors, x, y, this.resources, bossDefinition.id);
     this.bossSystem.spawnBoss(bossDefinition.id);
     this.effects.bossArrival(x, y);
@@ -1192,7 +1197,10 @@ export class SurvivorGame3D {
 
   private setBossPosition(x: number, y: number): void {
     if (!this.boss) return;
-    this.boss.setPosition(THREE.MathUtils.clamp(x, 90, WORLD_WIDTH - 90), THREE.MathUtils.clamp(y, 120, WORLD_HEIGHT - 100));
+    const clampedX = THREE.MathUtils.clamp(x, 90, WORLD_WIDTH - 90);
+    const clampedY = THREE.MathUtils.clamp(y, 120, WORLD_HEIGHT - 100);
+    const resolved = resolveObstacleCollision(clampedX, clampedY, 30, this.stage.worldId);
+    this.boss.setPosition(resolved.x, resolved.y);
   }
 
   private telegraphBossAttack(attack: BossAttack, x: number, y: number): void {
@@ -1405,8 +1413,11 @@ export class SurvivorGame3D {
     this.bossSpawned = true;
     this.encounteredBosses.add(bossDef.id);
     const angle = Math.atan2(WORLD_HEIGHT / 2 - this.player.y, WORLD_WIDTH / 2 - this.player.x);
-    const x = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * 190, 100, WORLD_WIDTH - 100);
-    const y = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
+    const rawX = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * 190, 100, WORLD_WIDTH - 100);
+    const rawY = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * 190, 120, WORLD_HEIGHT - 120);
+    const safe = resolveSafeSpawnPosition(rawX, rawY, 32, this.stage.worldId);
+    const x = safe.x;
+    const y = safe.y;
     this.boss = new Boss3D(this.actors, x, y, this.resources, bossDef.id);
     this.bossSystem.spawnBoss(bossDef.id);
     this.effects.bossArrival(x, y);

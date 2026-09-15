@@ -3,14 +3,13 @@ import { ARENA_DEPTH, ARENA_WIDTH } from '../../core/coordinates';
 import { SharedResources } from '../../core/SharedResources';
 import type { BiomeTheme } from '../BiomeTheme';
 import { envMaterials } from '../EnvironmentMaterials';
+import { FOREST_LAYOUT } from '../WorldArenaLayout';
 import {
   createBox,
-  createCone,
   createCylinder,
   createGlowTexture,
-  createOcta,
   createSphere,
-  createTorus,
+  placeAuthoredProp,
   placeProp,
   seeded,
   toCanvasCoords,
@@ -29,113 +28,113 @@ export function buildForestGroundTexture(theme: BiomeTheme, seed: number): THREE
   const deepColor = `#${theme.groundDeep.toString(16).padStart(6, '0')}`;
   const accentColor = `#${theme.accent.toString(16).padStart(6, '0')}`;
 
-  // Base background fill (deep damp forest loam)
+  // Deep loam moss forest floor
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, dim, dim);
 
-  // 1. Organic soil, rich forest moss patches & decaying leaves
-  for (let i = 0; i < 160; i++) {
+  // 1. Organic pine needle drifts, damp moss patches, root shadows
+  for (let i = 0; i < 180; i++) {
     const x = rng() * dim;
     const y = rng() * dim;
-    const rad = 45 + rng() * 120;
-    const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
-    grad.addColorStop(0, i % 3 === 0 ? '#10221e' : (i % 3 === 1 ? deepColor : '#1b3424'));
+    const rad = 50 + rng() * 120;
+    const grad = ctx.createRadialGradient(x, y, 4, x, y, rad);
+    grad.addColorStop(0, i % 3 === 0 ? deepColor : (i % 3 === 1 ? '#091811' : '#142c1e'));
     grad.addColorStop(1, 'transparent');
-    ctx.globalAlpha = 0.6;
+    ctx.globalAlpha = 0.62;
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(x, y, rad, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 2. Twisted Ancient Root Veins & Natural Forest Paths
-  const drawForestTrail = (fromX: number, fromZ: number, toX: number, toZ: number, pathWidth = 52) => {
-    const p1 = toCanvasCoords(fromX, fromZ, dim);
-    const p2 = toCanvasCoords(toX, toZ, dim);
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const dist = Math.hypot(dx, dy);
-    const steps = Math.max(5, Math.floor(dist / 18));
-    const nx = -dy / dist;
-    const ny = dx / dist;
+  // 2. Authored Winding Crescent Trails reflecting World 2's organic topology
+  const drawWindingTrail = (points: { x: number; z: number }[], trailWidth = 44) => {
+    if (points.length < 2) return;
+    const cPoints = points.map((p) => toCanvasCoords(p.x, p.z, dim));
 
-    // Trampled forest path
     ctx.beginPath();
-    ctx.moveTo(p1.x - (nx * pathWidth) / 2, p1.y - (ny * pathWidth) / 2);
-    ctx.lineTo(p2.x - (nx * pathWidth) / 2, p2.y - (ny * pathWidth) / 2);
-    ctx.lineTo(p2.x + (nx * pathWidth) / 2, p2.y + (ny * pathWidth) / 2);
-    ctx.lineTo(p1.x + (nx * pathWidth) / 2, p1.y + (ny * pathWidth) / 2);
-    ctx.closePath();
-    ctx.globalAlpha = 0.52;
-    ctx.fillStyle = '#0c1815';
-    ctx.fill();
-
-    // Organic root networks crossing path
-    for (let s = 0; s < steps; s++) {
-      const t = s / steps;
-      const cx = p1.x + dx * t;
-      const cy = p1.y + dy * t;
-      const rx = (rng() - 0.5) * pathWidth * 0.7;
-      const ry = (rng() - 0.5) * pathWidth * 0.7;
-      ctx.globalAlpha = 0.45;
-      ctx.fillStyle = '#263a2c';
-      ctx.beginPath();
-      ctx.arc(cx + rx, cy + ry, 10 + rng() * 8, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.moveTo(cPoints[0].x, cPoints[0].y);
+    for (let i = 1; i < cPoints.length; i++) {
+      ctx.lineTo(cPoints[i].x, cPoints[i].y);
     }
+    ctx.globalAlpha = 0.48;
+    ctx.strokeStyle = '#050f0a';
+    ctx.lineWidth = trailWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cPoints[0].x, cPoints[0].y);
+    for (let i = 1; i < cPoints.length; i++) {
+      ctx.lineTo(cPoints[i].x, cPoints[i].y);
+    }
+    ctx.globalAlpha = 0.38;
+    ctx.strokeStyle = '#1d3b2c';
+    ctx.lineWidth = trailWidth * 0.7;
+    ctx.stroke();
   };
 
-  drawForestTrail(0, 0, 0, -18.0, 58);
-  drawForestTrail(0, 0, 0, 18.0, 58);
-  drawForestTrail(0, 0, -8.0, -10.0, 48);
-  drawForestTrail(0, 0, 8.0, -10.0, 48);
-  drawForestTrail(0, 0, -7.0, 9.5, 46);
-  drawForestTrail(0, 0, 7.0, 10.0, 46);
+  // Organic crescent trail winding around root barrier and giant tree
+  drawWindingTrail([
+    { x: -8.2, z: 8.0 },
+    { x: -5.5, z: 4.5 },
+    { x: 0, z: 2.0 },
+    { x: 3.5, z: -2.0 },
+    { x: 7.2, z: -8.0 },
+  ], 50);
 
-  // 3. Central Spirit Clearing Roundel
-  const center = toCanvasCoords(0, 0, dim);
-  ctx.globalAlpha = 0.65;
-  ctx.fillStyle = '#0a1614';
+  drawWindingTrail([
+    { x: 0, z: 11.2 },
+    { x: 0, z: 2.0 },
+    { x: -2.0, z: -4.0 },
+    { x: -10.5, z: -7.5 },
+  ], 46);
+
+  // 3. Offset Clearing Aura (shifted to x: 1.5, z: 2.0)
+  const clearingCenter = toCanvasCoords(1.5, 2.0, dim);
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#06140d';
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 160, 0, Math.PI * 2);
+  ctx.arc(clearingCenter.x, clearingCenter.y, 145, 0, Math.PI * 2);
   ctx.fill();
 
   // Concentric mystical spirit rings
-  const ringRadii = [150, 115, 80, 45];
+  const ringRadii = [140, 105, 70, 35];
   for (let r = 0; r < ringRadii.length; r++) {
     const rad = ringRadii[r];
-    ctx.globalAlpha = 0.42;
-    ctx.strokeStyle = r % 2 === 0 ? '#386c52' : accentColor;
+    ctx.globalAlpha = 0.38;
+    ctx.strokeStyle = r % 2 === 0 ? '#2d5843' : accentColor;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(center.x, center.y, rad, 0, Math.PI * 2);
+    ctx.arc(clearingCenter.x, clearingCenter.y, rad, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // 4. Bioluminescent Mushroom Spore Rings & Murky Forest Pools
-  const bogCenter = toCanvasCoords(-7.2, 9.5, dim);
-  ctx.globalAlpha = 0.75;
-  ctx.fillStyle = '#06120e';
+  // 4. East Deep Bog / Mire Basin at (8.5, 3.5)
+  const bogCenter = toCanvasCoords(8.5, 3.5, dim);
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = '#05120c';
   ctx.beginPath();
-  ctx.ellipse(bogCenter.x, bogCenter.y, 120, 90, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(bogCenter.x, bogCenter.y, 115, 85, 0.2, 0, Math.PI * 2);
   ctx.fill();
 
   // Spectral water sheen
-  ctx.globalAlpha = 0.55;
-  ctx.fillStyle = '#14382e';
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = '#103328';
   ctx.beginPath();
-  ctx.ellipse(bogCenter.x, bogCenter.y, 100, 72, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(bogCenter.x, bogCenter.y, 95, 68, 0.2, 0, Math.PI * 2);
   ctx.fill();
 
   // Moonlit specular shine
   ctx.globalAlpha = 0.85;
-  ctx.fillStyle = '#62f0d0';
+  ctx.fillStyle = '#54e2c2';
   ctx.beginPath();
-  ctx.arc(bogCenter.x - 12, bogCenter.y - 10, 6, 0, Math.PI * 2);
+  ctx.arc(bogCenter.x - 12, bogCenter.y - 10, 7, 0, Math.PI * 2);
   ctx.fill();
 
   // Spore ring glow clusters
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 30; i++) {
     const sx = rng() * dim;
     const sy = rng() * dim;
     ctx.globalAlpha = 0.65;
@@ -160,7 +159,7 @@ export function buildHauntedForestArena(
   resources: SharedResources,
   theme: BiomeTheme,
   rng: () => number,
-  low: boolean,
+  _low: boolean,
   occluders: THREE.Object3D[]
 ): { lanternPositions: THREE.Vector3[] } {
   const worldSlug = 'forest';
@@ -170,6 +169,12 @@ export function buildHauntedForestArena(
   const mStoneAlt = envMaterials.getStone(theme, true);
   const mPurple = envMaterials.getAccentEmissive(theme, 2.8);
   const mWarm = envMaterials.getWarmEmissive(theme, 3.2);
+  const mBogWater = resources.standardMaterial('forest-bog-water', 0x051b14, {
+    roughness: 0.15,
+    metalness: 0.75,
+    emissive: 0x072218,
+    emissiveIntensity: 0.4,
+  });
 
   const lanternPositions: THREE.Vector3[] = [];
 
@@ -191,8 +196,8 @@ export function buildHauntedForestArena(
   // =============================================================
   // 1. OUTER PERIMETER: Dense Giant Gnarled Trees & Rocky Ridges
   // =============================================================
-  const boundX = ARENA_WIDTH / 2 - 0.6;
-  const boundZ = ARENA_DEPTH / 2 - 0.8;
+  const boundX = ARENA_WIDTH / 2 - 0.6; // ~20.4
+  const boundZ = ARENA_DEPTH / 2 - 0.8; // ~13.2
 
   const perimeterTrunks = [
     new THREE.Vector3(-boundX, 0, -boundZ),
@@ -201,10 +206,14 @@ export function buildHauntedForestArena(
     new THREE.Vector3(boundX, 0, boundZ),
     new THREE.Vector3(-boundX, 0, 0),
     new THREE.Vector3(boundX, 0, 0),
-    new THREE.Vector3(-boundX, 0, -10),
-    new THREE.Vector3(boundX, 0, -10),
-    new THREE.Vector3(-boundX, 0, 10),
-    new THREE.Vector3(boundX, 0, 10),
+    new THREE.Vector3(-boundX, 0, -7.0),
+    new THREE.Vector3(boundX, 0, -7.0),
+    new THREE.Vector3(-boundX, 0, 7.0),
+    new THREE.Vector3(boundX, 0, 7.0),
+    new THREE.Vector3(-10.0, 0, -boundZ),
+    new THREE.Vector3(10.0, 0, -boundZ),
+    new THREE.Vector3(-10.0, 0, boundZ),
+    new THREE.Vector3(10.0, 0, boundZ),
   ];
 
   for (const pos of perimeterTrunks) {
@@ -216,94 +225,119 @@ export function buildHauntedForestArena(
   }
 
   // =============================================================
-  // 2. NORTH LANDMARK: "The Great Cursed Tree"
+  // 2. AUTHORED WORLD PROPS (Consumed directly from FOREST_LAYOUT)
   // =============================================================
-  placeProp(parent, worldSlug, 'cursed_tree_giant', () => {
-    const g = new THREE.Group();
-    g.add(createCylinder(1.3, 2.4, 5.8, 8, mBark, 0, 2.9, 0));
-    // Giant twisting buttress roots
-    g.add(createBox(4.6, 1.0, 1.3, mBark, 0, 0.5, 0, 0, 0.45, 0));
-    g.add(createBox(1.3, 1.0, 4.6, mBark, 0, 0.5, 0, 0, -0.45, 0));
-    // Spreading canopy limbs
-    g.add(createCylinder(0.65, 1.1, 3.8, 6, mBark, -1.6, 5.4, 0.6, 0.25, 0, 0.5));
-    g.add(createCylinder(0.65, 1.1, 3.8, 6, mBark, 1.6, 5.4, -0.6, -0.25, 0, -0.5));
-    // Glowing spirit hollow
-    g.add(createSphere(0.48, 8, mPurple, 0, 2.1, 1.8));
-    return g;
-  }, { position: new THREE.Vector3(0, 0, -17.5) }, true, occluders);
+  const layout = FOREST_LAYOUT;
 
-  addGlowSprite(0, 2.1, -15.8, 2.6, theme.accent);
-  lanternPositions.push(new THREE.Vector3(0, 2.1, -15.8));
+  for (const prop of layout.props) {
+    switch (prop.propType) {
+      case 'cursed_tree_giant': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          g.add(createCylinder(1.3, 2.4, 5.8, 8, mBark, 0, 2.9, 0));
+          // Giant twisting buttress roots
+          g.add(createBox(4.6, 1.0, 1.3, mBark, 0, 0.5, 0, 0, 0.45, 0));
+          g.add(createBox(1.3, 1.0, 4.6, mBark, 0, 0.5, 0, 0, -0.45, 0));
+          // Spreading canopy limbs
+          g.add(createCylinder(0.65, 1.1, 3.8, 6, mBark, -1.6, 5.4, 0.6, 0.25, 0, 0.5));
+          g.add(createCylinder(0.65, 1.1, 3.8, 6, mBark, 1.6, 5.4, -0.6, -0.25, 0, -0.5));
+          // Glowing spirit hollow
+          g.add(createSphere(0.48, 8, mPurple, 0, 2.1, 1.8));
+          return g;
+        }, occluders);
 
-  // =============================================================
-  // 3. EAST LANDMARK: "Spirit Shrine of the Pines"
-  // =============================================================
-  placeProp(parent, worldSlug, 'spirit_shrine', () => {
-    const g = new THREE.Group();
-    g.add(createBox(3.6, 0.4, 3.6, mStoneAlt, 0, 0.2, 0));
-    // Torii-style wooden gateway
-    g.add(createCylinder(0.2, 0.24, 3.2, 8, mWood, -1.4, 1.6, 0));
-    g.add(createCylinder(0.2, 0.24, 3.2, 8, mWood, 1.4, 1.6, 0));
-    g.add(createBox(3.8, 0.35, 0.45, mWood, 0, 3.1, 0));
-    // Altar table with offering lantern
-    g.add(createBox(1.6, 0.8, 1.0, mStone, 0, 0.6, -0.6));
-    g.add(createBox(0.26, 0.34, 0.26, mWarm, 0, 1.18, -0.6));
-    return g;
-  }, { position: new THREE.Vector3(8.2, 0, -10.5), rotationY: -0.4 }, true, occluders);
+        addGlowSprite(prop.x, 2.1, prop.z + 1.8, 2.6, theme.accent);
+        lanternPositions.push(new THREE.Vector3(prop.x, 2.1, prop.z + 1.8));
+        break;
+      }
 
-  addGlowSprite(8.2, 1.2, -11.1, 2.2);
-  lanternPositions.push(new THREE.Vector3(8.2, 1.2, -11.1));
+      case 'spirit_shrine': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          g.add(createBox(3.2, 0.35, 3.2, mStoneAlt, 0, 0.17, 0));
+          // Torii-style wooden gateway
+          g.add(createCylinder(0.2, 0.24, 3.2, 8, mWood, -1.3, 1.6, 0));
+          g.add(createCylinder(0.2, 0.24, 3.2, 8, mWood, 1.3, 1.6, 0));
+          g.add(createBox(3.5, 0.35, 0.45, mWood, 0, 3.1, 0));
+          // Altar table with offering lantern
+          g.add(createBox(1.5, 0.8, 1.0, mStone, 0, 0.6, -0.5));
+          g.add(createBox(0.26, 0.34, 0.26, mWarm, 0, 1.18, -0.5));
+          return g;
+        }, occluders);
 
-  // =============================================================
-  // 4. WEST LANDMARK: "Ancient Standing Stones & Broken Root Bridge"
-  // =============================================================
-  const westHenge = new THREE.Group();
-  for (let i = 0; i < 5; i++) {
-    const angle = (i / 5) * Math.PI * 1.6 - 0.8;
-    const stone = createCylinder(0.35, 0.45, 2.6, 6, mStone);
-    stone.position.set(Math.cos(angle) * 2.2, 1.3, Math.sin(angle) * 2.2);
-    stone.rotation.set((rng() - 0.5) * 0.2, rng() * Math.PI, (rng() - 0.5) * 0.2);
-    westHenge.add(stone);
-  }
-  westHenge.position.set(-8.0, 0, -10.0);
-  parent.add(westHenge);
+        addGlowSprite(prop.x, 1.2, prop.z - 0.5, 2.2);
+        lanternPositions.push(new THREE.Vector3(prop.x, 1.2, prop.z - 0.5));
+        break;
+      }
 
-  // =============================================================
-  // 5. CENTRAL GROUNDS: "Ancient Spirit Well"
-  // =============================================================
-  placeProp(parent, worldSlug, 'spirit_well', () => {
-    const g = new THREE.Group();
-    g.add(createCylinder(1.1, 1.3, 0.65, 12, mStone, 0, 0.32, 0));
-    g.add(createCylinder(0.85, 0.85, 0.1, 12, mPurple, 0, 0.62, 0));
-    // 4 Flanking Guardian Shrine Lanterns
-    for (const sx of [-1.8, 1.8]) {
-      g.add(createCylinder(0.08, 0.12, 1.8, 6, mWood, sx, 0.9, 0));
-      g.add(createBox(0.24, 0.3, 0.24, mWarm, sx, 1.9, 0));
+      case 'deep_bog': {
+        // Deep Bog 3D Water plane at ground surface
+        const bogWater = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 5.0), mBogWater);
+        bogWater.rotation.x = -Math.PI / 2;
+        bogWater.position.set(prop.x, 0.008, prop.z);
+        parent.add(bogWater);
+        break;
+      }
+
+      case 'fallen_log_segment': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          g.add(createCylinder(0.65, 0.72, 3.2, 8, mBark, 0, 0.55, 0, Math.PI / 2, 0, 0));
+          // Gnarled root protrusions
+          g.add(createBox(0.5, 0.9, 0.5, mBark, 0.8, 0.4, 0.8, 0.2, 0.3, 0));
+          return g;
+        });
+        break;
+      }
+
+      case 'standing_stones': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 1.6 - 0.8;
+            const stone = createCylinder(0.32, 0.42, 2.4, 6, mStone);
+            stone.position.set(Math.cos(angle) * 1.6, 1.2, Math.sin(angle) * 1.6);
+            stone.rotation.set((rng() - 0.5) * 0.2, rng() * Math.PI, (rng() - 0.5) * 0.2);
+            g.add(stone);
+          }
+          return g;
+        }, occluders);
+        break;
+      }
+
+      case 'ancient_oak': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          g.add(createCylinder(0.9, 1.5, 4.8, 8, mBark, 0, 2.4, 0));
+          g.add(createSphere(2.4, 8, mBark, 0, 4.8, 0));
+          return g;
+        }, occluders);
+        break;
+      }
+
+      case 'gate_pillar': {
+        placeAuthoredProp(parent, worldSlug, prop, () => {
+          const g = new THREE.Group();
+          g.add(createCylinder(0.24, 0.32, 2.8, 8, mBark, 0, 1.4, 0));
+          g.add(createBox(0.26, 0.32, 0.26, mWarm, 0, 2.8, 0));
+          return g;
+        });
+        addGlowSprite(prop.x, 2.8, prop.z, 1.8);
+        lanternPositions.push(new THREE.Vector3(prop.x, 2.8, prop.z));
+        break;
+      }
     }
-    return g;
-  }, { position: new THREE.Vector3(0, 0, -1.8) }, true, occluders);
+  }
 
-  addGlowSprite(-1.8, 1.9, -1.8, 1.8);
-  addGlowSprite(1.8, 1.9, -1.8, 1.8);
-  lanternPositions.push(new THREE.Vector3(0, 1.9, -1.8));
-
-  // =============================================================
-  // 6. SOUTHWEST & SOUTHEAST: Deep Bog & Hollow Ancient Log
-  // =============================================================
-  const hollowLog = new THREE.Group();
-  hollowLog.add(createCylinder(0.7, 0.7, 4.2, 8, mBark, 0, 0.6, 0, Math.PI / 2, 0, 0.45));
-  hollowLog.position.set(6.8, 0, 10.5);
-  parent.add(hollowLog);
-
-  // South Gate Crossing Pillars
-  for (const sx of [-2.4, 2.4]) {
-    const shrinePost = new THREE.Group();
-    shrinePost.add(createCylinder(0.2, 0.28, 2.8, 8, mBark, 0, 1.4, 0));
-    shrinePost.add(createBox(0.26, 0.32, 0.26, mWarm, 0, 2.8, 0));
-    shrinePost.position.set(sx, 0, 18.5);
-    parent.add(shrinePost);
-    addGlowSprite(sx, 2.8, 18.5, 1.8);
-    lanternPositions.push(new THREE.Vector3(sx, 2.8, 18.5));
+  // Spirit lights along the winding trail
+  const trailLanterns = [
+    new THREE.Vector3(-5.5, 0, 4.5),
+    new THREE.Vector3(0, 0, 2.0),
+    new THREE.Vector3(3.5, 0, -2.0),
+  ];
+  for (const pos of trailLanterns) {
+    addGlowSprite(pos.x, 1.6, pos.z, 2.0, theme.accent);
+    lanternPositions.push(new THREE.Vector3(pos.x, 1.6, pos.z));
   }
 
   return { lanternPositions };

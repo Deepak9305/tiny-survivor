@@ -96,6 +96,33 @@ export function placeProp(
   return obj;
 }
 
+export function placeAuthoredProp(
+  parent: THREE.Group,
+  worldSlug: 'graveyard' | 'forest' | 'frozen' | 'castle',
+  prop: {
+    propType: string;
+    x: number;
+    z: number;
+    rotationY?: number;
+    scale?: { x: number; y: number; z: number } | number;
+    isOccluder?: boolean;
+  },
+  fallbackFn: () => THREE.Object3D,
+  occluderList?: THREE.Object3D[]
+): THREE.Object3D {
+  const transform: Transform = {
+    position: new THREE.Vector3(prop.x, 0, prop.z),
+    rotationY: prop.rotationY,
+    scale:
+      typeof prop.scale === 'number'
+        ? new THREE.Vector3(prop.scale, prop.scale, prop.scale)
+        : prop.scale
+          ? new THREE.Vector3(prop.scale.x, prop.scale.y, prop.scale.z)
+          : undefined,
+  };
+  return placeProp(parent, worldSlug, prop.propType, fallbackFn, transform, prop.isOccluder ?? false, occluderList);
+}
+
 export function createGlowTexture(color: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 128;

@@ -5,7 +5,7 @@ import type { SpatialEntity } from '../../game/systems/SpatialGrid';
 import { LOGICAL_SCALE, setLogicalPosition } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 import { addEliteAccent, createEnemyModel } from '../visuals/CharacterFactory';
-import { steerAroundObstacles } from '../scene/WorldObstacles';
+import { resolveObstacleCollision, steerAroundObstacles } from '../scene/WorldObstacles';
 import { audioService } from '../../services/audioService';
 
 let enemySequence = 0;
@@ -206,6 +206,9 @@ export class Enemy3D implements SpatialEntity {
       const spd = this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1);
       this.x += dirX * spd * delta;
       this.y += dirY * spd * delta;
+      const resolved = resolveObstacleCollision(this.x, this.y, this.radius * 0.75, this.worldId);
+      this.x = resolved.x;
+      this.y = resolved.y;
       this.facingAngle = Math.atan2(dirX, dirY);
       this.model.rotation.y = this.facingAngle;
       this.syncPosition();
@@ -256,6 +259,9 @@ export class Enemy3D implements SpatialEntity {
         if (distance > 34 || isArcher || isThornling) {
           this.x += dirX * currentSpeed * delta;
           this.y += dirY * currentSpeed * delta;
+          const resolved = resolveObstacleCollision(this.x, this.y, this.radius * 0.75, this.worldId);
+          this.x = resolved.x;
+          this.y = resolved.y;
         }
         this.facingAngle = Math.atan2(dx / distance, dy / distance);
         this.model.rotation.y = this.facingAngle;
@@ -541,6 +547,11 @@ export class Enemy3D implements SpatialEntity {
             };
           }
         }
+
+        // Kinetic attack obstacle collision resolution
+        const resolvedKinetic = resolveObstacleCollision(this.x, this.y, this.radius * 0.75, this.worldId);
+        this.x = resolvedKinetic.x;
+        this.y = resolvedKinetic.y;
 
         if (this.stateTimer <= 0) {
           const recoveryDuration =

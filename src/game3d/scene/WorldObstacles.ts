@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { ARENA_DEPTH, ARENA_WIDTH, LOGICAL_SCALE, WORLD_CENTER_X, WORLD_CENTER_Y } from '../core/coordinates';
+import { LOGICAL_SCALE, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../core/coordinates';
+import { getWorldLayout } from './WorldArenaLayout';
 
 export type ObstacleShape =
   | { type: 'circle'; x: number; z: number; radius: number; name?: string }
@@ -10,151 +11,186 @@ export interface WorldObstacleSet {
   obstacles: ObstacleShape[];
 }
 
-/**
- * World 1: Graveyard Major Static Colliders (3D unit space centered at 0,0)
- */
-const GRAVEYARD_OBSTACLES: ObstacleShape[] = [
-  // North Chapel of the Fallen Landmark Facade
-  { type: 'box', minX: -3.6, maxX: 3.6, minZ: -21.4, maxZ: -18.6, name: 'NorthChapel' },
-  // West Crypts: Forgotten Kings Mausoleum
-  { type: 'box', minX: -10.2, maxX: -6.2, minZ: -14.8, maxZ: -10.2, name: 'WestMausoleum' },
-  // East Terrace & Watcher Statue Plinth
-  { type: 'box', minX: 6.6, maxX: 10.4, minZ: -14.5, maxZ: -10.5, name: 'EastTerrace' },
-  // Central Weeping Angel Pedestal Plinth
-  { type: 'circle', x: 0, z: -2.2, radius: 1.15, name: 'CentralAngelPlinth' },
-  // The Pond Deep Basin (Slow/Impassable water center)
-  { type: 'circle', x: -7.5, z: 10.5, radius: 2.2, name: 'PondDeepBasin' },
-  // South Crypts: Sealed Below Tomb
-  { type: 'box', minX: 6.2, maxX: 9.6, minZ: 9.0, maxZ: 12.2, name: 'SouthCrypt' },
-  // South Gatehouse Pillars
-  { type: 'box', minX: -3.2, maxX: -1.8, minZ: 18.6, maxZ: 20.4, name: 'SouthPillarL' },
-  { type: 'box', minX: 1.8, maxX: 3.2, minZ: 18.6, maxZ: 20.4, name: 'SouthPillarR' },
-];
+/** Cache obstacle lists generated from unified layout */
+const OBSTACLE_CACHE = new Map<number, ObstacleShape[]>();
 
 /**
- * World 2: Haunted Forest Major Static Colliders
+ * Returns the gameplay colliders for a given world, derived directly from the
+ * single-source-of-truth WorldArenaLayout authored definitions.
  */
-const FOREST_OBSTACLES: ObstacleShape[] = [
-  // Massive Cursed Tree Trunk at North
-  { type: 'circle', x: 0, z: -17.5, radius: 2.4, name: 'CursedTreeGiant' },
-  // Ancient Spirit Shrine at East
-  { type: 'box', minX: 6.5, maxX: 9.8, minZ: -12.5, maxZ: -8.5, name: 'SpiritShrine' },
-  // Standing Stones Cluster at West
-  { type: 'circle', x: -8.0, z: -10.0, radius: 1.8, name: 'StandingStones' },
-  // Central Spirit Well / Altar
-  { type: 'circle', x: 0, z: -1.8, radius: 1.2, name: 'CentralForestWell' },
-  // Deep Bog / Mire Basin at Southwest
-  { type: 'circle', x: -7.2, z: 9.5, radius: 2.0, name: 'DeepForestBog' },
-  // Ancient Fallen Hollow Trunk at Southeast
-  { type: 'box', minX: 5.5, maxX: 8.8, minZ: 9.5, maxZ: 12.5, name: 'HollowTrunk' },
-];
-
-/**
- * World 3: Frozen Ruins Major Static Colliders
- */
-const FROZEN_OBSTACLES: ObstacleShape[] = [
-  // Great Ruined Frozen Temple Gate at North
-  { type: 'box', minX: -4.0, maxX: 4.0, minZ: -21.0, maxZ: -18.2, name: 'FrozenTempleGate' },
-  // Collapsed Hall of Pillars at West
-  { type: 'box', minX: -10.0, maxX: -6.5, minZ: -13.5, maxZ: -9.5, name: 'CollapsedHall' },
-  // Frozen Warrior Statue Court at East
-  { type: 'box', minX: 6.8, maxX: 10.2, minZ: -13.5, maxZ: -9.5, name: 'WarriorCourt' },
-  // Central Frost Monolith
-  { type: 'circle', x: 0, z: -2.0, radius: 1.2, name: 'FrostMonolith' },
-  // Massive Glacier Crystal Spire at Southwest
-  { type: 'circle', x: -7.5, z: 9.8, radius: 1.9, name: 'GlacierSpire' },
-  // Ruined Crypt of the Frost King at Southeast
-  { type: 'box', minX: 6.5, maxX: 9.5, minZ: 9.5, maxZ: 12.5, name: 'FrostKingCrypt' },
-];
-
-/**
- * World 4: Demon Castle Major Static Colliders
- */
-const CASTLE_OBSTACLES: ObstacleShape[] = [
-  // Infernal Gates of Dis at North
-  { type: 'box', minX: -4.2, maxX: 4.2, minZ: -21.2, maxZ: -18.5, name: 'GatesOfDis' },
-  // Blood Altar at West
-  { type: 'box', minX: -9.8, maxX: -6.4, minZ: -13.2, maxZ: -9.6, name: 'BloodAltar' },
-  // Obsidian Throne Dais at East
-  { type: 'box', minX: 6.4, maxX: 9.8, minZ: -13.2, maxZ: -9.6, name: 'ThroneDais' },
-  // Central Brazier / Infernal Spire
-  { type: 'circle', x: 0, z: -2.2, radius: 1.2, name: 'CentralInfernalBrazier' },
-  // Magma Chasm Pit at Southwest
-  { type: 'circle', x: -7.5, z: 10.2, radius: 2.1, name: 'MagmaChasmPit' },
-  // Crystal Furnace at Southeast
-  { type: 'box', minX: 6.2, maxX: 9.6, minZ: 9.2, maxZ: 12.6, name: 'CrystalFurnace' },
-];
-
 export function getObstaclesForWorld(worldId: number): ObstacleShape[] {
-  switch (worldId) {
-    case 1: return GRAVEYARD_OBSTACLES;
-    case 2: return FOREST_OBSTACLES;
-    case 3: return FROZEN_OBSTACLES;
-    case 4: return CASTLE_OBSTACLES;
-    default: return GRAVEYARD_OBSTACLES;
+  const cached = OBSTACLE_CACHE.get(worldId);
+  if (cached) return cached;
+
+  const layout = getWorldLayout(worldId);
+  const obstacles: ObstacleShape[] = [];
+
+  for (const prop of layout.props) {
+    if (!prop.collider) continue;
+
+    const ox = prop.x + (prop.collider.offsetX ?? 0);
+    const oz = prop.z + (prop.collider.offsetZ ?? 0);
+
+    if (prop.collider.type === 'circle') {
+      obstacles.push({
+        type: 'circle',
+        x: ox,
+        z: oz,
+        radius: prop.collider.radius,
+        name: prop.id,
+      });
+    } else if (prop.collider.type === 'box') {
+      const hw = prop.collider.width / 2;
+      const hd = prop.collider.depth / 2;
+      obstacles.push({
+        type: 'box',
+        minX: ox - hw,
+        maxX: ox + hw,
+        minZ: oz - hd,
+        maxZ: oz + hd,
+        name: prop.id,
+      });
+    }
   }
+
+  OBSTACLE_CACHE.set(worldId, obstacles);
+  return obstacles;
+}
+
+/** Clear cache if layouts are reloaded or modified in dev */
+export function clearObstacleCache(): void {
+  OBSTACLE_CACHE.clear();
 }
 
 /**
- * Resolves 2D collision against large static world obstacles in logical coordinates.
- * Pushes the entity out along the penetration normal.
+ * Tests whether a circle at the given logical coordinate overlaps any static obstacle.
+ */
+export function isPointInWorldObstacle(
+  logicalX: number,
+  logicalY: number,
+  logicalRadius: number,
+  worldId: number,
+  footprintScale = 0.88
+): boolean {
+  const wx = (logicalX - WORLD_CENTER_X) * LOGICAL_SCALE;
+  const wz = (logicalY - WORLD_CENTER_Y) * LOGICAL_SCALE;
+  const wr = logicalRadius * LOGICAL_SCALE;
+  const obstacles = getObstaclesForWorld(worldId);
+
+  for (const obs of obstacles) {
+    if (obs.type === 'circle') {
+      const effectiveRadius = obs.radius * footprintScale;
+      const dx = wx - obs.x;
+      const dz = wz - obs.z;
+      const minDist = effectiveRadius + wr;
+      if (dx * dx + dz * dz < minDist * minDist) {
+        return true;
+      }
+    } else if (obs.type === 'box') {
+      const cx = (obs.minX + obs.maxX) / 2;
+      const cz = (obs.minZ + obs.maxZ) / 2;
+      const hw = ((obs.maxX - obs.minX) / 2) * footprintScale;
+      const hd = ((obs.maxZ - obs.minZ) / 2) * footprintScale;
+
+      const closestX = THREE.MathUtils.clamp(wx, cx - hw, cx + hw);
+      const closestZ = THREE.MathUtils.clamp(wz, cz - hd, cz + hd);
+      const dx = wx - closestX;
+      const dz = wz - closestZ;
+      if (dx * dx + dz * dz < wr * wr) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolves 2D collision against static world obstacles in logical coordinates.
+ * Pushes the entity out along the penetration normal, enabling smooth diagonal sliding.
+ * Uses 2-pass relaxation to prevent getting wedged in tight corners or vibrating.
  */
 export function resolveObstacleCollision(
   logicalX: number,
   logicalY: number,
   logicalRadius: number,
-  worldId: number
+  worldId: number,
+  footprintScale = 0.88
 ): { x: number; y: number } {
-  // Convert logical entity position to 3D world space (where obstacles are authored)
   let wx = (logicalX - WORLD_CENTER_X) * LOGICAL_SCALE;
   let wz = (logicalY - WORLD_CENTER_Y) * LOGICAL_SCALE;
   const wr = logicalRadius * LOGICAL_SCALE;
 
   const obstacles = getObstaclesForWorld(worldId);
 
-  for (const obs of obstacles) {
-    if (obs.type === 'circle') {
-      const dx = wx - obs.x;
-      const dz = wz - obs.z;
-      const minDist = obs.radius + wr;
-      const distSq = dx * dx + dz * dz;
-      if (distSq < minDist * minDist) {
-        const dist = Math.max(0.001, Math.sqrt(distSq));
-        const push = minDist - dist;
-        wx += (dx / dist) * push;
-        wz += (dz / dist) * push;
-      }
-    } else if (obs.type === 'box') {
-      // Find closest point on box to circle center
-      const closestX = THREE.MathUtils.clamp(wx, obs.minX, obs.maxX);
-      const closestZ = THREE.MathUtils.clamp(wz, obs.minZ, obs.maxZ);
-      const dx = wx - closestX;
-      const dz = wz - closestZ;
-      const distSq = dx * dx + dz * dz;
+  // 2 passes ensure resolution when pushing into another nearby collider
+  for (let pass = 0; pass < 2; pass++) {
+    let resolvedAny = false;
 
-      if (distSq < wr * wr) {
-        const dist = Math.sqrt(distSq);
-        if (dist > 0.001) {
-          const push = wr - dist;
-          wx += (dx / dist) * push;
-          wz += (dz / dist) * push;
-        } else {
-          // Inside the box: push out to the nearest edge
-          const left = wx - obs.minX;
-          const right = obs.maxX - wx;
-          const top = wz - obs.minZ;
-          const bottom = obs.maxZ - wz;
-          const minOverlap = Math.min(left, right, top, bottom);
-          if (minOverlap === left) wx = obs.minX - wr;
-          else if (minOverlap === right) wx = obs.maxX + wr;
-          else if (minOverlap === top) wz = obs.minZ - wr;
-          else wz = obs.maxZ + wr;
+    for (const obs of obstacles) {
+      if (obs.type === 'circle') {
+        const effectiveRadius = obs.radius * footprintScale;
+        const dx = wx - obs.x;
+        const dz = wz - obs.z;
+        const minDist = effectiveRadius + wr;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < minDist * minDist) {
+          const dist = Math.sqrt(distSq);
+          if (dist > 0.0001) {
+            const push = minDist - dist;
+            wx += (dx / dist) * push;
+            wz += (dz / dist) * push;
+          } else {
+            // Directly on center: nudge outward
+            wx += minDist;
+          }
+          resolvedAny = true;
+        }
+      } else if (obs.type === 'box') {
+        const cx = (obs.minX + obs.maxX) / 2;
+        const cz = (obs.minZ + obs.maxZ) / 2;
+        const hw = ((obs.maxX - obs.minX) / 2) * footprintScale;
+        const hd = ((obs.maxZ - obs.minZ) / 2) * footprintScale;
+
+        const boxMinX = cx - hw;
+        const boxMaxX = cx + hw;
+        const boxMinZ = cz - hd;
+        const boxMaxZ = cz + hd;
+
+        const closestX = THREE.MathUtils.clamp(wx, boxMinX, boxMaxX);
+        const closestZ = THREE.MathUtils.clamp(wz, boxMinZ, boxMaxZ);
+        const dx = wx - closestX;
+        const dz = wz - closestZ;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < wr * wr) {
+          const dist = Math.sqrt(distSq);
+          if (dist > 0.0001) {
+            const push = wr - dist;
+            wx += (dx / dist) * push;
+            wz += (dz / dist) * push;
+          } else {
+            // Inside the box: push out to the nearest edge
+            const left = wx - boxMinX;
+            const right = boxMaxX - wx;
+            const top = wz - boxMinZ;
+            const bottom = boxMaxZ - wz;
+            const minOverlap = Math.min(left, right, top, bottom);
+
+            if (minOverlap === left) wx = boxMinX - wr;
+            else if (minOverlap === right) wx = boxMaxX + wr;
+            else if (minOverlap === top) wz = boxMinZ - wr;
+            else wz = boxMaxZ + wr;
+          }
+          resolvedAny = true;
         }
       }
     }
+
+    if (!resolvedAny) break;
   }
 
-  // Convert resolved 3D position back to logical coordinates
   return {
     x: wx / LOGICAL_SCALE + WORLD_CENTER_X,
     y: wz / LOGICAL_SCALE + WORLD_CENTER_Y,
@@ -192,7 +228,7 @@ export function steerAroundObstacles(
     } else {
       obsX = (obs.minX + obs.maxX) / 2;
       obsZ = (obs.minZ + obs.maxZ) / 2;
-      obsR = Math.max(obs.maxX - obs.minX, obs.maxZ - obs.minZ) / 2 + 0.3;
+      obsR = Math.max(obs.maxX - obs.minX, obs.maxZ - obs.minZ) / 2 + 0.35;
     }
 
     const dx = aheadX - obsX;
@@ -205,8 +241,8 @@ export function steerAroundObstacles(
       const perpY = dx;
       const dot = dirX * perpX + dirY * perpY;
       const sign = dot >= 0 ? 1 : -1;
-      const steerX = dirX * 0.45 + (perpX * sign) * 0.55;
-      const steerY = dirY * 0.45 + (perpY * sign) * 0.55;
+      const steerX = dirX * 0.42 + (perpX * sign) * 0.58;
+      const steerY = dirY * 0.42 + (perpY * sign) * 0.58;
       const len = Math.hypot(steerX, steerY);
       if (len > 0.01) {
         return { dirX: steerX / len, dirY: steerY / len };
@@ -215,4 +251,37 @@ export function steerAroundObstacles(
   }
 
   return { dirX, dirY };
+}
+
+/**
+ * Finds a safe spawn position outside any obstacles for enemies or bosses.
+ * Uses up to 8 radial offsets, with fallback to resolveObstacleCollision.
+ */
+export function resolveSafeSpawnPosition(
+  logicalX: number,
+  logicalY: number,
+  logicalRadius: number,
+  worldId: number
+): { x: number; y: number } {
+  // If already clear, keep position
+  if (!isPointInWorldObstacle(logicalX, logicalY, logicalRadius, worldId)) {
+    return { x: logicalX, y: logicalY };
+  }
+
+  // Try 8 radial samples outward to find a clear clearing nearby
+  const sampleDistances = [60, 110, 160];
+  for (const dist of sampleDistances) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const testX = THREE.MathUtils.clamp(logicalX + Math.cos(angle) * dist, 70, WORLD_WIDTH - 70);
+      const testY = THREE.MathUtils.clamp(logicalY + Math.sin(angle) * dist, 80, WORLD_HEIGHT - 80);
+
+      if (!isPointInWorldObstacle(testX, testY, logicalRadius, worldId)) {
+        return { x: testX, y: testY };
+      }
+    }
+  }
+
+  // Fallback: push position out using penetration resolution
+  return resolveObstacleCollision(logicalX, logicalY, logicalRadius + 8, worldId);
 }
