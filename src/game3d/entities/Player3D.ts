@@ -18,6 +18,13 @@ export interface PlayerStats {
   xpMultiplier: number;
 }
 
+function lerpAngle(current: number, target: number, t: number): number {
+  let diff = (target - current) % (Math.PI * 2);
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * t;
+}
+
 export class Player3D {
   readonly group: THREE.Group;
   readonly stats: PlayerStats;
@@ -211,7 +218,7 @@ export class Player3D {
     this.shadow.scale.set(0.95 - shadowContract * 0.35, 0.5 - shadowContract * 0.2, 1);
 
     const targetFacing = this.aimActive ? this.aimDirection : this.direction;
-    this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, targetFacing, Math.min(1, delta * 12));
+    this.character.rotation.y = lerpAngle(this.character.rotation.y, targetFacing, Math.min(1, delta * 14));
 
     if (this.aimIndicator) {
       this.aimIndicator.rotation.y = this.aimDirection;
@@ -235,23 +242,39 @@ export class Player3D {
     const attackSwing = attackProgress > 0 ? Math.sin(Math.min(1, attackProgress) * Math.PI) : 0;
     const celebrateProgress = this.levelUpTime > 0 ? Math.sin((1 - this.levelUpTime / 0.8) * Math.PI) : (this.victoryTime > 0 ? 1 : 0);
 
+    // Natural running arm swing counter-phases legs
     const arms = this.parts.arms as THREE.Object3D[] | undefined;
     if (arms?.length === 2) {
+      const armSwing = moving ? Math.sin(this.visualTime * walkCadence) * 0.52 : 0;
+      arms[0].rotation.x = -armSwing;
+      arms[1].rotation.x = armSwing;
       arms[0].rotation.z = -0.32 - attackSwing * 0.35 - celebrateProgress * 0.5;
       arms[1].rotation.z = 0.32 + attackSwing * 0.65 + celebrateProgress * 0.7;
     }
+
+    // Dynamic cloak flutter during movement
+    const cloak = this.parts.cloak as THREE.Object3D | undefined;
+    if (cloak) {
+      const cloakFlutter = moving ? 0.18 + Math.sin(this.visualTime * walkCadence * 2) * 0.08 : 0;
+      cloak.rotation.x = THREE.MathUtils.lerp(cloak.rotation.x, cloakFlutter, Math.min(1, delta * 10));
+    }
+
     const staff = this.parts.staff;
-    if (staff instanceof THREE.Object3D) staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
+    if (staff instanceof THREE.Object3D) {
+      const staffBob = moving ? Math.sin(this.visualTime * walkCadence) * 0.22 : 0;
+      staff.rotation.x = staffBob;
+      staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
+    }
     const crystal = this.parts.crystal;
     if (crystal instanceof THREE.Object3D) crystal.rotation.y += delta * (moving ? 4.5 : (celebrateProgress > 0 ? 8 : 2.2));
     const crystalHalo = this.parts.crystalHalo;
     if (crystalHalo instanceof THREE.Object3D) crystalHalo.rotation.z += delta * (celebrateProgress > 0 ? 5 : 2.4);
 
-    // Scarf trailing physics simulation
+    // Scarf trailing wind physics
     const scarfTail = this.parts.scarfTail;
     if (scarfTail instanceof THREE.Object3D) {
-      scarfTail.rotation.x = -0.22 + Math.sin(this.visualTime * 5.2) * (moving ? 0.28 : 0.1);
-      scarfTail.rotation.z = Math.cos(this.visualTime * 4.2) * (moving ? 0.15 : 0.05);
+      scarfTail.rotation.x = -0.26 + Math.sin(this.visualTime * 6.5) * (moving ? 0.38 : 0.12);
+      scarfTail.rotation.z = Math.cos(this.visualTime * 5.2) * (moving ? 0.22 : 0.06);
     }
 
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;

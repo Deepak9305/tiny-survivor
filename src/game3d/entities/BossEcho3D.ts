@@ -14,6 +14,13 @@ export interface BossEchoStats {
   attackSet: BossAttack[];
 }
 
+function lerpAngle(current: number, target: number, t: number): number {
+  let diff = (target - current) % (Math.PI * 2);
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * t;
+}
+
 export const ECHO_CONFIGS: Record<BossId, { name: string; hp: number; damage: number; speed: number; attacks: BossAttack[] }> = {
   'skeleton-king': {
     name: 'Skeleton King Echo',
@@ -123,7 +130,8 @@ export class BossEcho3D {
       this.x += (dx / dist) * this.speed * delta;
       this.y += (dy / dist) * this.speed * delta;
       setLogicalPosition(this.group, this.x, this.y, this.group.position.y);
-      this.group.rotation.y = Math.atan2(dx, dy);
+      const targetAngle = Math.atan2(dx, dy);
+      this.group.rotation.y = lerpAngle(this.group.rotation.y, targetAngle, Math.min(1, delta * 9));
     }
 
     // Attack state machine

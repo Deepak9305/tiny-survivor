@@ -10,6 +10,13 @@ import { audioService } from '../../services/audioService';
 
 let enemySequence = 0;
 
+function lerpAngle(current: number, target: number, t: number): number {
+  let diff = (target - current) % (Math.PI * 2);
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * t;
+}
+
 export type EnemyCombatState =
   | 'approach'
   | 'windup'
@@ -249,7 +256,7 @@ export class Enemy3D implements SpatialEntity {
       this.x = resolved.x;
       this.y = resolved.y;
       this.facingAngle = Math.atan2(dirX, dirY);
-      this.model.rotation.y = this.facingAngle;
+      this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, Math.min(1, delta * 12));
       this.syncPosition();
       this.updateProceduralAnimation(delta, dirX, dirY, false);
       return undefined;
@@ -303,7 +310,7 @@ export class Enemy3D implements SpatialEntity {
           this.y = resolved.y;
         }
         this.facingAngle = Math.atan2(dx / distance, dy / distance);
-        this.model.rotation.y = this.facingAngle;
+        this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, Math.min(1, delta * 12));
 
         // Check attack initiation criteria per kind
         if (this.attackCooldown <= 0) {
@@ -678,7 +685,7 @@ export class Enemy3D implements SpatialEntity {
       this.attackDirectionX = dx / dist;
       this.attackDirectionY = dy / dist;
       this.facingAngle = Math.atan2(this.attackDirectionX, this.attackDirectionY);
-      this.model.rotation.y = this.facingAngle;
+      this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, 0.4);
       this.diveProgress = 0;
     }
   }
@@ -786,37 +793,70 @@ export class Enemy3D implements SpatialEntity {
         windupPulse
     );
 
+    // Orientation tracking during active combat states
+    if (this.state === 'windup' || this.state === 'attack') {
+      this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, Math.min(1, delta * 14));
+    }
+
     // Dynamic Leg Strides for Grounded Enemies
+    const isMoving = this.state === 'approach';
     if (parts?.legs instanceof Array) {
       if (this.kind === 'cursed-wolf' && parts.legs.length === 4) {
-        const gallop = Math.sin(this.phaseTime * 11) * 0.75;
+        const gallop = isMoving ? Math.sin(this.phaseTime * 11) * 0.75 : 0;
         parts.legs[0].rotation.x = gallop;
         parts.legs[1].rotation.x = -gallop;
         parts.legs[2].rotation.x = -gallop;
         parts.legs[3].rotation.x = gallop;
+        this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, isMoving ? 0.12 : 0, delta * 10);
       } else if (parts.legs.length === 2) {
         const cadence = this.kind === 'thornling' ? 14 : (this.kind === 'treant' ? 4.5 : (this.kind === 'imp' ? 11 : (this.kind === 'knight' ? 6 : 8)));
-        const stride = Math.sin(this.phaseTime * cadence) * (this.kind === 'treant' ? 0.42 : 0.68);
-        parts.legs[0].rotation.x = stride;
-        parts.legs[1].rotation.x = -stride;
+        const stride = isMoving ? Math.sin(this.phaseTime * cadence) * (this.kind === 'treant' ? 0.42 : 0.68) : 0;
+        parts.legs[0].rotation.x = THREE.MathUtils.lerp(parts.legs[0].rotation.x, stride, Math.min(1, delta * 16));
+        parts.legs[1].rotation.x = THREE.MathUtils.lerp(parts.legs[1].rotation.x, -stride, Math.min(1, delta * 16));
         const hipBase = this.kind === 'treant' ? 0.58 : (this.kind === 'thornling' ? 0.32 : 0.44);
         parts.legs[0].position.y = hipBase + Math.max(0, stride) * 0.08;
         parts.legs[1].position.y = hipBase + Math.max(0, -stride) * 0.08;
 
         if (this.state === 'approach') {
           this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.15, delta * 10);
+        } else if (this.state === 'attack') {
+          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.22, delta * 14);
         } else {
           this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 10);
         }
       }
     }
 
-    if (this.kind === 'bat' && parts?.wings instanceof Array) {
-      const wings = parts.wings;
-      if (wings.length === 2) {
-        const flapRate = isWindingUp ? 16 : this.state === 'attack' ? 24 : 9;
-        wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * flapRate) * 0.45;
-        wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * flapRate) * 0.45;
+    // Natural Arm Swing for Bipedal Enemies (archer, treant, thornling, demon)
+    if (parts?.arms instanceof Array && parts.arms.length === 2 && this.kind !== 'skeleton') {
+      const arms = parts.arms;
+      if (isWindingUp) {
+        arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, -0.9, delta * 12);
+        arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, -0.9, delta * 12);
+      } else if (this.state === 'attack') {
+        arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, 0.85, delta * 16);
+        arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, 0.85, delta * 16);
+      } else if (isMoving) {
+        const cadence = this.kind === 'thornling' ? 14 : (this.kind === 'treant' ? 4.5 : (this.kind === 'knight' ? 6 : 8));
+        const armSwing = Math.sin(this.phaseTime * cadence) * 0.42;
+        arms[0].rotation.x = -armSwing;
+        arms[1].rotation.x = armSwing;
+      } else {
+        arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, 0, delta * 8);
+        arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, 0, delta * 8);
+      }
+    }
+
+    if (this.kind === 'bat') {
+      if (parts?.wings instanceof Array && parts.wings.length === 2) {
+        const flapRate = isWindingUp ? 18 : this.state === 'attack' ? 26 : 10;
+        parts.wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * flapRate) * 0.52;
+        parts.wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * flapRate) * 0.52;
+      }
+      if (this.state === 'attack') {
+        this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.42, delta * 12);
+      } else {
+        this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 8);
       }
     }
 
@@ -829,10 +869,11 @@ export class Enemy3D implements SpatialEntity {
       }
     }
 
-    if (this.kind === 'ghost') {
+    if (this.kind === 'ghost' || this.kind === 'frost-wraith') {
       const ghostBody = parts?.body as THREE.Object3D | undefined;
       if (ghostBody) {
         ghostBody.position.y = Math.sin(this.phaseTime * 3.8) * 0.15;
+        ghostBody.rotation.z = Math.sin(this.phaseTime * 2.4) * 0.08;
       }
       if (parts?.tails instanceof Array) {
         for (let i = 0; i < parts.tails.length; i += 1) {
@@ -847,28 +888,39 @@ export class Enemy3D implements SpatialEntity {
       if (arms.length === 2) {
         if (isWindingUp) {
           // Raise sword arm high for attack
-          arms[1].rotation.x = -1.35;
-          arms[0].rotation.x = 0.35;
+          arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, -1.35, delta * 14);
+          arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, 0.35, delta * 14);
         } else if (this.state === 'attack') {
           // Slash downward forward
-          arms[1].rotation.x = 0.85;
-          arms[0].rotation.x = -0.45;
+          arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, 0.85, delta * 18);
+          arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, -0.45, delta * 18);
+        } else if (isMoving) {
+          arms[0].rotation.x = -Math.sin(this.phaseTime * 8) * 0.42;
+          arms[1].rotation.x = Math.sin(this.phaseTime * 8) * 0.42;
         } else {
-          arms[0].rotation.x = Math.sin(this.phaseTime * 6) * 0.35;
-          arms[1].rotation.x = -Math.sin(this.phaseTime * 6) * 0.35;
+          arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, 0, delta * 8);
+          arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, 0, delta * 8);
         }
       }
     }
 
-    if (this.kind === 'knight' && parts?.sword instanceof THREE.Object3D) {
-      if (isWindingUp) {
-        parts.sword.rotation.z = -1.1;
-        parts.sword.rotation.x = 0.4;
-      } else if (this.state === 'attack') {
-        parts.sword.rotation.z = 0.55;
-        parts.sword.rotation.x = -0.2;
-      } else {
-        parts.sword.rotation.z = -0.45 + Math.sin(this.phaseTime * 4.2) * 0.18;
+    if (this.kind === 'knight') {
+      const sword = parts?.sword as THREE.Object3D | undefined;
+      const shield = parts?.shield as THREE.Object3D | undefined;
+      if (sword) {
+        if (isWindingUp) {
+          sword.rotation.z = THREE.MathUtils.lerp(sword.rotation.z, -1.1, delta * 12);
+          sword.rotation.x = THREE.MathUtils.lerp(sword.rotation.x, 0.4, delta * 12);
+        } else if (this.state === 'attack') {
+          sword.rotation.z = THREE.MathUtils.lerp(sword.rotation.z, 0.55, delta * 18);
+          sword.rotation.x = THREE.MathUtils.lerp(sword.rotation.x, -0.2, delta * 18);
+        } else {
+          sword.rotation.z = -0.45 + (isMoving ? Math.sin(this.phaseTime * 6) * 0.20 : 0);
+          sword.rotation.x = isMoving ? Math.cos(this.phaseTime * 6) * 0.14 : 0;
+        }
+      }
+      if (shield) {
+        shield.rotation.y = isMoving ? Math.sin(this.phaseTime * 6) * 0.12 : 0;
       }
     }
   }

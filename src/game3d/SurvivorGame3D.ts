@@ -484,7 +484,7 @@ export class SurvivorGame3D {
     this.checkBossTimer(delta);
     if (this.bossSpawned) {
       this.bossSystem.updateBoss(delta);
-      this.boss?.update(delta);
+      this.boss?.update(delta, this.player.x, this.player.y);
     }
 
     // Demon King Boss Echo update

@@ -23,27 +23,7 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
   aura.rotation.x = -Math.PI / 2;
   aura.position.y = 0.014;
 
-  // Try production GLB first
-  const glbModel = modelRegistry.cloneLoadedModel('hero:shadow');
-  if (glbModel) {
-    glbModel.name = 'hero-glb-body';
-    root.add(glbModel);
-    // Find animated nodes if present
-    let staff: THREE.Object3D | undefined;
-    let crystal: THREE.Object3D | undefined;
-    let crystalHalo: THREE.Object3D | undefined;
-    let scarfTail: THREE.Object3D | undefined;
-    glbModel.traverse((node) => {
-      if (node.name.includes('staff') || (!staff && node instanceof THREE.Group && node.position.x > 0.3)) staff = node;
-      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.OctahedronGeometry) crystal = node;
-      if (node instanceof THREE.Mesh && node.geometry instanceof THREE.TorusGeometry && node.position.y > 1.2) crystalHalo = node;
-      if (node.name.includes('scarf') || (!scarfTail && node instanceof THREE.Mesh && node.position.z < -0.2)) scarfTail = node;
-    });
-    root.userData.parts = { staff, crystal, crystalHalo, scarfTail };
-    return { root, aura, shadow };
-  }
-
-  // Fallback Procedural Model (Mascot Level Chibi Action Sculpt)
+  // Mascot Level Chibi Action Sculpt with articulated legs, staff, and scarf
   const mGold = resources.standardMaterial('hero-gold', 0xebb338, { metalness: 0.75, roughness: 0.35 });
   const body = addMesh(root, resources.cylinder('hero-body'), resources.standardMaterial('hero-body', 0x183462, { roughness: 0.72 }));
   body.scale.set(0.74, 0.88, 0.58);
@@ -446,40 +426,7 @@ function addEyes(root: THREE.Group, resources: SharedResources, color: number, y
 export function createEnemyModel(kind: string, color: number, resources: SharedResources, worldId = 1): THREE.Group {
   const worldAccent = worldId === 2 ? 0xb875df : worldId === 3 ? 0x9ce7ff : worldId === 4 ? 0xff5e55 : 0x5ddcff;
 
-  // Try production GLB first
-  const glbModel = modelRegistry.cloneLoadedModel(`enemy:${kind}` as ModelAssetId);
-  if (glbModel) {
-    const root = new THREE.Group();
-    root.name = `enemy-${kind}`;
-    root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
-    root.add(glbModel);
-
-    // Find animated nodes for bat wings, slime body, etc.
-    const wings: THREE.Object3D[] = [];
-    const tails: THREE.Object3D[] = [];
-    glbModel.traverse((node) => {
-      if (node.name.includes('wing') || (kind === 'bat' && node instanceof THREE.Group && Math.abs(node.position.x) > 0.1)) {
-        wings.push(node);
-      }
-      if (kind === 'ghost' && node instanceof THREE.Mesh && node.position.y < 0.5) {
-        tails.push(node);
-      }
-    });
-    root.userData.parts = { body: glbModel, wings: wings.length ? wings : undefined, tails: tails.length ? tails : undefined };
-
-    // World skin accent ring
-    if (worldId !== 1 && (kind === 'skeleton' || kind === 'ghost' || kind === 'knight')) {
-      const rune = addMesh(root, resources.torus(`enemy-world-rune-${kind}-${worldId}`), resources.basicMaterial(`enemy-world-rune-${kind}-${worldId}`, worldAccent, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
-      rune.scale.setScalar(kind === 'knight' ? 0.48 : 0.34);
-      rune.rotation.x = Math.PI / 2;
-      rune.position.y = kind === 'ghost' ? 0.32 : 0.12;
-      root.userData.parts.rune = rune;
-    }
-
-    return root;
-  }
-
-  // Fallback Procedural Model
+  // Fully Articulated Stylized 3D Model with legs, arms, and joints
   const root = new THREE.Group();
   root.name = `enemy-${kind}`;
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
@@ -781,65 +728,6 @@ export function addEliteAccent(root: THREE.Group, resources: SharedResources): T
 }
 
 export function createBossModel(bossId: BossId = 'skeleton-king', resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
-  // Try production GLB first
-  const glbModel = modelRegistry.cloneLoadedModel(`boss:${bossId}` as ModelAssetId);
-  if (glbModel) {
-    const root = new THREE.Group();
-    root.name = `boss-${bossId}`;
-    root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
-
-    // Imposing Boss Scale (2.8 - 3.2x common enemies)
-    glbModel.scale.setScalar(1.35);
-    root.add(glbModel);
-
-    const auraColor = bossId === 'skeleton-king'
-      ? 0xff3b4e
-      : bossId === 'forest-witch'
-      ? 0xa855f7
-      : bossId === 'frost-golem'
-      ? 0x55ddff
-      : 0xff5522;
-
-    const shadow = new THREE.Mesh(
-      resources.plane(`boss-shadow-${bossId}`, 1, 1),
-      resources.basicMaterial(`boss-shadow-${bossId}`, 0x010207, { transparent: true, opacity: 0.72 })
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.scale.set(2.4, 1.25, 1);
-    shadow.position.y = 0.02;
-    root.add(shadow);
-
-    const aura = addMesh(
-      root,
-      resources.ring(`boss-aura-${bossId}`, 1.2, 1.4),
-      resources.basicMaterial(`boss-aura-${bossId}`, auraColor, { transparent: true, opacity: 0.58, side: THREE.DoubleSide })
-    );
-    aura.rotation.x = -Math.PI / 2;
-    aura.position.y = 0.04;
-
-    // Detect parts for animation
-    let sword: THREE.Object3D | undefined;
-    let weapon: THREE.Object3D | undefined;
-    let core: THREE.Object3D | undefined;
-    const wings: THREE.Object3D[] = [];
-
-    glbModel.traverse((node) => {
-      if (node.name.includes('sword') || (!sword && node instanceof THREE.Group && node.position.x > 0.8)) sword = node;
-      if (node.name.includes('blade') || node.name.includes('weapon')) weapon = node;
-      if (node.name.includes('core') || (node instanceof THREE.Mesh && node.geometry instanceof THREE.OctahedronGeometry && node.position.y > 1.0)) core = node;
-      if (node.name.includes('wing') || (node instanceof THREE.Group && Math.abs(node.position.x) > 0.6 && node.position.z < 0)) wings.push(node);
-    });
-
-    root.userData.parts = {
-      sword: sword ?? weapon,
-      weapon: weapon ?? sword,
-      core,
-      wings: wings.length ? wings : undefined,
-    };
-
-    return { root, aura, shadow };
-  }
-
   if (bossId !== 'skeleton-king') return createAlternativeBossModel(bossId, resources);
   return createSkeletonKingModel(resources);
 }
@@ -861,7 +749,8 @@ function createSkeletonKingModel(resources: SharedResources): { root: THREE.Grou
   cape.scale.set(1.5, 1.9, 0.22);
   cape.position.set(0, 1.15, -0.38);
 
-  const armor = addMesh(root, resources.cylinder('boss-armor'), resources.standardMaterial('boss-armor', 0x1c2432, { metalness: 0.65, roughness: 0.48 }));
+  const armorMaterial = resources.standardMaterial('boss-armor', 0x1c2432, { metalness: 0.65, roughness: 0.48 });
+  const armor = addMesh(root, resources.cylinder('boss-armor'), armorMaterial);
   armor.scale.set(1.25, 1.45, 0.95);
   armor.position.y = 1.25;
   const chest = addMesh(root, resources.box('boss-chest'), resources.standardMaterial('boss-chest', 0xffca55, { metalness: 0.8, roughness: 0.3, emissive: 0x775010, emissiveIntensity: 0.5 }));
@@ -902,7 +791,22 @@ function createSkeletonKingModel(resources: SharedResources): { root: THREE.Grou
   hilt.scale.set(0.75, 0.16, 0.2);
   hilt.position.set(1.32, 0.65, 0.1);
   hilt.rotation.z = -0.35;
-  root.userData.parts = { armor, chest, cape, skull, sword, swordRune, crown: crownMaterial };
+
+  const legs: THREE.Group[] = [];
+  for (const x of [-0.38, 0.38]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(x, 0.65, 0);
+    const greave = addMesh(legGroup, resources.cylinder('boss-skel-greave'), armorMaterial);
+    greave.scale.set(0.24, 0.65, 0.24);
+    greave.position.set(0, -0.3, 0.02);
+    const sabaton = addMesh(legGroup, resources.box('boss-skel-sabaton'), armorMaterial);
+    sabaton.scale.set(0.32, 0.2, 0.44);
+    sabaton.position.set(0, -0.58, 0.1);
+    root.add(legGroup);
+    legs.push(legGroup);
+  }
+
+  root.userData.parts = { armor, chest, cape, skull, sword, swordRune, crown: crownMaterial, legs };
   return { root, aura, shadow };
 }
 
@@ -973,7 +877,18 @@ function createAlternativeBossModel(bossId: Exclude<BossId, 'skeleton-king'>, re
     const crown = addMesh(root, resources.octa('golem-crown'), resources.standardMaterial('golem-crown', palette.accent, { emissive: palette.core, emissiveIntensity: 0.7, roughness: 0.38 }));
     crown.scale.set(0.58, 0.42, 0.5);
     crown.position.y = 2.52;
-    root.userData.parts = { body, shoulders, arms, core, weapon: crown };
+
+    const golemLegs: THREE.Group[] = [];
+    for (const x of [-0.52, 0.52]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.68, 0);
+      const col = addMesh(legGroup, resources.cylinder('boss-golem-leg'), resources.standardMaterial('boss-golem-leg', palette.body, { roughness: 0.7 }));
+      col.scale.set(0.44, 0.72, 0.44);
+      col.position.set(0, -0.32, 0);
+      root.add(legGroup);
+      golemLegs.push(legGroup);
+    }
+    root.userData.parts = { body, shoulders, arms, core, weapon: crown, legs: golemLegs };
   } else {
     const armor = addMesh(root, resources.ico('demon-lord-armor'), resources.standardMaterial('demon-lord-armor', palette.body, { metalness: 0.34, roughness: 0.66 }));
     armor.scale.set(1.45, 1.54, 1.05);
@@ -1002,7 +917,21 @@ function createAlternativeBossModel(bossId: Exclude<BossId, 'skeleton-king'>, re
     core.scale.setScalar(0.44);
     core.position.set(0, 1.46, 0.78);
     addBossEyes(root, resources, palette.accent, 2.25);
-    root.userData.parts = { armor, horns, wings, weapon, core };
+
+    const demonLegs: THREE.Group[] = [];
+    for (const x of [-0.44, 0.44]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.65, 0);
+      const thigh = addMesh(legGroup, resources.cylinder('boss-demon-thigh'), resources.standardMaterial('boss-demon-thigh', palette.body, { roughness: 0.75 }));
+      thigh.scale.set(0.32, 0.68, 0.32);
+      thigh.position.set(0, -0.3, 0.02);
+      const hoof = addMesh(legGroup, resources.box('boss-demon-hoof'), resources.standardMaterial('boss-demon-hoof', 0x180a14, { roughness: 0.85 }));
+      hoof.scale.set(0.42, 0.24, 0.52);
+      hoof.position.set(0, -0.6, 0.08);
+      root.add(legGroup);
+      demonLegs.push(legGroup);
+    }
+    root.userData.parts = { armor, horns, wings, weapon, core, legs: demonLegs };
   }
   return { root, aura, shadow };
 }
