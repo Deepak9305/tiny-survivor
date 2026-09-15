@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { Heart, Home, Play, RotateCw, Skull, Sparkles, Timer } from 'lucide-react';
-import { PrimaryButton } from '../components/PrimaryButton';
+import { audioService } from '../services/audioService';
 import type { RunResult } from '../types';
 
 interface GameOverScreenProps {
@@ -23,35 +24,22 @@ export function GameOverScreen({
   onRetry,
   onHome,
 }: GameOverScreenProps) {
+  useEffect(() => {
+    audioService.playSFX('game-over', { volume: 0.9, throttle: 0.3 });
+  }, []);
+
   return (
-    <section className="result-overlay-landscape result-overlay--loss">
+    <section className="result-overlay-landscape result-overlay--loss" role="dialog" aria-modal="true" aria-label="Game Over Defeat">
       <div className="run-over-container-landscape">
-        {/* Left ~45%: Defeat Diorama / World Art */}
+        {/* Left ~42%: Defeat Diorama */}
         <div className="run-over-left-diorama">
           <div className="run-over-skull-glow">
-            <Skull size={56} className="skull-danger-icon" />
+            <Skull size={52} className="skull-danger-icon" />
           </div>
+          <span className="run-over-eyebrow">SANCTUARY FALLEN</span>
           <h1 className="run-over-title">DEFEATED</h1>
           {result.isNewBest && (
-            <div
-              className="run-over-new-best-badge"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(217, 119, 6, 0.38))',
-                border: '1px solid rgba(251, 191, 36, 0.75)',
-                color: '#fef08a',
-                padding: '4px 14px',
-                borderRadius: '999px',
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                boxShadow: '0 0 16px rgba(245, 158, 11, 0.4)',
-                margin: '8px 0',
-              }}
-            >
+            <div className="run-over-new-best-badge">
               <Sparkles size={14} /> NEW BEST RECORD!
             </div>
           )}

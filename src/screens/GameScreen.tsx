@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Dices, Flame, Heart, Pause, Play, RotateCw, Shield, Skull, Sparkles, Swords, Target, Zap } from 'lucide-react';
+import { Heart, Pause, Play, Shield, Skull } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { TwinStickControls } from '../components/TwinStickControls';
 import { AbilityControls } from '../components/AbilityControls';
 import { StagePreloadScreen } from '../components/StagePreloadScreen';
+import { LevelUpOverlay } from '../components/LevelUpOverlay';
+import { PauseOverlay } from '../components/PauseOverlay';
 import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
 import { audioService } from '../services/audioService';
@@ -208,47 +210,24 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
         disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)}
       />
 
-      {upgradeChoices && <LevelUpOverlay choices={upgradeChoices} onChoose={chooseUpgrade} />}
+      {upgradeChoices && (
+        <LevelUpOverlay
+          choices={upgradeChoices}
+          playerLevel={snapshot.level}
+          onChoose={chooseUpgrade}
+        />
+      )}
 
       {paused && !upgradeChoices && !gameOver && (
-        <div className="pause-overlay">
-          <div className="pause-card pause-card--landscape">
-            <div className="pause-col-stats">
-              <div className="pause-card__icon"><Pause size={22} /></div>
-              <span className="eyebrow">RUN PAUSED</span>
-              <h2>Catch your breath.</h2>
-              <div className="pause-build">
-                <span>LV {snapshot.level}</span>
-                <span>{snapshot.kills.toLocaleString()} KILLS</span>
-                <span>{formatRunTime(snapshot.time)}</span>
-              </div>
-              <div className="pause-build__items">
-                {Object.entries(snapshot.weaponLevels).map(([id, level]) => (
-                  <span key={id}>{id.replaceAll('-', ' ')} <strong>&middot; Lv.{level}</strong></span>
-                ))}
-                {Object.entries(snapshot.abilityLevels ?? {}).map(([id, level]) => (
-                  <span key={id} className="pause-build__item--ability">{id.replaceAll('-', ' ')} <strong>&middot; Lv.{level}</strong></span>
-                ))}
-              </div>
-            </div>
-            <div className="pause-col-actions">
-              <button
-                type="button"
-                className="pause-btn-resume"
-                onClick={() => getActiveThreeGame()?.resumeRun()}
-              >
-                <Play size={18} fill="currentColor" /> RESUME
-              </button>
-              <button
-                type="button"
-                className="pause-btn-quit"
-                onClick={onHome}
-              >
-                <RotateCw size={16} /> QUIT RUN
-              </button>
-            </div>
-          </div>
-        </div>
+        <PauseOverlay
+          snapshot={snapshot}
+          stage={stage}
+          save={save}
+          mode={mode}
+          onResume={() => getActiveThreeGame()?.resumeRun()}
+          onHome={onHome}
+          onBestiary={onBestiary}
+        />
       )}
       {gameOver && (
         <GameOverScreen
@@ -264,49 +243,6 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
   );
 }
 
-function LevelUpOverlay({ choices, onChoose }: { choices: UpgradeChoice[]; onChoose: (choice: UpgradeChoice) => void }) {
-  return (
-    <div className="level-up-overlay">
-      <div className="level-up-panel">
-        <h1 className="level-up-title">Level Up!</h1>
-        <p className="level-up-subtitle">Choose a skill</p>
-        <div className="choice-grid">
-          {choices.map((choice) => (
-            <button
-              type="button"
-              key={choice.id}
-              className={`choice-card choice-card--${choice.id}`}
-              onClick={() => onChoose(choice)}
-              aria-label={`${choice.title}: ${choice.nextEffect}`}
-            >
-              <div className="choice-card__header">
-                <strong>{choice.title}</strong>
-                {choice.level === 0 ? (
-                  <span className="choice-badge-new">New</span>
-                ) : (
-                  <span className="choice-badge-lv">Lv. {choice.level + 1}</span>
-                )}
-              </div>
-              <div className={`choice-card__rune-icon choice-card__rune-icon--${choice.id}`}>
-                {getChoiceIcon(choice)}
-              </div>
-              <p className="choice-card__desc">{choice.nextEffect}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function formatRunTime(seconds: number): string {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
-
-function getChoiceIcon(choice: UpgradeChoice) {
-  if (choice.id.includes('fire')) return <Flame size={32} />;
-  if (choice.id.includes('blades')) return <Swords size={32} />;
-  if (choice.id.includes('bolt') || choice.id.includes('lightning')) return <Zap size={32} />;
-  if (choice.id.includes('vitality')) return <Heart size={32} />;
-  if (choice.id.includes('armor')) return <Shield size={32} />;
-  if (choice.id.includes('power')) return <Sparkles size={32} />;
-  return <Target size={32} />;
-}
-
-function formatRunTime(seconds: number): string { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`; }

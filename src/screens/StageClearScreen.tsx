@@ -4,6 +4,7 @@ import { formatTime } from './GameOverScreen';
 import { ABILITY_DEFINITIONS } from '../data/abilities';
 import { getEquipmentDefinition } from '../data/equipment';
 import { isLastCampaignStage } from '../data/stages';
+import { audioService } from '../services/audioService';
 import type { AbilityId, EquipmentId, RunResult } from '../types';
 
 interface StageClearScreenProps {
@@ -34,6 +35,7 @@ export function StageClearScreen({
   const hasAnyUnlocks = Boolean(unlockedAbility || unlockedSurvival || eqDef);
 
   useEffect(() => {
+    audioService.playSFX('stage-clear', { volume: 0.9, throttle: 0.3 });
     const started = performance.now();
     let frame = 0;
     const animate = (now: number) => {

@@ -268,6 +268,14 @@ export class SurvivorGame3D {
       passiveLevels: { ...this.passiveLevels },
       abilityLevels: this.abilitySystem?.getLevels() ?? {},
       abilities: this.abilitySystem?.getSnapshot() ?? [],
+      stats: this.player ? {
+        damageMultiplier: this.player.stats.damageMultiplier,
+        moveSpeed: this.player.stats.moveSpeed,
+        armor: this.player.stats.armor,
+        critChance: this.player.stats.critChance,
+        pickupRadius: this.player.stats.pickupRadius,
+        cooldownMultiplier: this.player.stats.cooldownMultiplier,
+      } : undefined,
       boss: bossState ? { name: bossState.name, hp: bossState.hp, maxHp: bossState.maxHp, phase: bossState.phase } : undefined,
     };
   }

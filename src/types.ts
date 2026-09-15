@@ -213,6 +213,14 @@ export interface GameSnapshot {
   passiveLevels: Record<string, number>;
   abilityLevels?: Record<string, number>;
   abilities?: AbilityStateSnapshot[];
+  stats?: {
+    damageMultiplier: number;
+    moveSpeed: number;
+    armor: number;
+    critChance: number;
+    pickupRadius: number;
+    cooldownMultiplier: number;
+  };
   boss?: {
     name: string;
     hp: number;
