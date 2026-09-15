@@ -23,12 +23,11 @@ export function CreaturePreview3D({ kind, bossId, worldId, discovered, className
     const theme = biomeThemeForWorld(worldId);
     const resources = new SharedResources();
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme.background);
     scene.fog = new THREE.Fog(theme.fog, 8, 19);
     const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 40);
     camera.position.set(0, 2.25, 7.4);
     camera.lookAt(0, 1.25, 0);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;

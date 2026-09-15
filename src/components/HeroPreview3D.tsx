@@ -29,14 +29,13 @@ export function HeroPreview3D({
     const theme = biomeThemeForWorld(worldId);
     const resources = new SharedResources();
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme.background);
     scene.fog = new THREE.Fog(theme.fog, 6, 16);
 
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 30);
     camera.position.set(0, 1.6, 5.2);
     camera.lookAt(0, 0.95, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
@@ -191,7 +190,7 @@ export function HeroPreview3D({
         parent.removeChild(renderer.domElement);
       }
     };
-  }, [worldId]);
+  }, [heroId, equippedPet, equippedRelic, worldId]);
 
   return <div className={`hero-preview-host ${className}`} ref={host} />;
 }

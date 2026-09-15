@@ -71,7 +71,12 @@ export function MissionsScreen({ save, onBack, onClaim }: MissionsScreenProps) {
           <ChevronLeft size={24} />
         </button>
 
-        <h1 className="missions-main-title">MISSIONS</h1>
+        <div className="missions-title-wrap">
+          <h1 className="missions-main-title">MISSIONS</h1>
+          <div className="missions-title-ornament">
+            <span className="missions-title-diamond" />
+          </div>
+        </div>
 
         <div className="missions-daily-badge">
           <Sparkles size={14} className="missions-daily-badge__sparkle" />

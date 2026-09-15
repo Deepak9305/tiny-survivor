@@ -2554,16 +2554,17 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
 
 /* Campaign Card (Reference Image 1) */
 .home-campaign-card {
-  background: rgba(6, 16, 28, 0.88);
-  border: 1px solid rgba(56, 189, 248, 0.28);
+  background: rgba(6, 16, 28, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.32);
   border-radius: 16px;
   padding: 18px 22px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   gap: 14px;
   position: relative;
+  overflow: hidden;
 }
 .home-campaign-card__ornament {
   width: 100%;
@@ -2573,6 +2574,7 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 3;
 }
 .home-campaign-card__diamond {
   width: 7px;
@@ -2585,13 +2587,16 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 14px;
+  position: relative;
+  min-height: 105px;
 }
 .home-campaign-card__info {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  flex: 1;
+  max-width: 62%;
+  position: relative;
+  z-index: 3;
 }
 .home-campaign-card__kicker {
   font-family: 'Cinzel', serif;
@@ -2627,25 +2632,25 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   margin: 0;
 }
 .home-campaign-card__portrait-box {
-  width: 84px;
-  height: 84px;
-  border-radius: 12px;
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  position: absolute;
+  right: -22px;
+  top: -18px;
+  bottom: -14px;
+  width: 175px;
   overflow: hidden;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7), 0 0 12px rgba(56, 189, 248, 0.25);
-  position: relative;
-  flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 .home-campaign-card__portrait-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 25%;
+  mask-image: linear-gradient(to left, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, black 50%, transparent 100%);
 }
 .home-campaign-card__portrait-frame {
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 12px rgba(4, 10, 18, 0.8);
-  pointer-events: none;
+  display: none;
 }
 
 /* 3 Stacked Menu Rows */
@@ -2672,9 +2677,9 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   transform: translateX(2px);
 }
 .home-menu-row.is-locked {
-  opacity: 0.6;
-  background: rgba(6, 14, 24, 0.6);
-  border-color: rgba(60, 80, 100, 0.25);
+  opacity: 0.65;
+  background: linear-gradient(90deg, rgba(6, 16, 28, 0.94) 0%, rgba(6, 16, 28, 0.72) 60%, rgba(6, 16, 28, 0.4) 100%), url('/assets/images/bg_graveyard.jpg') right center / cover;
+  border-color: rgba(60, 80, 100, 0.35);
   cursor: not-allowed;
 }
 .home-menu-row__icon-wrap {
@@ -2793,7 +2798,7 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   border-color: rgba(56, 189, 248, 0.5);
   color: #ffffff;
 }
-.talents-title-wrap, .heroes-title-wrap, .codex-title-wrap {
+.talents-title-wrap, .heroes-title-wrap, .codex-title-wrap, .missions-title-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2807,7 +2812,7 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   margin: 0;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
-.talents-title-ornament, .heroes-title-ornament, .codex-title-ornament {
+.talents-title-ornament, .heroes-title-ornament, .codex-title-ornament, .missions-title-ornament {
   width: 120px;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.7), transparent);
@@ -2817,7 +2822,7 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   justify-content: center;
   margin-top: 4px;
 }
-.talents-title-diamond, .heroes-title-diamond, .codex-title-diamond {
+.talents-title-diamond, .heroes-title-diamond, .codex-title-diamond, .missions-title-diamond {
   width: 6px;
   height: 6px;
   background: #facc15;
@@ -3741,19 +3746,31 @@ main { min-height: 100vh; min-height: 100dvh; width: 100vw; max-width: 100vw; ma
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
 }
 .heroes-roster-card__avatar {
-  width: 42px;
-  height: 42px;
+  width: 100%;
+  height: 56px;
   border-radius: 8px;
   background: rgba(14, 42, 70, 0.9);
   border: 1px solid rgba(56, 189, 248, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+.heroes-roster-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.heroes-roster-card__lock-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 14, 0.65);
   display: grid;
   place-items: center;
-  color: #38bdf8;
-  position: relative;
+  color: #f1f5f9;
 }
 .heroes-roster-card__lock {
-  position: absolute;
   color: #facc15;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.9));
 }
 .heroes-roster-card__name {
   font-family: 'Cinzel', serif;

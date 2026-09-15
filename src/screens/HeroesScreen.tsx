@@ -44,6 +44,13 @@ const HERO_ICONS: Record<HeroId, typeof Swords> = {
   gunslinger: Swords,
 };
 
+const HERO_PORTRAITS: Record<HeroId, string> = {
+  shadow: '/assets/images/hero_portrait_shadow.jpg',
+  warrior: '/assets/images/hero_portrait_warrior.jpg',
+  monk: '/assets/images/hero_portrait_monk.jpg',
+  gunslinger: '/assets/images/hero_portrait_gunslinger.jpg',
+};
+
 export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenProps) {
   const [previewHeroId, setPreviewHeroId] = useState<HeroId>(save.selectedHero ?? 'shadow');
   const [activeSlotModal, setActiveSlotModal] = useState<EquipmentSlot | null>(null);
@@ -283,8 +290,16 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
                   aria-label={`${def.name}${unlocked ? '' : `, ${def.requirement}`}`}
                 >
                   <div className="heroes-roster-card__avatar">
-                    <Icon size={24} />
-                    {!unlocked && <Lock size={14} className="heroes-roster-card__lock" />}
+                    <img
+                      src={HERO_PORTRAITS[id]}
+                      alt={def.name}
+                      className="heroes-roster-card__img"
+                    />
+                    {!unlocked && (
+                      <div className="heroes-roster-card__lock-overlay">
+                        <Lock size={16} className="heroes-roster-card__lock" />
+                      </div>
+                    )}
                   </div>
                   <strong className="heroes-roster-card__name">{def.name}</strong>
                   <span
