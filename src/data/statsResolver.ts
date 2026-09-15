@@ -24,6 +24,7 @@ export interface ResolvedPlayerStats {
   specialCooldownMultiplier: number;
   healMultiplier: number;
   freezeDurationMultiplier: number;
+  freezeCooldownMultiplier: number;
   bonusProjectileEveryNShots: number;
   equippedPet?: string;
 }
@@ -65,6 +66,7 @@ export function resolvePlayerStats(
   let projectileSpeedMult = 1.0;
   let healMult = 1.0;
   let freezeDurationMult = 1.0;
+  let freezeCooldownMult = 1.0;
   let critChanceAdd = 0.0;
   let xpMult = 1.0;
   let bonusEveryN = 0;
@@ -107,6 +109,7 @@ export function resolvePlayerStats(
     if (mod.projectileSpeedMultiplier) projectileSpeedMult *= mod.projectileSpeedMultiplier;
     if (mod.healMultiplier) healMult *= mod.healMultiplier;
     if (mod.freezeDurationMultiplier) freezeDurationMult *= mod.freezeDurationMultiplier;
+    if (mod.freezeCooldownMultiplier) freezeCooldownMult *= mod.freezeCooldownMultiplier;
     if (mod.critChanceBonus) critChanceAdd += mod.critChanceBonus;
     if (mod.xpMultiplier) xpMult *= mod.xpMultiplier;
     if (mod.bonusProjectileEveryNShots) bonusEveryN = mod.bonusProjectileEveryNShots;
@@ -146,6 +149,7 @@ export function resolvePlayerStats(
     specialCooldownMultiplier: specialCooldownMult,
     healMultiplier: healMult,
     freezeDurationMultiplier: freezeDurationMult,
+    freezeCooldownMultiplier: freezeCooldownMult,
     bonusProjectileEveryNShots: bonusEveryN,
     equippedPet: loadout?.pet,
   };

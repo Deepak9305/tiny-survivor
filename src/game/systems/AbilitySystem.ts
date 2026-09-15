@@ -6,7 +6,7 @@ export interface AbilityActivationHooks {
   onFreeze: (level: number) => void;
   onHealTick: (amount: number, isFinished: boolean) => void;
   onArcaneBeam: (dirX: number, dirY: number, level: number) => void;
-  getCooldownMultiplier: () => number;
+  getCooldownMultiplier: (abilityId?: AbilityId) => number;
   getPlayerHP: () => { current: number; max: number };
 }
 
@@ -67,7 +67,7 @@ export class AbilitySystem {
     const def = ABILITY_DEFINITIONS[id];
     const level = this.getLevel(id);
     const cdrReduction = (level - 1) * 0.05; // 5% per upgrade
-    const mult = Math.max(0.4, this.hooks.getCooldownMultiplier() - cdrReduction);
+    const mult = Math.max(0.4, this.hooks.getCooldownMultiplier(id) - cdrReduction);
     return Math.max(1.0, def.baseCooldown * mult);
   }
 

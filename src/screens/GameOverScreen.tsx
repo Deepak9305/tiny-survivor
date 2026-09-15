@@ -32,6 +32,29 @@ export function GameOverScreen({
             <Skull size={56} className="skull-danger-icon" />
           </div>
           <h1 className="run-over-title">DEFEATED</h1>
+          {result.isNewBest && (
+            <div
+              className="run-over-new-best-badge"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(217, 119, 6, 0.38))',
+                border: '1px solid rgba(251, 191, 36, 0.75)',
+                color: '#fef08a',
+                padding: '4px 14px',
+                borderRadius: '999px',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                boxShadow: '0 0 16px rgba(245, 158, 11, 0.4)',
+                margin: '8px 0',
+              }}
+            >
+              <Sparkles size={14} /> NEW BEST RECORD!
+            </div>
+          )}
           <p className="run-over-tagline">Your soul returns to the sanctuary...</p>
         </div>
 

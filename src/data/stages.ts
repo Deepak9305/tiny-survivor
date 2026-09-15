@@ -104,3 +104,21 @@ export function getNextCampaignStageId(stageId: string): string | null {
   if (currentIndex === -1 || currentIndex >= STAGES.length - 1) return null;
   return STAGES[currentIndex + 1].id;
 }
+
+export function isLastCampaignStage(stageId: string): boolean {
+  return STAGES[STAGES.length - 1]?.id === stageId;
+}
+
+export function getSurvivalEnemyPool(save: SaveData): EnemyKind[] {
+  const pool: EnemyKind[] = [
+    'skeleton', 'bat', 'ghost', 'archer', 'slime',
+    'cursed-wolf', 'thornling', 'treant'
+  ];
+  if (isWorldUnlocked(3, save)) {
+    pool.push('knight', 'frost-wraith');
+  }
+  if (isWorldUnlocked(4, save)) {
+    pool.push('demon', 'imp');
+  }
+  return pool;
+}

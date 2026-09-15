@@ -220,8 +220,9 @@ export class Enemy3D implements SpatialEntity {
         let dirX = dx / distance;
         let dirY = dy / distance;
 
-        // Archer maintains range band
+        // Archer and Thornling maintain range band
         const isArcher = this.kind === 'archer';
+        const isThornling = this.kind === 'thornling';
         if (isArcher && distance < 170) {
           dirX *= -1;
           dirY *= -1;
@@ -232,6 +233,17 @@ export class Enemy3D implements SpatialEntity {
           const rotatedY = dirX * Math.sin(strafeAngle) + dirY * Math.cos(strafeAngle);
           dirX = rotatedX * 0.7;
           dirY = rotatedY * 0.7;
+        } else if (isThornling && distance < 140) {
+          // Thornling maintains medium distance (140-210)
+          dirX *= -1;
+          dirY *= -1;
+        } else if (isThornling && distance >= 140 && distance <= 210) {
+          // Strafe tangentially
+          const strafeAngle = Math.cos(this.phaseTime * 2.0) > 0 ? Math.PI / 2 : -Math.PI / 2;
+          const rotatedX = dirX * Math.cos(strafeAngle) - dirY * Math.sin(strafeAngle);
+          const rotatedY = dirX * Math.sin(strafeAngle) + dirY * Math.cos(strafeAngle);
+          dirX = rotatedX * 0.75;
+          dirY = rotatedY * 0.75;
         }
 
         const steer = steerAroundObstacles(this.x, this.y, dirX, dirY, this.worldId);
@@ -241,7 +253,7 @@ export class Enemy3D implements SpatialEntity {
         const currentSpeed =
           this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1);
 
-        if (distance > 34 || isArcher) {
+        if (distance > 34 || isArcher || isThornling) {
           this.x += dirX * currentSpeed * delta;
           this.y += dirY * currentSpeed * delta;
         }
@@ -556,6 +568,13 @@ export class Enemy3D implements SpatialEntity {
         this.stateTimer -= delta;
         this.telegraphGroup.visible = false;
         if (this.kind === 'slime') this.model.position.y = 0;
+        if (this.kind === 'thornling') {
+          // Relocate tangentially / backwards during recovery
+          const relX = -dy / distance;
+          const relY = dx / distance;
+          this.x += relX * (this.baseSpeed * 0.6) * delta;
+          this.y += relY * (this.baseSpeed * 0.6) * delta;
+        }
 
         if (this.stateTimer <= 0) {
           this.state = 'approach';
@@ -626,6 +645,22 @@ export class Enemy3D implements SpatialEntity {
       // Long narrow laser aim line
       this.telegraphMesh.scale.set(0.12, 3.2, 0.12);
       this.telegraphMesh.position.set(0, 0, 2.0);
+    } else if (this.kind === 'thornling') {
+      // Aimed thorn projectile line
+      this.telegraphMesh.scale.set(0.12, 2.8, 0.12);
+      this.telegraphMesh.position.set(0, 0, 1.8);
+    } else if (this.kind === 'cursed-wolf') {
+      // Fast locked-direction pounce lane
+      this.telegraphMesh.scale.set(0.38, 2.6, 0.38);
+      this.telegraphMesh.position.set(0, 0, 1.6);
+    } else if (this.kind === 'treant') {
+      // Broad ground slam circle
+      this.telegraphMesh.scale.set(2.2, 2.2, 2.2);
+      this.telegraphMesh.position.set(0, 0, 0.35);
+    } else if (this.kind === 'frost-wraith') {
+      // Frost lane strike
+      this.telegraphMesh.scale.set(0.46, 2.4, 0.46);
+      this.telegraphMesh.position.set(0, 0, 1.5);
     } else if (this.kind === 'bat' || this.kind === 'ghost') {
       // Dive lane
       this.telegraphMesh.scale.set(0.42, 2.2, 0.42);

@@ -50,7 +50,8 @@ export interface WeaponHooks {
     damage: number,
     damageType: DamageType
   ) => void;
-  getDamageMultiplier: () => number;
+  getPrimaryDamageMultiplier: () => number;
+  getAutoWeaponDamageMultiplier: () => number;
   getCooldownMultiplier: () => number;
 }
 
@@ -116,7 +117,7 @@ export class WeaponSystem {
         const level = this.getWeaponLevel('orbiting-blades');
         const damage =
           WEAPON_BALANCE['orbiting-blades'].baseDamage *
-          this.hooks.getDamageMultiplier() *
+          this.hooks.getAutoWeaponDamageMultiplier() *
           (1 + (level - 1) * 0.25);
         const player = this.hooks.getPlayerPosition();
         this.hooks.dealOrbitDamage(
@@ -171,7 +172,7 @@ export class WeaponSystem {
     const level = this.getWeaponLevel('magic-bolt');
     const damage =
       WEAPON_BALANCE['magic-bolt'].baseDamage *
-      this.hooks.getDamageMultiplier() *
+      this.hooks.getPrimaryDamageMultiplier() *
       (1 + (level - 1) * 0.25);
     const player = this.hooks.getPlayerPosition();
 
@@ -225,7 +226,7 @@ export class WeaponSystem {
     const level = this.getWeaponLevel('chain-lightning');
     const damage =
       WEAPON_BALANCE['chain-lightning'].baseDamage *
-      this.hooks.getDamageMultiplier() *
+      this.hooks.getAutoWeaponDamageMultiplier() *
       (1 + (level - 1) * 0.25);
 
     const chainCount = level >= 5 ? 5 : level >= 4 ? 4 : level >= 2 ? 3 : 2;

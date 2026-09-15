@@ -29,7 +29,7 @@ export function SurvivalScreen({ save, onBack, onStart, onSelectHero }: Survival
 
   return (
     <main className="meta-screen survival-landscape-screen">
-      <ScreenHeader title="ENDLESS SURVIVAL" onBack={onBack} />
+      <ScreenHeader title="SURVIVAL MODE" onBack={onBack} />
 
       <div className="survival-landscape-container">
         {/* Left Column: Records & Lore */}

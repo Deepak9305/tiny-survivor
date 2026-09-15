@@ -5,7 +5,7 @@ import { audioService } from './services/audioService';
 import { registerAppLifecycle } from './services/nativeService';
 import { DEFAULT_SAVE, loadSave, normalizeSave, resetSave, saveGame } from './services/saveService';
 import { getPermanentUpgradeCost } from './data/balance';
-import { getCurrentStage, getNextCampaignStageId, getStage, isStageUnlocked, isWorldCleared, stageNumber } from './data/stages';
+import { getCurrentStage, getNextCampaignStageId, getStage, getTotalCampaignStageCount, isStageUnlocked, isWorldCleared, stageNumber } from './data/stages';
 import { getBossFirstClearEquipment } from './data/equipment';
 import { GameScreen } from './screens/GameScreen';
 import { HeroesScreen } from './screens/HeroesScreen';
@@ -133,10 +133,12 @@ export default function App() {
 
   const startSurvival = useCallback(() => {
     // Pick arena from worlds the player has cleared/unlocked
-    const candidates = ['1-1'];
-    if (isWorldCleared(1, save)) candidates.push('2-1');
-    if (isWorldCleared(2, save)) candidates.push('3-1');
-    if (isWorldCleared(3, save)) candidates.push('4-1');
+    // At initial unlock (World 2 cleared), candidates are Graveyard ('1-1') and Forest ('2-1').
+    // Frozen Ruins ('3-1') is added only after World 3 is cleared.
+    // Demon Castle ('4-1') is added only after World 4 is cleared.
+    const candidates = ['1-1', '2-1'];
+    if (isWorldCleared(3, save)) candidates.push('3-1');
+    if (isWorldCleared(4, save)) candidates.push('4-1');
     const chosenStageId = candidates[Math.floor(Math.random() * candidates.length)] ?? '2-1';
 
     setSelectedStageId(chosenStageId);
@@ -161,13 +163,13 @@ export default function App() {
     setNewlyUnlockedSurvival(survivalUnlockedNow);
 
     // Deterministic boss first-clear equipment drop
-    const bossDrop = firstClear ? getBossFirstClearEquipment(result.stageId) : undefined;
+    const bossDrop = firstClear ? getBossFirstClearEquipment(result.stageId, stage.worldId, stage.bossStage) : undefined;
     setNewlyUnlockedEquipment(bossDrop);
     const ownedEquipment = bossDrop && !save.ownedEquipment.includes(bossDrop)
       ? [...save.ownedEquipment, bossDrop]
       : save.ownedEquipment;
 
-    const next = Math.min(20, stageNumber(result.stageId) + 1);
+    const next = Math.min(getTotalCampaignStageCount(), stageNumber(result.stageId) + 1);
     const best = save.bestStageTimes[result.stageId];
     const codex = mergeCodexProgress(save, result);
     const nextSave = normalizeSave({

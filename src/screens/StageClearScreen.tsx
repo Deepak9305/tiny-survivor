@@ -3,6 +3,7 @@ import { Coins, Flame, Home, Play, RotateCw, Shield, Skull, Sparkles, Star, Time
 import { formatTime } from './GameOverScreen';
 import { ABILITY_DEFINITIONS } from '../data/abilities';
 import { getEquipmentDefinition } from '../data/equipment';
+import { isLastCampaignStage } from '../data/stages';
 import type { AbilityId, EquipmentId, RunResult } from '../types';
 
 interface StageClearScreenProps {
@@ -25,7 +26,7 @@ export function StageClearScreen({
   onHome,
 }: StageClearScreenProps) {
   const [coinsCount, setCoinsCount] = useState(0);
-  const isFinalCampaign = result.stageId === '4-5';
+  const isFinalCampaign = isLastCampaignStage(result.stageId);
   const unlockedAbilityId = newlyUnlockedAbilities[0];
   const unlockedAbility = unlockedAbilityId ? ABILITY_DEFINITIONS[unlockedAbilityId] : undefined;
   const eqDef = unlockedEquipment ? getEquipmentDefinition(unlockedEquipment) : undefined;

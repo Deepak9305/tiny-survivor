@@ -103,7 +103,7 @@ export const EQUIPMENT_DEFINITIONS: Record<EquipmentId, EquipmentDefinition> = {
     price: 700,
     stats: {
       freezeDurationMultiplier: 1.20,
-      specialCooldownMultiplier: 0.90,
+      freezeCooldownMultiplier: 0.90,
     },
     bossDropFrom: 'frost-golem',
     accentColor: 0x38bdf8,
@@ -237,13 +237,22 @@ export function getEquipmentBySlot(slot: EquipmentSlot): EquipmentDefinition[] {
   return ALL_EQUIPMENT_IDS.map((id) => EQUIPMENT_DEFINITIONS[id]).filter((item) => item.slot === slot);
 }
 
-export const BOSS_FIRST_CLEAR_EQUIPMENT: Record<string, EquipmentId> = {
-  '1-5': 'bone-guard',
-  '2-5': 'spirit-fox',
-  '3-5': 'frost-rune',
-  '4-5': 'demon-seal',
+export const WORLD_BOSS_EQUIPMENT_REWARDS: Record<number, EquipmentId> = {
+  1: 'bone-guard',
+  2: 'spirit-fox',
+  3: 'frost-rune',
+  4: 'demon-seal',
 };
 
-export function getBossFirstClearEquipment(stageId: string): EquipmentId | undefined {
-  return BOSS_FIRST_CLEAR_EQUIPMENT[stageId];
+export function getBossFirstClearEquipment(stageId: string, worldId?: number, isBossStage?: boolean): EquipmentId | undefined {
+  if (isBossStage && worldId) {
+    return WORLD_BOSS_EQUIPMENT_REWARDS[worldId];
+  }
+  const [wStr, sStr] = stageId.split('-');
+  const w = Number(wStr);
+  const s = Number(sStr);
+  if (!Number.isNaN(w) && (isBossStage ?? s === 5)) {
+    return WORLD_BOSS_EQUIPMENT_REWARDS[w];
+  }
+  return undefined;
 }

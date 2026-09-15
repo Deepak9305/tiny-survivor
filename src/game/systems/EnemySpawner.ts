@@ -21,6 +21,8 @@ type PackType =
 
 export class EnemySpawner {
   private stage?: StageDefinition;
+  private customPool?: EnemyKind[];
+  private isSurvival = false;
   private elapsed = 0;
   private spawnTimer = 0;
   private packTimer = 16;
@@ -29,8 +31,10 @@ export class EnemySpawner {
 
   constructor(private readonly hooks: SpawnHooks) {}
 
-  loadStageTimeline(stage: StageDefinition): void {
+  loadStageTimeline(stage: StageDefinition, customPool?: EnemyKind[], isSurvival = false): void {
     this.stage = stage;
+    this.customPool = customPool;
+    this.isSurvival = isSurvival;
     this.elapsed = 0;
     this.spawnTimer = 0.5;
     this.packTimer = 14;
@@ -43,6 +47,11 @@ export class EnemySpawner {
   }
 
   calculateSpawnRate(): number {
+    if (this.isSurvival) {
+      const minutes = this.elapsed / 60;
+      const breathingFactor = this.breathingTimer > 0 ? 2.0 : 1.0;
+      return Math.max(0.22, (0.72 / (1 + minutes * 0.15)) * breathingFactor);
+    }
     const progress = Math.min(1, this.elapsed / (this.stage?.duration ?? 180));
     const density = this.stage?.difficulty.densityMultiplier ?? 1;
     // Breathing window slows down drip rate
@@ -51,7 +60,7 @@ export class EnemySpawner {
   }
 
   chooseEnemyType(allowedKinds?: EnemyKind[]): EnemyKind {
-    const stageAllowed = allowedKinds ?? this.stage?.enemies ?? ['skeleton'];
+    const stageAllowed = allowedKinds ?? this.customPool ?? this.stage?.enemies ?? ['skeleton'];
     const available = stageAllowed.filter(
       (type) => (ENEMY_BALANCE[type]?.minTime ?? 0) <= this.elapsed
     );
@@ -72,6 +81,17 @@ export class EnemySpawner {
   }
 
   spawnRegularWave(): void {
+    if (this.isSurvival) {
+      const minutes = this.elapsed / 60;
+      const count = Math.min(5, 2 + Math.floor(minutes * 0.5));
+      const eliteChance = Math.min(0.38, 0.05 + minutes * 0.035);
+      for (let index = 0; index < count; index += 1) {
+        const position = this.getSafeSpawnPosition();
+        const elite = Math.random() < eliteChance;
+        this.hooks.spawnEnemy(this.chooseEnemyType(), position.x, position.y, elite);
+      }
+      return;
+    }
     const baseCount = this.elapsed > 110 ? 3 : this.elapsed > 45 ? 2 : 1;
     const density = this.stage?.difficulty.densityMultiplier ?? 1;
     const count = Math.min(4, Math.max(1, Math.round(baseCount * density)));
@@ -87,7 +107,7 @@ export class EnemySpawner {
   }
 
   spawnAuthoredPack(): void {
-    const stageEnemies = this.stage?.enemies ?? ['skeleton'];
+    const stageEnemies = this.customPool ?? this.stage?.enemies ?? ['skeleton'];
     const packs: PackType[] = [];
 
     if (stageEnemies.includes('cursed-wolf')) packs.push('wolf_pack');
@@ -228,14 +248,19 @@ export class EnemySpawner {
     this.elapsed += delta;
     this.breathingTimer = Math.max(0, this.breathingTimer - delta);
 
-    const maxAlive = this.elapsed > 110 ? 95 : 68;
+    const maxAlive = this.isSurvival
+      ? Math.min(96, 68 + Math.floor((this.elapsed / 60) * 6))
+      : (this.elapsed > 110 ? 95 : 68);
     if (this.hooks.getAliveCount() >= maxAlive) return;
 
     // Pack spawner check
     this.packTimer -= delta;
     if (this.packTimer <= 0) {
       this.spawnAuthoredPack();
-      this.packTimer = 18 + Math.random() * 6;
+      const packInterval = this.isSurvival
+        ? Math.max(12, 18 - (this.elapsed / 60) * 1.0) + Math.random() * 4
+        : (18 + Math.random() * 6);
+      this.packTimer = packInterval;
     }
 
     // Regular drip spawner check

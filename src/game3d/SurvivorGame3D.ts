@@ -6,6 +6,7 @@ import { generateUpgradeChoices } from '../data/upgrades';
 import { resolvePlayerStats, type ResolvedPlayerStats } from '../data/statsResolver';
 import type { BossAttack, BossId, DamageType, EnemyKind, GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId, AbilityId } from '../types';
 import { ALL_ABILITY_IDS } from '../data/abilities';
+import { isWorldCleared, getSurvivalEnemyPool } from '../data/stages';
 import { HapticsService } from '../services/hapticsService';
 import { audioService } from '../services/audioService';
 import { AbilitySystem } from '../game/systems/AbilitySystem';
@@ -97,9 +98,10 @@ export class SurvivorGame3D {
   private resolvedStats!: ResolvedPlayerStats;
   private currentBossEcho?: BossEcho3D;
   private queuedEcho?: BossId;
+  private queuedEchoSpawnTimer = 0;
   private readonly echoesSummoned = new Set<BossId>();
   private batPetTimer = 4.5;
-  private fairyPetTimer = 26.0;
+  private fairyPetTimer = 25.0;
   private primaryShotCounter = 0;
   private survivalBossTimer = 240;
   private survivalEscalationTimer = 60;
@@ -286,6 +288,7 @@ export class SurvivorGame3D {
     for (const pickup of this.xpPickups) pickup.destroy();
     this.boss?.destroy();
     this.currentBossEcho?.destroy();
+    this.queuedEcho = undefined;
     this.effects.clear();
     this.telegraphs.clear();
     this.damageText.dispose();
@@ -363,8 +366,9 @@ export class SurvivorGame3D {
       dealAreaDamage: (x, y, radius, damage, color, damageType) =>
         this.dealAreaDamage(x, y, radius, damage, color, damageType),
       dealOrbitDamage: (x, y, radius, damage, damageType) =>
-        this.dealOrbitDamage(x, y, radius, damage * this.resolvedStats.autoWeaponDamageMultiplier, damageType),
-      getDamageMultiplier: () => this.player.stats.damageMultiplier * this.resolvedStats.primaryDamageMultiplier,
+        this.dealOrbitDamage(x, y, radius, damage, damageType),
+      getPrimaryDamageMultiplier: () => this.player.stats.damageMultiplier * this.resolvedStats.primaryDamageMultiplier,
+      getAutoWeaponDamageMultiplier: () => this.player.stats.damageMultiplier * this.resolvedStats.autoWeaponDamageMultiplier,
       getCooldownMultiplier: () => (this.player.stats.cooldownMultiplier * this.resolvedStats.primaryCooldownMultiplier) / this.resolvedStats.primaryFireRateMultiplier,
     });
     this.abilitySystem = new AbilitySystem({
@@ -372,7 +376,13 @@ export class SurvivorGame3D {
       onFreeze: (level) => this.triggerFreeze(level),
       onHealTick: (amount, isFinished) => this.triggerHealTick(amount * this.resolvedStats.healMultiplier, isFinished),
       onArcaneBeam: (dirX, dirY, level) => this.triggerArcaneBeam(dirX, dirY, level),
-      getCooldownMultiplier: () => this.player.stats.cooldownMultiplier * this.resolvedStats.specialCooldownMultiplier,
+      getCooldownMultiplier: (id?: AbilityId) => {
+        let mult = this.player.stats.cooldownMultiplier * this.resolvedStats.specialCooldownMultiplier;
+        if (id === 'freeze') {
+          mult *= this.resolvedStats.freezeCooldownMultiplier;
+        }
+        return mult;
+      },
       getPlayerHP: () => ({
         current: this.player.stats.currentHP,
         max: this.player.stats.maxHP,
@@ -385,7 +395,11 @@ export class SurvivorGame3D {
       getAliveCount: () => this.enemies.length,
       spawnEnemy: (type, x, y, elite) => this.spawnEnemy(type, x, y, elite),
     });
-    this.enemySpawner.loadStageTimeline(this.stage);
+    if (this.mode === 'survival') {
+      this.enemySpawner.loadStageTimeline(this.stage, getSurvivalEnemyPool(this.save), true);
+    } else {
+      this.enemySpawner.loadStageTimeline(this.stage);
+    }
     this.bossSystem = new BossSystem({
       getPlayerPosition: () => this.player.getPosition(),
       getBossPosition: () => this.boss?.getPosition() ?? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 },
@@ -461,7 +475,7 @@ export class SurvivorGame3D {
     } else if (this.resolvedStats.equippedPet === 'fairy') {
       this.fairyPetTimer -= delta;
       if (this.fairyPetTimer <= 0) {
-        this.fairyPetTimer = 26.0;
+        this.fairyPetTimer = 25.0;
         this.triggerFairyHeal();
       }
     }
@@ -488,10 +502,15 @@ export class SurvivorGame3D {
         this.currentBossEcho = undefined;
         this.bossSystem.setEchoActive(false);
         if (this.queuedEcho) {
-          const nextEcho = this.queuedEcho;
-          this.queuedEcho = undefined;
-          window.setTimeout(() => this.spawnBossEcho(nextEcho), 1500);
+          this.queuedEchoSpawnTimer = 1.5;
         }
+      }
+    } else if (this.queuedEcho) {
+      this.queuedEchoSpawnTimer -= delta;
+      if (this.queuedEchoSpawnTimer <= 0) {
+        const nextEcho = this.queuedEcho;
+        this.queuedEcho = undefined;
+        this.spawnBossEcho(nextEcho);
       }
     }
 
@@ -512,7 +531,8 @@ export class SurvivorGame3D {
       const e = this.enemies[i];
       if (
         (e.state === 'windup' || e.state === 'attack') &&
-        (e.kind === 'archer' || e.kind === 'bat' || e.kind === 'slime' || e.kind === 'imp')
+        (e.kind === 'archer' || e.kind === 'bat' || e.kind === 'slime' || e.kind === 'imp' ||
+         e.kind === 'cursed-wolf' || e.kind === 'thornling' || e.kind === 'frost-wraith')
       ) {
         highThreatActiveCount += 1;
       }
@@ -596,6 +616,10 @@ export class SurvivorGame3D {
             hitDist < attackEvent.radius + 18 &&
             this.player.takeDamage(this.getPlayerDamage(attackEvent.damage), this.gameTime, 0.58)
           ) {
+            if (attackEvent.slow) {
+              this.player.applyChill(0.75, 2.0);
+              this.effects.ring(playerX, playerY, 0.6, 0x38bdf8);
+            }
             this.spawnDamageNumber(playerX, playerY - 30, Math.round(attackEvent.damage), false, attackEvent.color);
             this.effects.burst(playerX, playerY, attackEvent.color);
             this.cameraController.triggerShake(0.12, 0.18);
@@ -617,9 +641,17 @@ export class SurvivorGame3D {
 
   private spawnEnemy(type: EnemyKind, x: number, y: number, elite: boolean): void {
     this.encounteredEnemies.add(type);
-    const progress = Math.min(1, this.gameTime / Math.max(1, this.stage.duration));
-    const hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.96 + progress * 0.16);
-    const damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.96 + progress * 0.12);
+    let hpMultiplier: number;
+    let damageMultiplier: number;
+    if (this.mode === 'survival') {
+      const minutes = this.gameTime / 60;
+      hpMultiplier = 1 + minutes * 0.16;
+      damageMultiplier = 1 + minutes * 0.11;
+    } else {
+      const progress = Math.min(1, this.gameTime / Math.max(1, this.stage.duration));
+      hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.96 + progress * 0.16);
+      damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.96 + progress * 0.12);
+    }
     const enemy = new Enemy3D(this.actors, type, x, y, this.resources, elite, hpMultiplier, damageMultiplier, this.stage.worldId);
     this.enemies.push(enemy);
     this.spatialGrid.insert(enemy);
@@ -1091,14 +1123,34 @@ export class SurvivorGame3D {
   }
 
   private applyPassive(id: string, level: number): void {
-    if (id === 'power') this.player.stats.damageMultiplier = (1 + (this.save.permanentUpgrades.damage ?? 0) * 0.1) * (1 + level * 0.12);
-    if (id === 'vitality') { this.player.stats.maxHP = PLAYER_BALANCE.maxHp * (1 + (this.save.permanentUpgrades.maxHp ?? 0) * 0.12 + level * 0.15); this.player.heal(this.player.stats.maxHP * 0.2); }
-    if (id === 'swift-boots') this.player.setMoveSpeed(PLAYER_BALANCE.moveSpeed * (1 + (this.save.permanentUpgrades.moveSpeed ?? 0) * 0.06 + level * 0.08));
-    if (id === 'magnet') this.player.stats.pickupRadius = PLAYER_BALANCE.pickupRadius + (this.save.permanentUpgrades.magnet ?? 0) * 20 + level * 28;
-    if (id === 'focus') this.player.stats.cooldownMultiplier = Math.max(0.5, 1 - level * 0.08);
-    if (id === 'luck') this.player.stats.critChance = PLAYER_BALANCE.critChance + (this.save.permanentUpgrades.critChance ?? 0) * 0.025 + level * 0.04;
-    if (id === 'growth') this.player.stats.xpMultiplier = 1 + (this.save.permanentUpgrades.xpGain ?? 0) * 0.08 + level * 0.1;
-    if (id === 'armor') this.player.stats.armor = Math.min(0.72, (this.save.permanentUpgrades.armor ?? 0) * 0.07 + level * 0.08);
+    if (id === 'power') {
+      this.player.stats.damageMultiplier = this.resolvedStats.allDamageMultiplier * (1 + level * 0.12);
+    }
+    if (id === 'vitality') {
+      const prevMaxHp = this.player.stats.maxHP;
+      const newMaxHp = Math.round(this.resolvedStats.maxHp * (1 + level * 0.15));
+      this.player.stats.maxHP = newMaxHp;
+      const hpGain = newMaxHp - prevMaxHp;
+      if (hpGain > 0) this.player.heal(hpGain);
+    }
+    if (id === 'swift-boots') {
+      this.player.setMoveSpeed(Math.round(this.resolvedStats.moveSpeed * (1 + level * 0.08)));
+    }
+    if (id === 'magnet') {
+      this.player.stats.pickupRadius = Math.round(this.resolvedStats.pickupRadius * (1 + level * 0.20));
+    }
+    if (id === 'focus') {
+      this.player.stats.cooldownMultiplier = Math.max(0.5, 1 - level * 0.08);
+    }
+    if (id === 'luck') {
+      this.player.stats.critChance = Math.min(0.85, this.resolvedStats.critChance + level * 0.04);
+    }
+    if (id === 'growth') {
+      this.player.stats.xpMultiplier = Number((this.resolvedStats.xpMultiplier * (1 + level * 0.10)).toFixed(2));
+    }
+    if (id === 'armor') {
+      this.player.stats.armor = Math.min(0.75, this.resolvedStats.armor + level * 0.05);
+    }
   }
 
   private checkBossTimer(delta: number): void {
@@ -1333,7 +1385,7 @@ export class SurvivorGame3D {
   }
 
   private triggerFairyHeal(): void {
-    const healAmount = 16 * (this.resolvedStats?.healMultiplier ?? 1);
+    const healAmount = 6 * (this.resolvedStats?.healMultiplier ?? 1);
     this.player.heal(healAmount);
     this.spawnDamageNumber(this.player.x, this.player.y - 32, Math.round(healAmount), false, 0x4ade80);
     this.effects.levelUp(this.player.x, this.player.y);
@@ -1342,10 +1394,9 @@ export class SurvivorGame3D {
   }
 
   private spawnSurvivalBoss(): void {
-    const eligibleBosses: BossId[] = ['skeleton-king'];
-    if (this.save.completedStages.some((s) => s.startsWith('2-'))) eligibleBosses.push('forest-witch');
-    if (this.save.completedStages.some((s) => s.startsWith('3-'))) eligibleBosses.push('frost-golem');
-    if (this.save.completedStages.some((s) => s.startsWith('4-'))) eligibleBosses.push('demon-lord');
+    const eligibleBosses: BossId[] = ['skeleton-king', 'forest-witch'];
+    if (isWorldCleared(3, this.save)) eligibleBosses.push('frost-golem');
+    if (isWorldCleared(4, this.save)) eligibleBosses.push('demon-lord');
 
     const chosenBoss = eligibleBosses[Math.floor(Math.random() * eligibleBosses.length)];
     const bossDef = getBossDefinition(chosenBoss);
@@ -1430,7 +1481,14 @@ export class SurvivorGame3D {
     this.input.reset();
     this.enemySpawner.stopSpawning();
     this.runController.failRun();
-    const result = this.buildRunResult(Math.max(6, Math.round(this.gameTime / 14) + Math.round(this.enemies.length / 8)));
+    let coins: number;
+    if (this.mode === 'survival') {
+      const bossKills = Object.values(this.bossKillsById).reduce((total, count) => total + count, 0);
+      coins = Math.max(10, Math.round(this.gameTime / 5) + Math.floor(this.kills / 4) + this.eliteKills * 6 + bossKills * 60);
+    } else {
+      coins = Math.max(6, Math.round(this.gameTime / 14) + Math.round(this.enemies.length / 8));
+    }
+    const result = this.buildRunResult(coins);
     this.callbacks.onSnapshot(this.getSnapshot());
     audioService.playSFX('game-over', { throttle: 0.4 });
     audioService.crossfadeMusic('menu', 1.2);

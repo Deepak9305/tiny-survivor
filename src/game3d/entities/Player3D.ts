@@ -43,6 +43,8 @@ export class Player3D {
   private hasAimed = false;
   private aimActive = false;
   private aimIndicator?: THREE.Group;
+  private chillTimer = 0;
+  private chillMultiplier = 1.0;
   x: number;
   y: number;
 
@@ -127,14 +129,28 @@ export class Player3D {
     this.reviveTime = 0;
     this.levelUpTime = 0;
     this.victoryTime = 0;
+    this.chillTimer = 0;
+    this.chillMultiplier = 1.0;
+  }
+
+  applyChill(multiplier = 0.75, duration = 2.0): void {
+    this.chillMultiplier = multiplier;
+    this.chillTimer = Math.max(this.chillTimer, duration);
   }
 
   updateMovement(delta: number, worldWidth: number, worldHeight: number): void {
+    if (this.chillTimer > 0) {
+      this.chillTimer -= delta;
+      if (this.chillTimer <= 0) {
+        this.chillMultiplier = 1.0;
+      }
+    }
     const length = this.movement.length();
     if (length > 0.02) {
       const direction = this.movement.clone().normalize();
-      let nextX = THREE.MathUtils.clamp(this.x + direction.x * this.stats.moveSpeed * delta, 48, worldWidth - 48);
-      let nextY = THREE.MathUtils.clamp(this.y + direction.y * this.stats.moveSpeed * delta, 64, worldHeight - 64);
+      const currentSpeed = this.stats.moveSpeed * this.chillMultiplier;
+      let nextX = THREE.MathUtils.clamp(this.x + direction.x * currentSpeed * delta, 48, worldWidth - 48);
+      let nextY = THREE.MathUtils.clamp(this.y + direction.y * currentSpeed * delta, 64, worldHeight - 64);
 
       // 2D Static Obstacle Collision resolution
       const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);

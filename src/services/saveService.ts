@@ -3,6 +3,7 @@ import type { AbilityId, BossId, EnemyKind, EquipmentId, HeroId, HeroLoadout, Mi
 import { ALL_ABILITY_IDS, isAbilityMilestoneCleared } from '../data/abilities';
 import { ALL_HERO_IDS } from '../data/heroes';
 import { ALL_EQUIPMENT_IDS } from '../data/equipment';
+import { getTotalCampaignStageCount } from '../data/stages';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
 const SAVE_SCHEMA_VERSION = 5;
@@ -96,7 +97,7 @@ export function normalizeSave(raw: unknown): SaveData {
   const permanent = data.permanentUpgrades && typeof data.permanentUpgrades === 'object' ? data.permanentUpgrades : {};
   const settings = data.settings && typeof data.settings === 'object' ? data.settings as Partial<Settings> : {};
   const completedStages = Array.isArray(data.completedStages) ? data.completedStages.filter((id): id is string => typeof id === 'string') : [];
-  const highestUnlockedStage = Math.min(20, Math.max(1, validInteger(data.highestUnlockedStage, 1, 1)));
+  const highestUnlockedStage = Math.min(getTotalCampaignStageCount(), Math.max(1, validInteger(data.highestUnlockedStage, 1, 1)));
 
   // Hero ID migration (knight -> warrior, ranger -> gunslinger)
   const mappedHeroes: HeroId[] = [];

@@ -33,6 +33,7 @@ export interface HeroStatModifiers {
   projectileSpeedMultiplier?: number;
   healMultiplier?: number;
   freezeDurationMultiplier?: number;
+  freezeCooldownMultiplier?: number;
   critChanceBonus?: number;
   xpMultiplier?: number;
   bonusProjectileEveryNShots?: number;
