@@ -8,13 +8,22 @@ import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
 import { audioService } from '../services/audioService';
 import { GameOverScreen } from './GameOverScreen';
-import type { GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
+import type { GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
 
-interface GameScreenProps { stage: StageDefinition; save: SaveData; onStageClear: (result: RunResult) => void; onGameOver: (result: RunResult) => void; onRetry: () => void; onHome: () => void; onBestiary: () => void }
+interface GameScreenProps {
+  stage: StageDefinition;
+  save: SaveData;
+  mode?: RunMode;
+  onStageClear: (result: RunResult) => void;
+  onGameOver: (result: RunResult) => void;
+  onRetry: () => void;
+  onHome: () => void;
+  onBestiary: () => void;
+}
 
 const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteKills: 0, level: 1, xp: 0, xpRequired: 82, hp: 100, maxHp: 100, coins: 0, aliveEnemies: 0, weaponLevels: { 'magic-bolt': 1 }, passiveLevels: {} };
 
-export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onHome, onBestiary }: GameScreenProps) {
+export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary }: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
@@ -57,16 +66,22 @@ export function GameScreen({ stage, save, onStageClear, onGameOver, onRetry, onH
       audioService.setSfxEnabled(save.settings.soundEffects);
       audioService.playMusic('run');
 
-      mountThreeGame(gameRoot.current, stage, save, {
-        onSnapshot: setSnapshot,
-        onLevelUp: setUpgradeChoices,
-        onGameOver: (result) => { setGameOver(result); onGameOver(result); },
-        onStageClear,
-        onPaused: setPaused,
-        onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
-        onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
-        onRendererError: setRendererError,
-      });
+      mountThreeGame(
+        gameRoot.current,
+        stage,
+        save,
+        {
+          onSnapshot: setSnapshot,
+          onLevelUp: setUpgradeChoices,
+          onGameOver: (result) => { setGameOver(result); onGameOver(result); },
+          onStageClear,
+          onPaused: setPaused,
+          onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
+          onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
+          onRendererError: setRendererError,
+        },
+        mode
+      );
 
       cleanupGame = () => {
         if (warningTimer.current) window.clearTimeout(warningTimer.current);

@@ -8,7 +8,16 @@ export interface SpawnHooks {
   spawnEnemy: (type: EnemyKind, x: number, y: number, elite: boolean) => void;
 }
 
-type PackType = 'melee_swarm' | 'bat_swoop' | 'archer_escort' | 'slime_wall' | 'imp_rush';
+type PackType =
+  | 'melee_swarm'
+  | 'bat_swoop'
+  | 'archer_escort'
+  | 'slime_wall'
+  | 'imp_rush'
+  | 'wolf_pack'
+  | 'thorn_volley'
+  | 'treant_escort'
+  | 'frost_hunt';
 
 export class EnemySpawner {
   private stage?: StageDefinition;
@@ -42,10 +51,11 @@ export class EnemySpawner {
   }
 
   chooseEnemyType(allowedKinds?: EnemyKind[]): EnemyKind {
-    const available = (allowedKinds ?? this.stage?.enemies ?? ['skeleton']).filter(
-      (type) => ENEMY_BALANCE[type].minTime <= this.elapsed
+    const stageAllowed = allowedKinds ?? this.stage?.enemies ?? ['skeleton'];
+    const available = stageAllowed.filter(
+      (type) => (ENEMY_BALANCE[type]?.minTime ?? 0) <= this.elapsed
     );
-    const pool = available.length ? available : (['skeleton'] as EnemyKind[]);
+    const pool = available.length > 0 ? available : stageAllowed;
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
@@ -80,6 +90,10 @@ export class EnemySpawner {
     const stageEnemies = this.stage?.enemies ?? ['skeleton'];
     const packs: PackType[] = [];
 
+    if (stageEnemies.includes('cursed-wolf')) packs.push('wolf_pack');
+    if (stageEnemies.includes('thornling')) packs.push('thorn_volley');
+    if (stageEnemies.includes('treant')) packs.push('treant_escort');
+    if (stageEnemies.includes('frost-wraith')) packs.push('frost_hunt');
     if (stageEnemies.includes('bat')) packs.push('bat_swoop');
     if (stageEnemies.includes('archer')) packs.push('archer_escort');
     if (stageEnemies.includes('slime')) packs.push('slime_wall');
@@ -91,6 +105,53 @@ export class EnemySpawner {
     const eliteMultiplier = this.stage?.difficulty.eliteMultiplier ?? 1;
 
     switch (chosenPack) {
+      case 'wolf_pack': {
+        const count = 4;
+        for (let i = 0; i < count; i += 1) {
+          const angle = baseAngle + (i - 1.5) * 0.28;
+          const pos = this.getSafeSpawnPosition(angle);
+          this.hooks.spawnEnemy('cursed-wolf', pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
+        }
+        break;
+      }
+      case 'thorn_volley': {
+        const escortKind: EnemyKind = stageEnemies.includes('treant')
+          ? 'treant'
+          : stageEnemies.includes('slime')
+          ? 'slime'
+          : 'cursed-wolf';
+        const posFront = this.getSafeSpawnPosition(baseAngle);
+        this.hooks.spawnEnemy(escortKind, posFront.x, posFront.y, false);
+        for (let i = 0; i < 2; i += 1) {
+          const angle = baseAngle + (i - 0.5) * 0.4;
+          const pos = this.getSafeSpawnPosition(angle, 65);
+          this.hooks.spawnEnemy('thornling', pos.x, pos.y, i === 0 && Math.random() < 0.25 * eliteMultiplier);
+        }
+        break;
+      }
+      case 'treant_escort': {
+        const posTreant = this.getSafeSpawnPosition(baseAngle);
+        this.hooks.spawnEnemy('treant', posTreant.x, posTreant.y, Math.random() < 0.2 * eliteMultiplier);
+        const minionKind: EnemyKind = stageEnemies.includes('thornling')
+          ? 'thornling'
+          : stageEnemies.includes('slime')
+          ? 'slime'
+          : 'cursed-wolf';
+        for (let i = 0; i < 2; i += 1) {
+          const angle = baseAngle + (i === 0 ? -0.4 : 0.4);
+          const pos = this.getSafeSpawnPosition(angle, 35);
+          this.hooks.spawnEnemy(minionKind, pos.x, pos.y, false);
+        }
+        break;
+      }
+      case 'frost_hunt': {
+        for (let i = 0; i < 2; i += 1) {
+          const angle = baseAngle + (i - 0.5) * 0.5;
+          const pos = this.getSafeSpawnPosition(angle);
+          this.hooks.spawnEnemy('frost-wraith', pos.x, pos.y, i === 0 && Math.random() < 0.3 * eliteMultiplier);
+        }
+        break;
+      }
       case 'bat_swoop': {
         const count = 4;
         for (let i = 0; i < count; i += 1) {
@@ -101,12 +162,16 @@ export class EnemySpawner {
         break;
       }
       case 'archer_escort': {
-        // 2 archers behind 3 skeletons
+        const frontMelee: EnemyKind = stageEnemies.includes('skeleton')
+          ? 'skeleton'
+          : stageEnemies.includes('knight')
+          ? 'knight'
+          : stageEnemies[0];
         const count = 3;
         for (let i = 0; i < count; i += 1) {
           const angle = baseAngle + (i - 1) * 0.3;
           const pos = this.getSafeSpawnPosition(angle, 0);
-          this.hooks.spawnEnemy('skeleton', pos.x, pos.y, false);
+          this.hooks.spawnEnemy(frontMelee, pos.x, pos.y, false);
         }
         for (let i = 0; i < 2; i += 1) {
           const angle = baseAngle + (i - 0.5) * 0.4;
@@ -135,12 +200,20 @@ export class EnemySpawner {
       }
       case 'melee_swarm':
       default: {
-        const meleeKind = stageEnemies.includes('demon') ? 'demon' : stageEnemies.includes('knight') ? 'knight' : 'skeleton';
+        const meleeKind: EnemyKind = stageEnemies.includes('demon')
+          ? 'demon'
+          : stageEnemies.includes('knight')
+          ? 'knight'
+          : stageEnemies.includes('cursed-wolf')
+          ? 'cursed-wolf'
+          : stageEnemies.includes('slime')
+          ? 'slime'
+          : 'skeleton';
         const count = 4;
         for (let i = 0; i < count; i += 1) {
           const angle = baseAngle + (i - 1.5) * 0.32;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy(meleeKind as EnemyKind, pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
+          this.hooks.spawnEnemy(meleeKind, pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
         }
         break;
       }

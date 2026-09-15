@@ -24,6 +24,7 @@ export class BossSystem {
   private pendingAttackType?: BossAttack;
   private attackCursor = 0;
   private dead = false;
+  private echoActive = false;
 
   constructor(private readonly hooks: BossHooks) {}
 
@@ -36,6 +37,14 @@ export class BossSystem {
     this.pendingAttackType = undefined;
     this.attackCursor = 0;
     this.dead = false;
+    this.echoActive = false;
+  }
+
+  setEchoActive(active: boolean): void {
+    this.echoActive = active;
+    if (active && this.attackTimer < 3.0) {
+      this.attackTimer = 3.2;
+    }
   }
 
   isActive(): boolean { return Boolean(this.state && !this.dead); }
@@ -50,7 +59,7 @@ export class BossSystem {
     const player = this.hooks.getPlayerPosition();
     const dx = player.x - boss.x;
     const dy = player.y - boss.y;
-    const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    const distance = Math.max(1, Math.hypot(dx, dy));
     if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * definition.speed * delta, boss.y + (dy / distance) * definition.speed * delta);
     this.attackTimer -= delta;
     if (this.pendingAttack > 0) {
@@ -61,7 +70,9 @@ export class BossSystem {
         this.hooks.executeAttack(attack, position.x, position.y);
         if (attack === 'summon' || attack === 'summon-imps') this.hooks.spawnSummon(definition.summonKind);
         this.pendingAttackType = undefined;
-        this.attackTimer = this.state.phase === 2 ? 2.65 : 4.1;
+        // Moderate cadence if echo is active to prevent overlapping undodgeable telegraphs
+        const baseInterval = this.state.phase === 2 ? 2.65 : 4.1;
+        this.attackTimer = this.echoActive ? baseInterval * 1.35 : baseInterval;
       }
     } else if (this.attackTimer <= 0) {
       const position = this.hooks.getBossPosition();

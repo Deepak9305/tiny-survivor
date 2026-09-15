@@ -10,10 +10,55 @@ export type Screen =
   | 'shop'
   | 'settings'
   | 'game'
+  | 'survival'
   | 'stageClear'
   | 'gameOver';
 
 export type Rarity = 'common' | 'rare' | 'epic';
+
+export type HeroId = 'shadow' | 'warrior' | 'monk' | 'gunslinger';
+
+export interface HeroStatModifiers {
+  maxHpMultiplier?: number;
+  armorBonus?: number;
+  moveSpeedMultiplier?: number;
+  pickupRadiusMultiplier?: number;
+  primaryDamageMultiplier?: number;
+  autoWeaponDamageMultiplier?: number;
+  specialDamageMultiplier?: number;
+  allDamageMultiplier?: number;
+  primaryFireRateMultiplier?: number;
+  primaryCooldownMultiplier?: number;
+  specialCooldownMultiplier?: number;
+  projectileSpeedMultiplier?: number;
+  healMultiplier?: number;
+  freezeDurationMultiplier?: number;
+  critChanceBonus?: number;
+  xpMultiplier?: number;
+  bonusProjectileEveryNShots?: number;
+}
+
+export type EquipmentSlot = 'armor' | 'relic' | 'pet' | 'charm';
+
+export type EquipmentId =
+  | 'bone-guard'
+  | 'hunter-coat'
+  | 'frost-plate'
+  | 'arcane-crystal'
+  | 'berserker-fang'
+  | 'frost-rune'
+  | 'demon-seal'
+  | 'lucky-coin'
+  | 'magnet-charm'
+  | 'healing-totem'
+  | 'bat-familiar'
+  | 'spirit-fox'
+  | 'tiny-golem'
+  | 'fairy';
+
+export type HeroLoadout = Partial<Record<EquipmentSlot, EquipmentId>>;
+
+export type RunMode = 'campaign' | 'survival';
 
 export type EnemyKind =
   | 'skeleton'
@@ -23,7 +68,11 @@ export type EnemyKind =
   | 'archer'
   | 'knight'
   | 'demon'
-  | 'imp';
+  | 'imp'
+  | 'cursed-wolf'
+  | 'thornling'
+  | 'treant'
+  | 'frost-wraith';
 
 export type AbilityId = 'fireball' | 'freeze' | 'heal' | 'arcane-beam';
 export type WeaponId = 'magic-bolt' | 'orbiting-blades' | 'chain-lightning' | 'fire-orb';
@@ -101,8 +150,10 @@ export interface SaveData {
   completedStages: string[];
   unlockedAbilities: AbilityId[];
   bestStageTimes: Record<string, number>;
-  selectedHero: string;
-  heroesUnlocked: string[];
+  selectedHero: HeroId;
+  heroesUnlocked: HeroId[];
+  ownedEquipment: EquipmentId[];
+  heroLoadouts: Record<HeroId, HeroLoadout>;
   permanentUpgrades: Record<string, number>;
   totalRuns: number;
   totalKills: number;
@@ -190,6 +241,8 @@ export interface RunResult {
   coins: number;
   xpCollected: number;
   highestLevel: number;
+  mode?: RunMode;
+  isNewBest?: boolean;
   enemyKillsByKind?: Record<string, number>;
   encounteredEnemies?: EnemyKind[];
   bossesDefeated?: BossId[];

@@ -1,9 +1,9 @@
-import { BookOpen, Map, Play, Shield } from 'lucide-react';
+import { BookOpen, Flame, Lock, Map, Play, Shield } from 'lucide-react';
 import { CurrencyBar } from '../components/CurrencyBar';
 import { GameLogo } from '../components/GameLogo';
 import { NavRail } from '../components/NavRail';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { getCurrentStage, WORLD_META } from '../data/stages';
+import { getCurrentStage, isWorldCleared, WORLD_META } from '../data/stages';
 import type { SaveData, Screen } from '../types';
 
 interface HomeScreenProps {
@@ -23,6 +23,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
   const stage = getCurrentStage(save);
   const worldMeta = WORLD_META.find((w) => w.id === stage.worldId) ?? WORLD_META[0];
   const worldBg = getWorldBg(stage.worldId);
+  const survivalUnlocked = isWorldCleared(2, save);
 
   return (
     <main className="home-landscape-screen">
@@ -96,6 +97,26 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
               >
                 <BookOpen size={18} />
                 <span>MONSTER CODEX</span>
+              </button>
+
+              <button
+                type="button"
+                className={`home-secondary-btn home-secondary-btn--survival ${survivalUnlocked ? 'is-unlocked' : 'is-locked'}`}
+                onClick={() => survivalUnlocked && onNavigate('survival')}
+                disabled={!survivalUnlocked}
+                aria-label={survivalUnlocked ? 'Open Survival Mode' : 'Survival Mode Locked: Clear World 2'}
+              >
+                {survivalUnlocked ? (
+                  <>
+                    <Flame size={18} className="home-survival-icon" />
+                    <span>SURVIVAL</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={16} />
+                    <span>SURVIVAL (CLEAR W2)</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

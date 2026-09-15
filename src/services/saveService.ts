@@ -1,9 +1,11 @@
 import { Preferences } from '@capacitor/preferences';
-import type { AbilityId, BossId, EnemyKind, MissionProgress, SaveData, Settings } from '../types';
+import type { AbilityId, BossId, EnemyKind, EquipmentId, HeroId, HeroLoadout, MissionProgress, SaveData, Settings } from '../types';
 import { ALL_ABILITY_IDS, isAbilityMilestoneCleared } from '../data/abilities';
+import { ALL_HERO_IDS } from '../data/heroes';
+import { ALL_EQUIPMENT_IDS } from '../data/equipment';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
-const SAVE_SCHEMA_VERSION = 4;
+const SAVE_SCHEMA_VERSION = 5;
 
 export const DEFAULT_SETTINGS: Settings = {
   music: true,
@@ -17,6 +19,13 @@ export const DEFAULT_SETTINGS: Settings = {
   lowPerformanceMode: false,
 };
 
+export const DEFAULT_LOADOUTS: Record<HeroId, HeroLoadout> = {
+  shadow: {},
+  warrior: {},
+  monk: {},
+  gunslinger: {},
+};
+
 export const DEFAULT_SAVE: SaveData = {
   schemaVersion: SAVE_SCHEMA_VERSION,
   coins: 1280,
@@ -27,6 +36,8 @@ export const DEFAULT_SAVE: SaveData = {
   bestStageTimes: {},
   selectedHero: 'shadow',
   heroesUnlocked: ['shadow'],
+  ownedEquipment: [],
+  heroLoadouts: DEFAULT_LOADOUTS,
   permanentUpgrades: { maxHp: 0, damage: 0, moveSpeed: 0, magnet: 0, xpGain: 0, critChance: 0, armor: 0 },
   totalRuns: 0,
   totalKills: 0,
@@ -85,8 +96,52 @@ export function normalizeSave(raw: unknown): SaveData {
   const permanent = data.permanentUpgrades && typeof data.permanentUpgrades === 'object' ? data.permanentUpgrades : {};
   const settings = data.settings && typeof data.settings === 'object' ? data.settings as Partial<Settings> : {};
   const completedStages = Array.isArray(data.completedStages) ? data.completedStages.filter((id): id is string => typeof id === 'string') : [];
-  const heroesUnlocked = Array.isArray(data.heroesUnlocked) ? data.heroesUnlocked.filter((id): id is string => typeof id === 'string') : ['shadow'];
   const highestUnlockedStage = Math.min(20, Math.max(1, validInteger(data.highestUnlockedStage, 1, 1)));
+
+  // Hero ID migration (knight -> warrior, ranger -> gunslinger)
+  const mappedHeroes: HeroId[] = [];
+  if (Array.isArray(data.heroesUnlocked)) {
+    for (const rawId of data.heroesUnlocked) {
+      const id = rawId as string;
+      if (id === 'knight') mappedHeroes.push('warrior');
+      else if (id === 'ranger') mappedHeroes.push('gunslinger');
+      else if (ALL_HERO_IDS.includes(id as HeroId)) mappedHeroes.push(id as HeroId);
+    }
+  }
+  if (!mappedHeroes.includes('shadow')) mappedHeroes.push('shadow');
+  const heroesUnlocked = [...new Set(mappedHeroes)];
+
+  let selectedHero = data.selectedHero as string | undefined;
+  if (selectedHero === 'knight') selectedHero = 'warrior';
+  else if (selectedHero === 'ranger') selectedHero = 'gunslinger';
+  if (!selectedHero || !heroesUnlocked.includes(selectedHero as HeroId)) {
+    selectedHero = 'shadow';
+  }
+
+  // Equipment and Loadout normalization
+  const rawOwnedEquipment = Array.isArray(data.ownedEquipment) ? data.ownedEquipment : [];
+  const ownedEquipment = [...new Set(rawOwnedEquipment.filter((id): id is EquipmentId => ALL_EQUIPMENT_IDS.includes(id as EquipmentId)))];
+
+  const rawLoadouts = (data.heroLoadouts && typeof data.heroLoadouts === 'object') ? data.heroLoadouts : {};
+  const heroLoadouts: Record<HeroId, HeroLoadout> = {
+    shadow: {},
+    warrior: {},
+    monk: {},
+    gunslinger: {},
+  };
+  for (const hId of ALL_HERO_IDS) {
+    const hLoadout = (rawLoadouts as Record<string, unknown>)[hId];
+    if (hLoadout && typeof hLoadout === 'object') {
+      const cleanLoadout: HeroLoadout = {};
+      for (const slot of ['armor', 'relic', 'pet', 'charm'] as const) {
+        const eqId = (hLoadout as Record<string, unknown>)[slot];
+        if (typeof eqId === 'string' && ownedEquipment.includes(eqId as EquipmentId)) {
+          cleanLoadout[slot] = eqId as EquipmentId;
+        }
+      }
+      heroLoadouts[hId] = cleanLoadout;
+    }
+  }
 
   // Preserve any previously unlocked abilities
   const explicitUnlocked = Array.isArray(data.unlockedAbilities)
@@ -113,8 +168,10 @@ export function normalizeSave(raw: unknown): SaveData {
     completedStages: [...new Set(completedStages)],
     unlockedAbilities,
     bestStageTimes: data.bestStageTimes && typeof data.bestStageTimes === 'object' ? data.bestStageTimes : {},
-    selectedHero: typeof data.selectedHero === 'string' && heroesUnlocked.includes(data.selectedHero) ? data.selectedHero : 'shadow',
-    heroesUnlocked: heroesUnlocked.includes('shadow') ? [...new Set(heroesUnlocked)] : ['shadow', ...heroesUnlocked],
+    selectedHero: selectedHero as HeroId,
+    heroesUnlocked,
+    ownedEquipment,
+    heroLoadouts,
     permanentUpgrades: Object.fromEntries(Object.entries(DEFAULT_SAVE.permanentUpgrades).map(([id, fallback]) => [id, Math.min(5, validInteger((permanent as Record<string, unknown>)[id], fallback, 0))])),
     totalRuns: validInteger(data.totalRuns, 0),
     totalKills: validInteger(data.totalKills, 0),

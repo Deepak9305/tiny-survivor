@@ -34,9 +34,9 @@ export const BOSS_DEFINITIONS: Record<BossId, BossDefinition> = {
     visualTheme: 'frost', description: 'An ancient guardian assembled from frozen temple stone.', summonKind: 'ghost',
   },
   'demon-lord': {
-    id: 'demon-lord', name: 'Demon Lord', hp: 2900, damage: 33, speed: 34, radius: 46, worldId: 4,
-    weakness: ['arcane'], resistance: ['fire'], attackSet: ['fire-wave', 'meteor', 'summon-imps', 'demon-charge'], phaseThreshold: 0.5,
-    visualTheme: 'infernal', description: 'The lord of the burning keep, wrapped in crimson armor and ash.', summonKind: 'imp',
+    id: 'demon-lord', name: 'Demon King', hp: 3200, damage: 34, speed: 34, radius: 46, worldId: 4,
+    weakness: ['arcane'], resistance: ['fire'], attackSet: ['fire-wave', 'meteor', 'demon-charge'], phaseThreshold: 0.5,
+    visualTheme: 'infernal', description: 'The sovereign of the burning keep who summons spectral echoes of conquered rulers.', summonKind: 'imp',
   },
 };
 

@@ -1,15 +1,25 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { SharedResources, addMesh } from '../game3d/core/SharedResources';
-import { createShadowMage } from '../game3d/visuals/CharacterFactory';
+import { createHeroVisual, createPetModel, createRelicAccent } from '../game3d/visuals/CharacterFactory';
 import { biomeThemeForWorld } from '../game3d/scene/BiomeTheme';
+import type { EquipmentId, HeroId } from '../types';
 
 interface HeroPreview3DProps {
+  heroId?: HeroId | string;
+  equippedPet?: EquipmentId | string;
+  equippedRelic?: EquipmentId | string;
   worldId?: number;
   className?: string;
 }
 
-export function HeroPreview3D({ worldId = 1, className = '' }: HeroPreview3DProps) {
+export function HeroPreview3D({
+  heroId = 'shadow',
+  equippedPet,
+  equippedRelic,
+  worldId = 1,
+  className = '',
+}: HeroPreview3DProps) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,11 +79,26 @@ export function HeroPreview3D({ worldId = 1, className = '' }: HeroPreview3DProp
     }
 
     // Hero Model
-    const heroVisual = createShadowMage(resources);
+    const heroVisual = createHeroVisual(heroId, resources);
     const hero = heroVisual.root;
     hero.scale.setScalar(1.35);
     hero.position.set(0, 0.18, 0);
     scene.add(hero);
+
+    // Optional Equipped Relic accent
+    if (equippedRelic) {
+      const relicMesh = createRelicAccent(equippedRelic, resources);
+      relicMesh.scale.setScalar(0.85);
+      hero.add(relicMesh);
+    }
+
+    // Optional Equipped Pet
+    let petMesh: THREE.Group | undefined;
+    if (equippedPet) {
+      petMesh = createPetModel(equippedPet, resources);
+      petMesh.position.set(-0.75, 0.28, 0.35);
+      scene.add(petMesh);
+    }
 
     const parts = hero.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
 
@@ -109,6 +134,11 @@ export function HeroPreview3D({ worldId = 1, className = '' }: HeroPreview3DProp
 
       // Gentle breathing idle
       hero.position.y = 0.18 + Math.sin(timeSec * 3.2) * 0.022;
+
+      // Pet idle float/bob
+      if (petMesh) {
+        petMesh.position.y = 0.28 + Math.sin(timeSec * 3.8) * 0.035;
+      }
 
       // Staff crystal and halo rotation
       if (parts?.crystal instanceof THREE.Object3D) {

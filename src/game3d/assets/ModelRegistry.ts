@@ -32,9 +32,6 @@ const MODEL_PATHS: Record<string, string> = {
 export function getModelPath(id: ModelAssetId): string | undefined {
   if (MODEL_PATHS[id]) return MODEL_PATHS[id];
   const [category, value, prop] = id.split(':');
-  if (category === 'hero' && value) return `/assets/models/heroes/${value}.glb`;
-  if (category === 'enemy' && value) return `/assets/models/enemies/${value}.glb`;
-  if (category === 'boss' && value) return `/assets/models/bosses/${value}.glb`;
   if (category === 'environment' && value && prop) return `/assets/models/environment/${value}/${prop}.glb`;
   return undefined;
 }

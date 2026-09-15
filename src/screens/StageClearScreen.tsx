@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Coins, Home, Play, RotateCw, Skull, Sparkles, Star, Timer } from 'lucide-react';
+import { Coins, Flame, Home, Play, RotateCw, Shield, Skull, Sparkles, Star, Timer } from 'lucide-react';
 import { formatTime } from './GameOverScreen';
 import { ABILITY_DEFINITIONS } from '../data/abilities';
-import type { AbilityId, RunResult } from '../types';
+import { getEquipmentDefinition } from '../data/equipment';
+import type { AbilityId, EquipmentId, RunResult } from '../types';
 
 interface StageClearScreenProps {
   result: RunResult;
   newlyUnlockedAbilities?: AbilityId[];
+  unlockedSurvival?: boolean;
+  unlockedEquipment?: EquipmentId;
   onNext: () => void;
   onReplay: () => void;
   onHome: () => void;
@@ -15,6 +18,8 @@ interface StageClearScreenProps {
 export function StageClearScreen({
   result,
   newlyUnlockedAbilities = [],
+  unlockedSurvival = false,
+  unlockedEquipment,
   onNext,
   onReplay,
   onHome,
@@ -23,6 +28,9 @@ export function StageClearScreen({
   const isFinalCampaign = result.stageId === '4-5';
   const unlockedAbilityId = newlyUnlockedAbilities[0];
   const unlockedAbility = unlockedAbilityId ? ABILITY_DEFINITIONS[unlockedAbilityId] : undefined;
+  const eqDef = unlockedEquipment ? getEquipmentDefinition(unlockedEquipment) : undefined;
+
+  const hasAnyUnlocks = Boolean(unlockedAbility || unlockedSurvival || eqDef);
 
   useEffect(() => {
     const started = performance.now();
@@ -51,16 +59,48 @@ export function StageClearScreen({
           <h1 className="stage-clear-title">STAGE CLEAR</h1>
           <p className="stage-clear-sub">The darkness recedes before your power.</p>
 
-          {unlockedAbility && (
-            <div className={`stage-clear-ability-reward ability-reward--${unlockedAbility.id}`}>
-              <div className="ability-reward__badge">NEW ABILITY UNLOCKED</div>
-              <div className="ability-reward__content">
-                <div className="ability-reward__icon" aria-hidden="true">{unlockedAbility.icon}</div>
-                <div className="ability-reward__details">
-                  <strong className="ability-reward__name">{unlockedAbility.name}</strong>
-                  <span className="ability-reward__desc">{unlockedAbility.description}</span>
+          {/* Multi-unlock Cards / Chips */}
+          {hasAnyUnlocks && (
+            <div className="stage-clear-unlocks-container">
+              <span className="eyebrow unlocks-eyebrow">NEW UNLOCKS</span>
+
+              {unlockedAbility && (
+                <div className={`stage-clear-ability-reward ability-reward--${unlockedAbility.id}`}>
+                  <div className="ability-reward__badge">NEW ABILITY UNLOCKED</div>
+                  <div className="ability-reward__content">
+                    <div className="ability-reward__icon" aria-hidden="true">{unlockedAbility.icon}</div>
+                    <div className="ability-reward__details">
+                      <strong className="ability-reward__name">{unlockedAbility.name}</strong>
+                      <span className="ability-reward__desc">{unlockedAbility.description}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {unlockedSurvival && (
+                <div className="stage-clear-survival-reward">
+                  <Flame size={20} className="survival-reward__icon" />
+                  <div className="survival-reward__details">
+                    <strong className="survival-reward__name">SURVIVAL MODE UNLOCKED</strong>
+                    <span className="survival-reward__desc">Face infinite escalating hordes in endless combat!</span>
+                  </div>
+                </div>
+              )}
+
+              {eqDef && (
+                <div className="stage-clear-equipment-reward">
+                  <span className="equipment-reward__icon">{eqDef.icon}</span>
+                  <div className="equipment-reward__details">
+                    <div className="equipment-reward__header">
+                      <strong className="equipment-reward__name">{eqDef.name}</strong>
+                      <span className={`item-rarity-badge item-rarity--${eqDef.rarity}`}>
+                        {eqDef.rarity.toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="equipment-reward__desc">{eqDef.shortEffect}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

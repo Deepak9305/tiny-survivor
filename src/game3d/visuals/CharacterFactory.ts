@@ -133,6 +133,260 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
   return { root, aura, shadow };
 }
 
+export function createWarriorVisual(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  const root = new THREE.Group();
+  root.name = 'hero-warrior';
+  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+
+  const shadow = new THREE.Mesh(
+    resources.plane('hero-warrior-shadow', 1, 1),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(1.05, 0.55, 1);
+  shadow.position.y = 0.018;
+  root.add(shadow);
+
+  const aura = new THREE.Mesh(
+    resources.ring('hero-warrior-aura', 0.82, 0.92),
+    resources.basicMaterial('hero-warrior-aura', 0xf59e0b, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+  );
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = 0.04;
+  root.add(aura);
+
+  const mSteel = resources.standardMaterial('warrior-steel', 0x243247, { metalness: 0.72, roughness: 0.38 });
+  const mGold = resources.standardMaterial('warrior-gold', 0xd97706, { metalness: 0.75, roughness: 0.35 });
+  const mCloth = resources.standardMaterial('warrior-cloth', 0x991b1b, { roughness: 0.85 });
+
+  const body = addMesh(root, resources.cylinder('warrior-body'), mSteel);
+  body.scale.set(0.85, 0.95, 0.62);
+  body.position.y = 0.76;
+
+  const chestPlate = addMesh(root, resources.box('warrior-chest'), mGold);
+  chestPlate.scale.set(0.68, 0.45, 0.12);
+  chestPlate.position.set(0, 0.86, 0.28);
+
+  const tabard = addMesh(root, resources.box('warrior-tabard'), mCloth);
+  tabard.scale.set(0.38, 0.68, 0.06);
+  tabard.position.set(0, 0.52, 0.3);
+
+  const helmet = addMesh(root, resources.cylinder('warrior-helmet'), mSteel);
+  helmet.scale.set(0.72, 0.68, 0.72);
+  helmet.position.set(0, 1.42, 0.02);
+
+  const plume = addMesh(root, resources.box('warrior-plume'), mCloth);
+  plume.scale.set(0.12, 0.42, 0.55);
+  plume.position.set(0, 1.82, -0.05);
+
+  for (const x of [-0.56, 0.56]) {
+    const pauldron = addMesh(root, resources.sphere('warrior-pauldron'), mGold);
+    pauldron.scale.set(0.32, 0.24, 0.32);
+    pauldron.position.set(x, 1.12, 0.04);
+  }
+
+  const arms: THREE.Object3D[] = [];
+  for (const x of [-0.52, 0.52]) {
+    const arm = addMesh(root, resources.cylinder('warrior-arm'), mSteel);
+    arm.scale.set(0.18, 0.58, 0.18);
+    arm.position.set(x, 0.82, 0.02);
+    arm.rotation.z = x < 0 ? -0.28 : 0.28;
+    arms.push(arm);
+  }
+
+  const sword = addMesh(root, resources.box('warrior-sword'), resources.standardMaterial('warrior-blade', 0x94a3b8, { metalness: 0.82, roughness: 0.25 }));
+  sword.scale.set(0.1, 1.35, 0.06);
+  sword.position.set(0.72, 0.88, 0.15);
+  sword.rotation.z = -0.32;
+
+  const swordRune = addMesh(root, resources.box('warrior-sword-rune'), resources.basicMaterial('warrior-sword-rune', 0x38bdf8, { transparent: true, opacity: 0.85 }));
+  swordRune.scale.set(0.04, 0.95, 0.08);
+  swordRune.position.copy(sword.position);
+  swordRune.rotation.z = -0.32;
+
+  const shield = addMesh(root, resources.cylinder('warrior-shield'), mSteel);
+  shield.scale.set(0.42, 0.12, 0.52);
+  shield.position.set(-0.68, 0.78, 0.18);
+  shield.rotation.x = Math.PI / 2;
+
+  const shieldBoss = addMesh(root, resources.sphere('warrior-shield-boss'), mGold);
+  shieldBoss.scale.setScalar(0.18);
+  shieldBoss.position.set(-0.68, 0.78, 0.25);
+
+  root.userData.parts = { body, helmet, arms, sword, weapon: sword, shield };
+  return { root, aura, shadow };
+}
+
+export function createMonkVisual(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  const root = new THREE.Group();
+  root.name = 'hero-monk';
+  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+
+  const shadow = new THREE.Mesh(
+    resources.plane('hero-monk-shadow', 1, 1),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(0.95, 0.5, 1);
+  shadow.position.y = 0.018;
+  root.add(shadow);
+
+  const aura = new THREE.Mesh(
+    resources.ring('hero-monk-aura', 0.76, 0.88),
+    resources.basicMaterial('hero-monk-aura', 0x10b981, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+  );
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = 0.04;
+  root.add(aura);
+
+  const mRobe = resources.standardMaterial('monk-robe', 0x0f766e, { roughness: 0.78 });
+  const mWrap = resources.standardMaterial('monk-wrap', 0xfef08a, { roughness: 0.85 });
+  const mSkin = resources.standardMaterial('monk-skin', 0xf0b896, { roughness: 0.75 });
+  const mBeads = resources.standardMaterial('monk-beads', 0x78350f, { roughness: 0.65 });
+
+  const body = addMesh(root, resources.cylinder('monk-body'), mRobe);
+  body.scale.set(0.72, 0.92, 0.56);
+  body.position.y = 0.72;
+
+  const sash = addMesh(root, resources.torus('monk-sash'), mWrap);
+  sash.scale.set(0.42, 0.28, 0.12);
+  sash.position.set(0, 0.48, 0);
+  sash.rotation.x = Math.PI / 2;
+
+  const head = addMesh(root, resources.sphere('monk-head'), mSkin);
+  head.scale.set(0.52, 0.52, 0.48);
+  head.position.set(0, 1.34, 0.02);
+
+  const beadCollar = addMesh(root, resources.torus('monk-bead-collar'), mBeads);
+  beadCollar.scale.set(0.42, 0.32, 0.1);
+  beadCollar.position.set(0, 1.08, 0.08);
+  beadCollar.rotation.x = Math.PI / 2.2;
+
+  const arms: THREE.Object3D[] = [];
+  for (const x of [-0.48, 0.48]) {
+    const arm = addMesh(root, resources.cylinder('monk-arm'), mWrap);
+    arm.scale.set(0.18, 0.54, 0.18);
+    arm.position.set(x, 0.8, 0.06);
+    arm.rotation.z = x < 0 ? -0.22 : 0.22;
+    arms.push(arm);
+  }
+
+  const chiL = addMesh(root, resources.ico('monk-chi-l'), resources.basicMaterial('monk-chi-mat', 0x34d399, { transparent: true, opacity: 0.85 }));
+  chiL.scale.setScalar(0.16);
+  chiL.position.set(-0.52, 0.55, 0.18);
+
+  const chiR = addMesh(root, resources.ico('monk-chi-r'), resources.basicMaterial('monk-chi-mat', 0x34d399, { transparent: true, opacity: 0.85 }));
+  chiR.scale.setScalar(0.16);
+  chiR.position.set(0.52, 0.55, 0.18);
+
+  root.userData.parts = { body, head, arms, chiL, chiR, weapon: chiR };
+  return { root, aura, shadow };
+}
+
+export function createGunslingerVisual(resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  const root = new THREE.Group();
+  root.name = 'hero-gunslinger';
+  root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
+
+  const shadow = new THREE.Mesh(
+    resources.plane('hero-gunslinger-shadow', 1, 1),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.set(0.9, 0.48, 1);
+  shadow.position.y = 0.018;
+  root.add(shadow);
+
+  const aura = new THREE.Mesh(
+    resources.ring('hero-gunslinger-aura', 0.74, 0.84),
+    resources.basicMaterial('hero-gunslinger-aura', 0xc084fc, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+  );
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = 0.04;
+  root.add(aura);
+
+  const mCoat = resources.standardMaterial('gun-coat', 0x2e1065, { roughness: 0.75 });
+  const mVest = resources.standardMaterial('gun-vest', 0x581c87, { roughness: 0.65 });
+  const mLeather = resources.standardMaterial('gun-leather', 0x18181b, { roughness: 0.85 });
+  const mPistol = resources.standardMaterial('gun-pistol', 0x27272a, { metalness: 0.8, roughness: 0.3 });
+  const mArcaneCyan = resources.basicMaterial('gun-arcane', 0x22d3ee, { transparent: true, opacity: 0.95 });
+
+  const body = addMesh(root, resources.cylinder('gun-body'), mVest);
+  body.scale.set(0.62, 0.85, 0.46);
+  body.position.y = 0.74;
+
+  const coatFlare = addMesh(root, resources.cone('gun-coat-flare'), mCoat);
+  coatFlare.scale.set(0.82, 0.98, 0.62);
+  coatFlare.position.y = 0.52;
+
+  const coatTail = addMesh(root, resources.box('gun-coat-tail'), mCoat);
+  coatTail.scale.set(0.48, 0.65, 0.08);
+  coatTail.position.set(0, 0.42, -0.28);
+  coatTail.rotation.x = 0.22;
+
+  const collar = addMesh(root, resources.torus('gun-collar'), mCoat);
+  collar.scale.set(0.38, 0.22, 0.12);
+  collar.position.set(0, 1.15, 0.06);
+  collar.rotation.x = Math.PI / 2.2;
+
+  const head = addMesh(root, resources.sphere('gun-head'), resources.standardMaterial('gun-skin', 0xfbd0b8, { roughness: 0.75 }));
+  head.scale.set(0.46, 0.48, 0.44);
+  head.position.set(0, 1.32, 0.02);
+
+  const hatBrim = addMesh(root, resources.cylinder('gun-hat-brim'), mLeather);
+  hatBrim.scale.set(0.88, 0.04, 0.88);
+  hatBrim.position.set(0, 1.54, 0.02);
+  hatBrim.rotation.x = -0.08;
+
+  const hatCrown = addMesh(root, resources.cylinder('gun-hat-crown'), mLeather);
+  hatCrown.scale.set(0.48, 0.32, 0.48);
+  hatCrown.position.set(0, 1.7, -0.01);
+  hatCrown.rotation.x = -0.08;
+
+  for (const x of [-0.14, 0.14]) {
+    const eye = addMesh(root, resources.sphere('gun-eye'), resources.basicMaterial('gun-eye-mat', 0xe879f9));
+    eye.scale.set(0.06, 0.035, 0.02);
+    eye.position.set(x, 1.34, 0.22);
+  }
+
+  const pistolR = addMesh(root, resources.box('gun-pistol-r'), mPistol);
+  pistolR.scale.set(0.08, 0.22, 0.48);
+  pistolR.position.set(0.58, 0.78, 0.28);
+
+  const muzzleR = addMesh(root, resources.cylinder('gun-muzzle-r'), mArcaneCyan);
+  muzzleR.scale.set(0.04, 0.12, 0.04);
+  muzzleR.position.set(0.58, 0.84, 0.52);
+  muzzleR.rotation.x = Math.PI / 2;
+
+  const pistolL = addMesh(root, resources.box('gun-pistol-l'), mPistol);
+  pistolL.scale.set(0.08, 0.22, 0.48);
+  pistolL.position.set(-0.58, 0.78, 0.28);
+
+  const muzzleL = addMesh(root, resources.cylinder('gun-muzzle-l'), mArcaneCyan);
+  muzzleL.scale.set(0.04, 0.12, 0.04);
+  muzzleL.position.set(-0.58, 0.84, 0.52);
+  muzzleL.rotation.x = Math.PI / 2;
+
+  const arms: THREE.Object3D[] = [];
+  for (const x of [-0.44, 0.44]) {
+    const arm = addMesh(root, resources.cylinder('gun-arm'), mCoat);
+    arm.scale.set(0.14, 0.52, 0.14);
+    arm.position.set(x, 0.82, 0.06);
+    arm.rotation.x = 0.42;
+    arms.push(arm);
+  }
+
+  root.userData.parts = { body, head, arms, coatTail, weapon: pistolR, pistolR, pistolL };
+  return { root, aura, shadow };
+}
+
+export function createHeroVisual(heroId: string = 'shadow', resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  if (heroId === 'warrior') return createWarriorVisual(resources);
+  if (heroId === 'monk') return createMonkVisual(resources);
+  if (heroId === 'gunslinger') return createGunslingerVisual(resources);
+  return createShadowMage(resources);
+}
+
 function addEyes(root: THREE.Group, resources: SharedResources, color: number, y = 1.08): void {
   const material = resources.basicMaterial(`enemy-eyes-${color}`, color);
   for (const x of [-0.16, 0.16]) {
@@ -267,6 +521,86 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
     }
     root.userData.parts = { body, horns };
     addEyes(root, resources, 0xffd175, 0.8);
+  } else if (kind === 'cursed-wolf') {
+    const body = addMesh(root, resources.box('enemy-wolf-body'), bodyMaterial);
+    body.scale.set(0.48, 0.42, 0.88);
+    body.position.y = 0.52;
+    const head = addMesh(root, resources.box('enemy-wolf-head'), bodyMaterial);
+    head.scale.set(0.34, 0.3, 0.46);
+    head.position.set(0, 0.74, 0.45);
+    for (const x of [-0.14, 0.14]) {
+      const ear = addMesh(root, resources.cone('enemy-wolf-ear'), darkMaterial);
+      ear.scale.set(0.1, 0.22, 0.1);
+      ear.position.set(x, 0.96, 0.4);
+    }
+    const tail = addMesh(root, resources.cone('enemy-wolf-tail'), darkMaterial);
+    tail.scale.set(0.14, 0.55, 0.14);
+    tail.position.set(0, 0.62, -0.55);
+    tail.rotation.x = -0.75;
+    const legs: THREE.Object3D[] = [];
+    for (const x of [-0.22, 0.22]) {
+      for (const z of [-0.32, 0.32]) {
+        const leg = addMesh(root, resources.cylinder('enemy-wolf-leg'), darkMaterial);
+        leg.scale.set(0.1, 0.42, 0.1);
+        leg.position.set(x, 0.21, z);
+        legs.push(leg);
+      }
+    }
+    root.userData.parts = { body, head, tail, legs };
+    addEyes(root, resources, 0xf59e0b, 0.78);
+  } else if (kind === 'thornling') {
+    const body = addMesh(root, resources.sphere('enemy-thornling-body'), bodyMaterial);
+    body.scale.set(0.48, 0.55, 0.44);
+    body.position.y = 0.46;
+    for (const x of [-0.18, 0, 0.18]) {
+      const thorn = addMesh(root, resources.cone('enemy-thornling-thorn'), darkMaterial);
+      thorn.scale.set(0.08, 0.38, 0.08);
+      thorn.position.set(x, 0.86, 0.02);
+      thorn.rotation.z = x < 0 ? 0.2 : x > 0 ? -0.2 : 0;
+    }
+    const arms: THREE.Object3D[] = [];
+    for (const x of [-0.36, 0.36]) {
+      const arm = addMesh(root, resources.cylinder('enemy-thornling-arm'), darkMaterial);
+      arm.scale.set(0.08, 0.44, 0.08);
+      arm.position.set(x, 0.46, 0.1);
+      arm.rotation.z = x < 0 ? -0.45 : 0.45;
+      arms.push(arm);
+    }
+    root.userData.parts = { body, arms };
+    addEyes(root, resources, 0x84cc16, 0.54);
+  } else if (kind === 'treant') {
+    const body = addMesh(root, resources.cylinder('enemy-treant-trunk'), darkMaterial);
+    body.scale.set(0.95, 1.35, 0.78);
+    body.position.y = 0.82;
+    const crown = addMesh(root, resources.ico('enemy-treant-crown'), bodyMaterial);
+    crown.scale.set(0.85, 0.65, 0.85);
+    crown.position.set(0, 1.72, 0.05);
+    const arms: THREE.Object3D[] = [];
+    for (const x of [-0.72, 0.72]) {
+      const arm = addMesh(root, resources.cylinder('enemy-treant-arm'), darkMaterial);
+      arm.scale.set(0.28, 0.95, 0.28);
+      arm.position.set(x, 0.92, 0.06);
+      arm.rotation.z = x < 0 ? -0.32 : 0.32;
+      arms.push(arm);
+    }
+    root.userData.parts = { body, crown, arms };
+    addEyes(root, resources, 0xf97316, 1.25);
+  } else if (kind === 'frost-wraith') {
+    const body = addMesh(root, resources.cone('enemy-wraith-body'), resources.standardMaterial(`enemy-wraith-${color}`, 0x38bdf8, { transparent: true, opacity: 0.78, roughness: 0.3 }));
+    body.scale.set(0.68, 1.15, 0.58);
+    body.position.y = 0.85;
+    for (const x of [-0.38, 0.38]) {
+      const spike = addMesh(root, resources.cone('enemy-wraith-spike'), resources.basicMaterial('enemy-wraith-spike', 0xe0f2fe, { transparent: true, opacity: 0.85 }));
+      spike.scale.set(0.12, 0.62, 0.12);
+      spike.position.set(x, 1.15, -0.15);
+      spike.rotation.x = -0.4;
+      spike.rotation.z = x < 0 ? -0.35 : 0.35;
+    }
+    const head = addMesh(root, resources.box('enemy-wraith-mask'), resources.standardMaterial('enemy-wraith-mask', 0xf0f9ff, { roughness: 0.4 }));
+    head.scale.set(0.42, 0.48, 0.32);
+    head.position.set(0, 1.38, 0.08);
+    root.userData.parts = { body, head };
+    addEyes(root, resources, 0xffffff, 1.42);
   } else {
     const torso = addMesh(root, resources.cylinder('enemy-skeleton-body'), darkMaterial);
     torso.scale.set(0.48, 0.8, 0.38);
@@ -561,4 +895,114 @@ function addBossEyes(root: THREE.Group, resources: SharedResources, color: numbe
     eye.scale.set(0.12, 0.08, 0.04);
     eye.position.set(x, y, 0.68);
   }
+}
+
+export function createPetModel(petId: string, resources: SharedResources): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `pet-${petId}`;
+
+  if (petId === 'spirit-fox') {
+    const body = addMesh(group, resources.box('pet-fox-body'), resources.standardMaterial('pet-fox-body', 0x059669, { roughness: 0.6 }));
+    body.scale.set(0.28, 0.22, 0.46);
+    body.position.y = 0.18;
+    const head = addMesh(group, resources.box('pet-fox-head'), resources.standardMaterial('pet-fox-head', 0x10b981, { roughness: 0.5 }));
+    head.scale.set(0.22, 0.2, 0.26);
+    head.position.set(0, 0.32, 0.24);
+    const tail = addMesh(group, resources.cone('pet-fox-tail'), resources.standardMaterial('pet-fox-tail', 0x34d399, { roughness: 0.5 }));
+    tail.scale.set(0.14, 0.44, 0.14);
+    tail.position.set(0, 0.28, -0.3);
+    tail.rotation.x = -0.6;
+    for (const x of [-0.08, 0.08]) {
+      const ear = addMesh(group, resources.cone('pet-fox-ear'), resources.standardMaterial('pet-fox-ear', 0x6ee7b7));
+      ear.scale.set(0.06, 0.14, 0.06);
+      ear.position.set(x, 0.46, 0.22);
+    }
+    group.userData.parts = { body, head, tail };
+  } else if (petId === 'tiny-golem') {
+    const body = addMesh(group, resources.box('pet-golem-body'), resources.standardMaterial('pet-golem-body', 0x475569, { metalness: 0.3, roughness: 0.7 }));
+    body.scale.set(0.34, 0.38, 0.3);
+    body.position.y = 0.22;
+    const rune = addMesh(group, resources.octa('pet-golem-rune'), resources.basicMaterial('pet-golem-rune', 0x38bdf8, { transparent: true, opacity: 0.9 }));
+    rune.scale.setScalar(0.1);
+    rune.position.set(0, 0.24, 0.18);
+    for (const x of [-0.22, 0.22]) {
+      const arm = addMesh(group, resources.box('pet-golem-arm'), resources.standardMaterial('pet-golem-arm', 0x334155));
+      arm.scale.set(0.1, 0.28, 0.12);
+      arm.position.set(x, 0.22, 0);
+    }
+    group.userData.parts = { body, rune };
+  } else if (petId === 'fairy') {
+    const body = addMesh(group, resources.sphere('pet-fairy-body'), resources.basicMaterial('pet-fairy-body', 0xfbcfe8));
+    body.scale.setScalar(0.16);
+    body.position.y = 0.35;
+    const halo = addMesh(group, resources.torus('pet-fairy-halo'), resources.basicMaterial('pet-fairy-halo', 0xfde047, { transparent: true, opacity: 0.8 }));
+    halo.scale.setScalar(0.12);
+    halo.position.set(0, 0.46, 0);
+    halo.rotation.x = Math.PI / 2;
+    const wings: THREE.Object3D[] = [];
+    for (const x of [-0.14, 0.14]) {
+      const wing = addMesh(group, resources.plane('pet-fairy-wing', 0.24, 0.34), resources.basicMaterial('pet-fairy-wing', 0xf472b6, { transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
+      wing.position.set(x, 0.42, -0.05);
+      wing.rotation.y = x < 0 ? -0.4 : 0.4;
+      wings.push(wing);
+    }
+    group.userData.parts = { body, halo, wings };
+  } else {
+    // bat-familiar
+    const body = addMesh(group, resources.ico('pet-bat-body'), resources.standardMaterial('pet-bat-body', 0x1e1b4b, { roughness: 0.8 }));
+    body.scale.set(0.24, 0.18, 0.28);
+    body.position.y = 0.35;
+    const wings: THREE.Object3D[] = [];
+    for (const x of [-0.28, 0.28]) {
+      const wing = addMesh(group, resources.cone('pet-bat-wing'), resources.standardMaterial('pet-bat-wing', 0x581c87, { roughness: 0.8 }));
+      wing.scale.set(0.38, 0.08, 0.28);
+      wing.position.set(x, 0.38, 0);
+      wing.rotation.z = x < 0 ? -0.25 : 0.25;
+      wings.push(wing);
+    }
+    const eyeMat = resources.basicMaterial('pet-bat-eyes', 0xc084fc);
+    for (const x of [-0.08, 0.08]) {
+      const eye = addMesh(group, resources.sphere('pet-bat-eye'), eyeMat);
+      eye.scale.setScalar(0.04);
+      eye.position.set(x, 0.38, 0.15);
+    }
+    group.userData.parts = { body, wings };
+  }
+
+  return group;
+}
+
+export function createRelicAccent(relicId: string, resources: SharedResources): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `relic-${relicId}`;
+
+  const color = relicId === 'berserker-fang' ? 0xef4444 : relicId === 'frost-rune' ? 0x38bdf8 : relicId === 'demon-seal' ? 0xf43f5e : 0x60a5fa;
+  const relicMesh = addMesh(group, resources.octa(`relic-mesh-${relicId}`), resources.basicMaterial(`relic-mat-${relicId}`, color, { transparent: true, opacity: 0.88 }));
+  relicMesh.scale.setScalar(0.16);
+  relicMesh.position.set(0.48, 1.25, 0);
+
+  const relicHalo = addMesh(group, resources.ring(`relic-halo-${relicId}`, 0.22, 0.28), resources.basicMaterial(`relic-halo-mat-${relicId}`, color, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }));
+  relicHalo.position.copy(relicMesh.position);
+  relicHalo.rotation.x = Math.PI / 2;
+
+  group.userData.parts = { relicMesh, relicHalo };
+  return group;
+}
+
+export function createBossEchoModel(bossId: BossId = 'skeleton-king', resources: SharedResources): { root: THREE.Group; aura: THREE.Mesh; shadow: THREE.Mesh } {
+  const model = createBossModel(bossId, resources);
+  model.root.scale.setScalar(0.85);
+  model.root.name = `boss-echo-${bossId}`;
+
+  // Spectral purple/shadow ethereal ring
+  const echoRing = addMesh(
+    model.root,
+    resources.torus(`echo-ring-${bossId}`),
+    resources.basicMaterial(`echo-ring-mat`, 0xa855f7, { transparent: true, opacity: 0.72, side: THREE.DoubleSide })
+  );
+  echoRing.scale.setScalar(1.6);
+  echoRing.rotation.x = Math.PI / 2;
+  echoRing.position.y = 0.25;
+
+  return model;
 }

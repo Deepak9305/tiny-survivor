@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { setLogicalPosition } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
-import { createShadowMage } from '../visuals/CharacterFactory';
+import { createHeroVisual, createPetModel, createRelicAccent } from '../visuals/CharacterFactory';
 import { resolveObstacleCollision } from '../scene/WorldObstacles';
+import type { HeroId, HeroLoadout } from '../../types';
 
 export interface PlayerStats {
   maxHP: number;
@@ -21,10 +22,13 @@ export class Player3D {
   readonly group: THREE.Group;
   readonly stats: PlayerStats;
   readonly worldId: number;
+  readonly heroId: HeroId;
   private readonly character: THREE.Group;
   private readonly aura: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
   private readonly parts: Record<string, THREE.Object3D | THREE.Object3D[]>;
+  private readonly petObject?: THREE.Group;
+  private readonly petFollowPos = new THREE.Vector2();
   private readonly baseCharacterScale = 0.92;
   private movement = new THREE.Vector2();
   private invulnerableUntil = 0;
@@ -42,19 +46,41 @@ export class Player3D {
   x: number;
   y: number;
 
-  constructor(parent: THREE.Object3D, x: number, y: number, stats: PlayerStats, resources: SharedResources, worldId = 1) {
+  constructor(
+    parent: THREE.Object3D,
+    x: number,
+    y: number,
+    stats: PlayerStats,
+    resources: SharedResources,
+    worldId = 1,
+    heroId: HeroId = 'shadow',
+    loadout?: HeroLoadout
+  ) {
     this.x = x;
     this.y = y;
     this.stats = stats;
     this.worldId = worldId;
-    const visual = createShadowMage(resources);
+    this.heroId = heroId;
+    const visual = createHeroVisual(heroId, resources);
     this.character = visual.root;
     this.aura = visual.aura;
     this.shadow = visual.shadow;
     this.parts = this.character.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>;
     this.group = new THREE.Group();
-    this.group.name = 'player';
+    this.group.name = `player-${heroId}`;
     this.group.add(this.character);
+
+    if (loadout?.relic) {
+      const relicMesh = createRelicAccent(loadout.relic, resources);
+      relicMesh.scale.setScalar(0.85);
+      this.character.add(relicMesh);
+    }
+
+    if (loadout?.pet) {
+      this.petObject = createPetModel(loadout.pet, resources);
+      this.petFollowPos.set(x - 24, y - 18);
+      parent.add(this.petObject);
+    }
 
     // Subtle Cyan Focal Light attached directly to Player Group (Follows player everywhere)
     const heroPointLight = new THREE.PointLight(0x38bdf8, 0.85, 4.8, 1.8);
@@ -176,6 +202,16 @@ export class Player3D {
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;
     this.character.scale.setScalar(this.baseCharacterScale * (this.hitFlash > 0 ? 1.055 : 1) * revivePop * levelUpPulse);
+
+    // Pet follower physics/smoothing
+    if (this.petObject) {
+      const targetPetX = this.x - Math.cos(this.direction) * 26 + Math.sin(this.visualTime * 2.5) * 6;
+      const targetPetY = this.y - Math.sin(this.direction) * 26 + Math.cos(this.visualTime * 2.5) * 6;
+      this.petFollowPos.lerp(new THREE.Vector2(targetPetX, targetPetY), Math.min(1, delta * 5.5));
+      setLogicalPosition(this.petObject, this.petFollowPos.x, this.petFollowPos.y);
+      this.petObject.position.y = 0.22 + Math.sin(this.visualTime * 3.8) * 0.05;
+      this.petObject.rotation.y = this.direction;
+    }
   }
 
   setMovementVector(x: number, y: number): void {
@@ -227,5 +263,8 @@ export class Player3D {
   resetPlayer(): void { this.initializePlayer(); }
 
   private syncPosition(): void { setLogicalPosition(this.group, this.x, this.y); }
-  destroy(): void { this.group.removeFromParent(); }
+  destroy(): void {
+    this.petObject?.removeFromParent();
+    this.group.removeFromParent();
+  }
 }

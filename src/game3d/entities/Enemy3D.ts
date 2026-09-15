@@ -267,6 +267,15 @@ export class Enemy3D implements SpatialEntity {
           } else if (this.kind === 'knight' && distance < 56) {
             audioService.playSFX('knight-charge', { throttle: 0.35 });
             this.enterState('windup', 0.48, playerX, playerY);
+          } else if (this.kind === 'cursed-wolf' && distance < 140 && canInitiateHighThreat()) {
+            this.enterState('windup', 0.35, playerX, playerY);
+          } else if (this.kind === 'thornling' && distance < 220 && canInitiateHighThreat()) {
+            this.enterState('windup', 0.52, playerX, playerY);
+          } else if (this.kind === 'treant' && distance < 68) {
+            this.enterState('windup', 0.65, playerX, playerY);
+          } else if (this.kind === 'frost-wraith' && distance < 160 && canInitiateHighThreat()) {
+            audioService.playSFX('ghost-phase', { throttle: 0.35 });
+            this.enterState('windup', 0.38, playerX, playerY);
           } else if (this.kind === 'demon' && distance < 58) {
             this.enterState('windup', 0.28, playerX, playerY);
           } else if (this.kind === 'imp' && distance < 65) {
@@ -302,6 +311,14 @@ export class Enemy3D implements SpatialEntity {
             this.enterState('attack', 0.24, playerX, playerY);
           } else if (this.kind === 'archer') {
             this.enterState('attack', 0.15, playerX, playerY);
+          } else if (this.kind === 'cursed-wolf') {
+            this.enterState('attack', 0.24, playerX, playerY);
+          } else if (this.kind === 'thornling') {
+            this.enterState('attack', 0.15, playerX, playerY);
+          } else if (this.kind === 'treant') {
+            this.enterState('attack', 0.30, playerX, playerY);
+          } else if (this.kind === 'frost-wraith') {
+            this.enterState('attack', 0.24, playerX, playerY);
           } else if (this.kind === 'imp') {
             this.enterState('attack', 0.1, playerX, playerY);
           } else {
@@ -388,6 +405,62 @@ export class Enemy3D implements SpatialEntity {
               radius: 76 * (this.elite ? 1.4 : 1.0),
               color: 0xf97316,
             };
+          } else if (this.kind === 'cursed-wolf') {
+            audioService.playSFX('bat-dive', { pitch: 0.65 });
+            attackEvent = {
+              type: 'melee',
+              enemyId: this.id,
+              kind: this.kind,
+              damage: this.contactDamage * 1.15,
+              originX: this.x,
+              originY: this.y,
+              targetX: this.x + this.attackDirectionX * 36,
+              targetY: this.y + this.attackDirectionY * 36,
+              radius: 32 * (this.elite ? 1.3 : 1.0),
+              color: 0xd97706,
+            };
+          } else if (this.kind === 'thornling') {
+            attackEvent = {
+              type: 'projectile',
+              enemyId: this.id,
+              kind: this.kind,
+              damage: this.contactDamage * 0.92,
+              originX: this.x,
+              originY: this.y,
+              targetX: this.x + this.attackDirectionX * 220,
+              targetY: this.y + this.attackDirectionY * 220,
+              radius: 12,
+              color: 0x84cc16,
+            };
+          } else if (this.kind === 'treant') {
+            audioService.playSFX('slime-jump', { pitch: 0.5 });
+            attackEvent = {
+              type: 'melee',
+              enemyId: this.id,
+              kind: this.kind,
+              damage: this.contactDamage * 1.45,
+              originX: this.x + this.attackDirectionX * 20,
+              originY: this.y + this.attackDirectionY * 20,
+              targetX: this.x + this.attackDirectionX * 30,
+              targetY: this.y + this.attackDirectionY * 30,
+              radius: 68 * (this.elite ? 1.35 : 1.0),
+              color: 0x4d7c0f,
+            };
+          } else if (this.kind === 'frost-wraith') {
+            audioService.playSFX('ghost-phase', { pitch: 1.2 });
+            attackEvent = {
+              type: 'melee',
+              enemyId: this.id,
+              kind: this.kind,
+              damage: this.contactDamage * 1.15,
+              originX: this.x,
+              originY: this.y,
+              targetX: this.x + this.attackDirectionX * 38,
+              targetY: this.y + this.attackDirectionY * 38,
+              radius: 36 * (this.elite ? 1.3 : 1.0),
+              color: 0x38bdf8,
+              slow: true,
+            };
           }
         }
 
@@ -411,6 +484,12 @@ export class Enemy3D implements SpatialEntity {
               color: 0xa855f7,
             };
           }
+        } else if (this.kind === 'cursed-wolf') {
+          this.x += this.attackDirectionX * (this.baseSpeed * 2.8) * delta;
+          this.y += this.attackDirectionY * (this.baseSpeed * 2.8) * delta;
+        } else if (this.kind === 'frost-wraith') {
+          this.x += this.attackDirectionX * (this.baseSpeed * 2.5) * delta;
+          this.y += this.attackDirectionY * (this.baseSpeed * 2.5) * delta;
         } else if (this.kind === 'slime') {
           const progress = 1 - Math.max(0, this.stateTimer / 0.36);
           this.x = THREE.MathUtils.lerp(this.leapStartX, this.attackTargetX, progress);
@@ -453,10 +532,18 @@ export class Enemy3D implements SpatialEntity {
 
         if (this.stateTimer <= 0) {
           const recoveryDuration =
-            this.kind === 'knight'
+            this.kind === 'treant'
+              ? 0.75
+              : this.kind === 'knight'
               ? 0.75
               : this.kind === 'skeleton'
               ? 0.52
+              : this.kind === 'cursed-wolf'
+              ? 0.35
+              : this.kind === 'thornling'
+              ? 0.40
+              : this.kind === 'frost-wraith'
+              ? 0.38
               : this.kind === 'imp'
               ? 0.05
               : 0.45;
@@ -473,10 +560,18 @@ export class Enemy3D implements SpatialEntity {
         if (this.stateTimer <= 0) {
           this.state = 'approach';
           this.attackCooldown =
-            this.kind === 'archer'
+            this.kind === 'treant'
+              ? 3.2
+              : this.kind === 'archer'
               ? 2.6
+              : this.kind === 'thornling'
+              ? 2.4
               : this.kind === 'knight'
               ? 2.4
+              : this.kind === 'cursed-wolf'
+              ? 1.9
+              : this.kind === 'frost-wraith'
+              ? 2.2
               : this.kind === 'bat'
               ? 2.1
               : this.kind === 'slime'

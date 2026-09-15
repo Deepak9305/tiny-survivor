@@ -43,12 +43,16 @@ export const ENEMY_BALANCE: Record<EnemyKind, {
 }> = {
   skeleton: { name: 'Skeleton', hp: 44, damage: 9, speed: 43, radius: 15, xp: 10, color: 0xb8c2d1, minTime: 0 },
   bat: { name: 'Bat', hp: 25, damage: 7, speed: 72, radius: 12, xp: 12, color: 0xa568c7, minTime: 12 },
-  slime: { name: 'Slime', hp: 88, damage: 13, speed: 30, radius: 20, xp: 18, color: 0x5bd19a, minTime: 22 },
+  slime: { name: 'Slime', hp: 88, damage: 13, speed: 30, radius: 20, xp: 18, color: 0x5bd19a, minTime: 0 },
   ghost: { name: 'Ghost', hp: 55, damage: 11, speed: 38, radius: 17, xp: 20, color: 0x9bdcff, minTime: 38 },
   archer: { name: 'Skeleton Archer', hp: 52, damage: 14, speed: 34, radius: 16, xp: 22, color: 0xd39d63, minTime: 45, preferredDistance: 176 },
-  knight: { name: 'Cursed Knight', hp: 160, damage: 20, speed: 24, radius: 23, xp: 35, color: 0x788ea8, minTime: 64 },
-  demon: { name: 'Demon', hp: 110, damage: 20, speed: 48, radius: 19, xp: 30, color: 0xe46968, minTime: 70 },
-  imp: { name: 'Exploding Imp', hp: 70, damage: 24, speed: 62, radius: 16, xp: 28, color: 0xf18a57, minTime: 82 },
+  'cursed-wolf': { name: 'Cursed Wolf', hp: 58, damage: 14, speed: 68, radius: 16, xp: 20, color: 0x854d0e, minTime: 0 },
+  thornling: { name: 'Thornling', hp: 46, damage: 12, speed: 36, radius: 14, xp: 18, color: 0x65a30d, minTime: 18, preferredDistance: 160 },
+  treant: { name: 'Treant', hp: 190, damage: 22, speed: 20, radius: 25, xp: 40, color: 0x3f6212, minTime: 36 },
+  knight: { name: 'Cursed Knight', hp: 160, damage: 20, speed: 24, radius: 23, xp: 35, color: 0x788ea8, minTime: 0 },
+  'frost-wraith': { name: 'Frost Wraith', hp: 82, damage: 18, speed: 52, radius: 18, xp: 32, color: 0x38bdf8, minTime: 25 },
+  demon: { name: 'Demon', hp: 110, damage: 20, speed: 48, radius: 19, xp: 30, color: 0xe46968, minTime: 0 },
+  imp: { name: 'Exploding Imp', hp: 70, damage: 24, speed: 62, radius: 16, xp: 28, color: 0xf18a57, minTime: 20 },
 };
 
 export const getXPRequired = (level: number): number => Math.round(48 + Math.pow(level, 1.22) * 22);

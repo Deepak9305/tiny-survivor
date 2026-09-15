@@ -21,19 +21,19 @@ export const WORLD_DEFINITIONS: WorldDefinition[] = [
   world(1, 'Graveyard', 'Where the first night begins', {
     background: 0x08101a, fog: 0x0e1b2a, ground: 0x1e2c3a, groundDeep: 0x121c26, groundDetail: 0x32475c,
     prop: 0x485e74, propAlt: 0x6a849e, accent: 0x38e5ff, moon: 0xdcf2ff, warm: 0xffaa33, keyLight: 0xc5e8ff, fillLight: 0x2c4358,
-  }, ['skeleton', 'bat', 'slime', 'ghost', 'archer', 'knight', 'imp'], 'skeleton-king', 'graveyard'),
+  }, ['skeleton', 'bat', 'ghost', 'archer'], 'skeleton-king', 'graveyard'),
   world(2, 'Haunted Forest', 'Whispers between the pines', {
     background: 0x091416, fog: 0x0f2224, ground: 0x1c2e28, groundDeep: 0x101e1a, groundDetail: 0x2d483e,
     prop: 0x384a3c, propAlt: 0x526b56, accent: 0xb455ff, moon: 0xa4f5e0, warm: 0xffb844, keyLight: 0x9aeed8, fillLight: 0x243e36,
-  }, ['skeleton', 'bat', 'slime', 'ghost', 'archer', 'demon'], 'forest-witch', 'forest'),
+  }, ['slime', 'cursed-wolf', 'thornling', 'treant'], 'forest-witch', 'forest'),
   world(3, 'Frozen Ruins', 'Cold stone, colder things', {
     background: 0x081628, fog: 0x10243c, ground: 0x243b52, groundDeep: 0x142436, groundDetail: 0x3c5e82,
     prop: 0x6288aa, propAlt: 0x8eb2d4, accent: 0x55e2ff, moon: 0xeaf6ff, warm: 0x7ae8ff, keyLight: 0xdcf0ff, fillLight: 0x284666,
-  }, ['ghost', 'slime', 'archer', 'knight', 'demon', 'bat'], 'frost-golem', 'frozen'),
+  }, ['skeleton', 'bat', 'ghost', 'archer', 'slime', 'cursed-wolf', 'thornling', 'treant', 'knight', 'frost-wraith'], 'frost-golem', 'frozen'),
   world(4, 'Demon Castle', 'The last light fades here', {
     background: 0x180b14, fog: 0x281220, ground: 0x321a24, groundDeep: 0x1c0d14, groundDetail: 0x542636,
     prop: 0x582a3a, propAlt: 0x863e52, accent: 0xff3d2e, moon: 0xff8844, warm: 0xff6618, keyLight: 0xff8a50, fillLight: 0x4a1824,
-  }, ['knight', 'demon', 'imp', 'archer', 'skeleton', 'ghost'], 'demon-lord', 'castle'),
+  }, ['skeleton', 'bat', 'ghost', 'archer', 'slime', 'cursed-wolf', 'thornling', 'treant', 'knight', 'frost-wraith', 'demon', 'imp'], 'demon-lord', 'castle'),
 ];
 
 export function getWorld(worldId: number): WorldDefinition {

@@ -1,4 +1,4 @@
-import type { GameSnapshot, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
+import type { GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
 
 export interface Game3DCallbacks {
   onSnapshot: (snapshot: GameSnapshot) => void;
@@ -16,4 +16,5 @@ export interface Game3DOptions {
   stage: StageDefinition;
   save: SaveData;
   callbacks: Game3DCallbacks;
+  mode?: RunMode;
 }

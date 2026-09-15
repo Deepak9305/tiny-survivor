@@ -21,7 +21,7 @@ const STAGE_NAMES: Record<number, string[]> = {
   1: ['First Night', 'Bone Rush', 'Bat Swarm', 'Necromancer', 'Skeleton King'],
   2: ['Mosslight', 'Witch Path', 'Hollow Choir', 'Greenfire', 'Forest Witch'],
   3: ['Whiteout', 'Icebound', 'Shattered Hall', 'Frostwake', 'Frost Golem'],
-  4: ['Ashfall', 'Impasse', 'Cursed Keep', 'Red Moon', 'Demon Lord'],
+  4: ['Ashfall', 'Impasse', 'Cursed Keep', 'Red Moon', 'Demon King'],
 };
 
 const STAGE_DESCRIPTIONS: Record<number, string> = {
@@ -31,7 +31,7 @@ const STAGE_DESCRIPTIONS: Record<number, string> = {
   4: 'The final keep is hungry for heroes.',
 };
 
-const firstStageEnemyCount = (stageNumber: number): number => Math.min(3 + Math.max(0, stageNumber - 1), 7);
+const firstStageEnemyCount = (stageNumber: number): number => Math.min(2 + Math.max(0, stageNumber - 1), 6);
 
 function createStage(worldId: number, stageNumber: number): StageDefinition {
   const world = getWorld(worldId);
@@ -77,4 +77,30 @@ export function getCurrentStage(save: SaveData): StageDefinition {
   return current ?? STAGES[0];
 }
 
-export function getWorldStages(worldId: number): StageDefinition[] { return STAGES.filter((stage) => stage.worldId === worldId); }
+export function getWorldStages(worldId: number): StageDefinition[] {
+  return STAGES.filter((stage) => stage.worldId === worldId);
+}
+
+export function getWorldStageCount(worldId: number): number {
+  return getWorldStages(worldId).length;
+}
+
+export function getWorldFinalStage(worldId: number): StageDefinition {
+  const stages = getWorldStages(worldId);
+  return stages[stages.length - 1];
+}
+
+export function isWorldCleared(worldId: number, save: SaveData): boolean {
+  const finalStage = getWorldFinalStage(worldId);
+  return save.completedStages.includes(finalStage.id);
+}
+
+export function getTotalCampaignStageCount(): number {
+  return STAGES.length;
+}
+
+export function getNextCampaignStageId(stageId: string): string | null {
+  const currentIndex = STAGES.findIndex((s) => s.id === stageId);
+  if (currentIndex === -1 || currentIndex >= STAGES.length - 1) return null;
+  return STAGES[currentIndex + 1].id;
+}

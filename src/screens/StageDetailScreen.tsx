@@ -22,7 +22,7 @@ function getWorldBg(worldId: number): string {
 }
 
 function getCreatureThumb(kind: EnemyKind): string | undefined {
-  const map: Record<EnemyKind, string> = {
+  const map: Partial<Record<EnemyKind, string>> = {
     skeleton: '/assets/images/creature_skeleton.jpg',
     bat: '/assets/images/creature_bat.jpg',
     slime: '/assets/images/creature_slime.jpg',
@@ -31,6 +31,10 @@ function getCreatureThumb(kind: EnemyKind): string | undefined {
     knight: '/assets/images/creature_knight.jpg',
     demon: '/assets/images/creature_demon.jpg',
     imp: '/assets/images/creature_imp.jpg',
+    'cursed-wolf': '/assets/images/creature_bat.jpg',
+    thornling: '/assets/images/creature_slime.jpg',
+    treant: '/assets/images/creature_knight.jpg',
+    'frost-wraith': '/assets/images/creature_ghost.jpg',
   };
   return map[kind];
 }
