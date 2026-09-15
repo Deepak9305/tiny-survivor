@@ -47,6 +47,7 @@ export class Enemy3D implements SpatialEntity {
   private readonly telegraphGroup: THREE.Group;
   private readonly telegraphMesh: THREE.Mesh;
   private readonly frostMesh: THREE.Mesh;
+  private readonly shadowMesh: THREE.Mesh;
   private hp: number;
   private slowMultiplier = 1;
   private slowUntil = 0;
@@ -103,7 +104,7 @@ export class Enemy3D implements SpatialEntity {
     this.group.add(this.model);
     if (elite) addEliteAccent(this.model, resources);
 
-    // Ground Contact Shadow (Soft oval grounded to terrain)
+    // Ground Contact Shadow (Soft oval grounded to terrain at y=0.006)
     const shadowMat = resources.basicMaterial('enemy-contact-shadow-mat', 0x01050a, {
       transparent: true,
       opacity: 0.62,
@@ -112,8 +113,9 @@ export class Enemy3D implements SpatialEntity {
     const shadowMesh = new THREE.Mesh(resources.plane('enemy-contact-shadow-geom', 1, 1), shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
     shadowMesh.scale.set(visualScale * 1.1, visualScale * 0.68, 1);
-    shadowMesh.position.y = 0.012;
+    shadowMesh.position.y = 0.006;
     this.group.add(shadowMesh);
+    this.shadowMesh = shadowMesh;
 
     // Slime Glowing Green Residue / Ground Pool
     if (kind === 'slime') {
@@ -737,14 +739,37 @@ export class Enemy3D implements SpatialEntity {
       | undefined;
 
     // Movement bobbing & procedural animation per enemy archetype
-    const bob =
-      this.kind === 'bat' || this.kind === 'ghost'
-        ? Math.sin(this.phaseTime * 3.4) * 0.09
-        : Math.sin(this.phaseTime * (this.kind === 'imp' ? 6.2 : 2.5)) * 0.035;
-
-    if (this.kind !== 'slime' || this.state !== 'attack') {
-      this.model.position.y = bob;
+    const isFlying = this.kind === 'bat' || this.kind === 'ghost' || this.kind === 'frost-wraith';
+    if (isFlying) {
+      this.model.position.y = 0.45 + Math.sin(this.phaseTime * 3.4) * 0.12;
+      this.shadowMesh.scale.set(this.baseVisualScale * 0.9, this.baseVisualScale * 0.55, 1);
+    } else if (this.kind === 'slime' && this.state === 'approach') {
+      const hopCadence = 5.2;
+      const hopPhase = (this.phaseTime * hopCadence) % Math.PI;
+      if (hopPhase < Math.PI * 0.72) {
+        const norm = hopPhase / (Math.PI * 0.72);
+        const h = Math.sin(norm * Math.PI) * 0.44;
+        this.model.position.y = h;
+        if (parts?.body instanceof THREE.Object3D) {
+          parts.body.scale.y = 0.62 * (1 + 0.36 * Math.sin(norm * Math.PI));
+          parts.body.scale.x = 0.82 * (1 - 0.18 * Math.sin(norm * Math.PI));
+          parts.body.scale.z = 0.72 * (1 - 0.18 * Math.sin(norm * Math.PI));
+        }
+        this.shadowMesh.scale.set(this.baseVisualScale * 0.9, this.baseVisualScale * 0.54, 1);
+      } else {
+        this.model.position.y = 0;
+        if (parts?.body instanceof THREE.Object3D) {
+          parts.body.scale.y = 0.38;
+          parts.body.scale.x = 1.16;
+          parts.body.scale.z = 1.04;
+        }
+        this.shadowMesh.scale.set(this.baseVisualScale * 1.35, this.baseVisualScale * 0.84, 1);
+      }
+    } else if (this.kind !== 'slime') {
+      this.model.position.y = Math.abs(Math.sin(this.phaseTime * (this.kind === 'imp' ? 8.5 : 5.5))) * 0.035;
+      this.shadowMesh.scale.set(this.baseVisualScale * 1.1, this.baseVisualScale * 0.68, 1);
     }
+    this.shadowMesh.position.y = 0.006;
 
     const elitePulse = this.elite ? 1 + Math.sin(this.phaseTime * 4) * 0.035 : 1;
     const hitScale =
@@ -761,6 +786,31 @@ export class Enemy3D implements SpatialEntity {
         windupPulse
     );
 
+    // Dynamic Leg Strides for Grounded Enemies
+    if (parts?.legs instanceof Array) {
+      if (this.kind === 'cursed-wolf' && parts.legs.length === 4) {
+        const gallop = Math.sin(this.phaseTime * 11) * 0.75;
+        parts.legs[0].rotation.x = gallop;
+        parts.legs[1].rotation.x = -gallop;
+        parts.legs[2].rotation.x = -gallop;
+        parts.legs[3].rotation.x = gallop;
+      } else if (parts.legs.length === 2) {
+        const cadence = this.kind === 'thornling' ? 14 : (this.kind === 'treant' ? 4.5 : (this.kind === 'imp' ? 11 : (this.kind === 'knight' ? 6 : 8)));
+        const stride = Math.sin(this.phaseTime * cadence) * (this.kind === 'treant' ? 0.42 : 0.68);
+        parts.legs[0].rotation.x = stride;
+        parts.legs[1].rotation.x = -stride;
+        const hipBase = this.kind === 'treant' ? 0.58 : (this.kind === 'thornling' ? 0.32 : 0.44);
+        parts.legs[0].position.y = hipBase + Math.max(0, stride) * 0.08;
+        parts.legs[1].position.y = hipBase + Math.max(0, -stride) * 0.08;
+
+        if (this.state === 'approach') {
+          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.15, delta * 10);
+        } else {
+          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 10);
+        }
+      }
+    }
+
     if (this.kind === 'bat' && parts?.wings instanceof Array) {
       const wings = parts.wings;
       if (wings.length === 2) {
@@ -773,14 +823,9 @@ export class Enemy3D implements SpatialEntity {
     if (this.kind === 'slime' && parts?.body instanceof THREE.Object3D) {
       if (isWindingUp) {
         // Squish flat anticipation
-        parts.body.scale.y = 0.32;
-        parts.body.scale.x = 1.25;
-        parts.body.scale.z = 1.15;
-      } else {
-        const squash = 1 + Math.sin(this.phaseTime * 3.6) * 0.1;
-        parts.body.scale.y = 0.62 / squash;
-        parts.body.scale.x = 0.82 * squash;
-        parts.body.scale.z = 0.72 * squash;
+        parts.body.scale.y = 0.30;
+        parts.body.scale.x = 1.28;
+        parts.body.scale.z = 1.18;
       }
     }
 

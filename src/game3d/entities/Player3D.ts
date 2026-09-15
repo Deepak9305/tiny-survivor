@@ -70,6 +70,8 @@ export class Player3D {
     this.parts = this.character.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>;
     this.group = new THREE.Group();
     this.group.name = `player-${heroId}`;
+    this.group.add(this.shadow);
+    this.group.add(this.aura);
     this.group.add(this.character);
 
     if (loadout?.relic) {
@@ -93,7 +95,7 @@ export class Player3D {
     // Warm red-orange directional aim trajectory cone matching reference screenshot
     const aimIndicatorGroup = new THREE.Group();
     aimIndicatorGroup.name = 'aim-indicator';
-    aimIndicatorGroup.position.set(0, 0.04, 0);
+    aimIndicatorGroup.position.set(0, 0.02, 0);
 
     const aimCone = addMesh(
       aimIndicatorGroup,
@@ -173,9 +175,40 @@ export class Player3D {
     this.visualTime += delta;
     const moving = length > 0.02;
 
+    // Walk cycle & leg stride
+    const walkCadence = 11.5;
+    const legs = this.parts.legs as THREE.Group[] | undefined;
+    if (legs && legs.length === 2) {
+      if (moving) {
+        const stride = Math.sin(this.visualTime * walkCadence);
+        legs[0].rotation.x = stride * 0.65;
+        legs[1].rotation.x = -stride * 0.65;
+        legs[0].position.y = 0.44 + Math.max(0, stride) * 0.09;
+        legs[1].position.y = 0.44 + Math.max(0, -stride) * 0.09;
+      } else {
+        legs[0].rotation.x = THREE.MathUtils.lerp(legs[0].rotation.x, 0, Math.min(1, delta * 12));
+        legs[1].rotation.x = THREE.MathUtils.lerp(legs[1].rotation.x, 0, Math.min(1, delta * 12));
+        legs[0].position.y = 0.44;
+        legs[1].position.y = 0.44;
+      }
+    }
+
+    // Dynamic running lean & sway
+    const targetLean = moving ? 0.16 : 0;
+    this.character.rotation.x = THREE.MathUtils.lerp(this.character.rotation.x, targetLean, Math.min(1, delta * 10));
+    const sway = moving ? Math.cos(this.visualTime * walkCadence) * 0.06 : 0;
+    this.character.rotation.z = THREE.MathUtils.lerp(this.character.rotation.z, sway, Math.min(1, delta * 10));
+
     // Idle breathing & walk bounce
-    const bob = Math.sin(this.visualTime * (moving ? 8.5 : 3.8)) * (moving ? 0.055 : 0.022);
+    const bob = moving
+      ? Math.abs(Math.sin(this.visualTime * walkCadence)) * 0.045
+      : Math.sin(this.visualTime * 3.5) * 0.018;
     this.character.position.y = bob;
+
+    // Grounded contact shadow stays strictly on terrain
+    this.shadow.position.y = 0.005;
+    const shadowContract = Math.max(0, bob * 1.6);
+    this.shadow.scale.set(0.95 - shadowContract * 0.35, 0.5 - shadowContract * 0.2, 1);
 
     const targetFacing = this.aimActive ? this.aimDirection : this.direction;
     this.character.rotation.y = THREE.MathUtils.lerp(this.character.rotation.y, targetFacing, Math.min(1, delta * 12));
@@ -223,7 +256,7 @@ export class Player3D {
 
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
     this.aura.scale.setScalar(1 + Math.sin(this.visualTime * (lowHealth ? 5.6 : 3)) * (lowHealth ? 0.11 : 0.06) + celebrateProgress * 0.35);
-    this.shadow.scale.x = 0.82 + Math.abs(Math.sin(this.visualTime * (moving ? 8.5 : 3.8))) * 0.045;
+    this.aura.rotation.z += delta * 0.8;
     this.hitFlash = Math.max(0, this.hitFlash - delta);
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;

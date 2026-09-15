@@ -55,7 +55,23 @@ export function createArena(
     emissiveIntensity: stage.worldId === 4 ? 0.42 : (stage.worldId === 1 ? 0.32 : (stage.worldId === 2 ? 0.28 : 0.30)),
   });
 
-  const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH, ARENA_DEPTH), groundMaterial);
+  // 1a. Expansive Outer Terrain Ground Skirt (130 x 100) to ensure zero empty black voids
+  const outerTerrainTex = buildOuterTerrainTexture(theme);
+  const outerTerrainMat = new THREE.MeshStandardMaterial({
+    map: outerTerrainTex,
+    roughness: 0.88,
+    metalness: 0.06,
+    emissive: theme.groundDeep,
+    emissiveIntensity: 0.35,
+  });
+  const outerGround = new THREE.Mesh(resources.plane('arena-outer-ground', 130, 100), outerTerrainMat);
+  outerGround.rotation.x = -Math.PI / 2;
+  outerGround.position.y = -0.024;
+  outerGround.receiveShadow = false;
+  arena.add(outerGround);
+
+  // 1b. Primary Authored Court Ground
+  const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH + 2.0, ARENA_DEPTH + 2.0), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.015;
   ground.receiveShadow = false;
@@ -377,4 +393,49 @@ function createDebugColliderVisualization(worldId: number): THREE.Group {
   }
 
   return group;
+}
+
+function buildOuterTerrainTexture(theme: BiomeTheme): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  const baseHex = `#${theme.groundDeep.toString(16).padStart(6, '0')}`;
+  const midHex = `#${theme.ground.toString(16).padStart(6, '0')}`;
+  const detailHex = `#${theme.groundDetail.toString(16).padStart(6, '0')}`;
+
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Large value organic soil noise
+  for (let i = 0; i < 80; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const rad = 30 + Math.random() * 90;
+    const grad = ctx.createRadialGradient(x, y, 2, x, y, rad);
+    grad.addColorStop(0, i % 2 === 0 ? midHex : detailHex);
+    grad.addColorStop(1, 'transparent');
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Fine terrain grit & pebbles
+  for (let i = 0; i < 200; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = i % 2 === 0 ? '#000000' : detailHex;
+    ctx.fillRect(x, y, 2 + Math.random() * 3, 2 + Math.random() * 3);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(8, 6);
+  return tex;
 }

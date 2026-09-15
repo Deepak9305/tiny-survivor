@@ -127,7 +127,7 @@ export class SurvivorGame3D {
     this.parent.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(theme.background);
-    this.scene.fog = new THREE.Fog(theme.fog, this.lowPerformanceMode ? 13 : 17, this.lowPerformanceMode ? 43 : 56);
+    this.scene.fog = new THREE.Fog(theme.fog, this.lowPerformanceMode ? 24 : 32, this.lowPerformanceMode ? 65 : 95);
     this.scene.add(this.actors, this.effectsRoot);
     this.cameraController = new CameraController(this.lowPerformanceMode, save.settings.reducedEffects, save.settings.screenShake);
     createLighting(this.scene, stage, this.lowPerformanceMode);

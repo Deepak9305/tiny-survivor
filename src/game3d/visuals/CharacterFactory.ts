@@ -10,20 +10,18 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
 
   const shadow = new THREE.Mesh(
     resources.plane('hero-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(0.95, 0.5, 1);
-  shadow.position.y = 0.018;
-  root.add(shadow);
+  shadow.position.y = 0.005;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-aura', 0.66, 0.76),
     resources.basicMaterial('hero-aura', 0x38bdf8, { transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.035;
-  root.add(aura);
+  aura.position.y = 0.014;
 
   // Try production GLB first
   const glbModel = modelRegistry.cloneLoadedModel('hero:shadow');
@@ -102,11 +100,21 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
     arms.push(arm);
   }
 
+  // Hip-Pivoted Animated Legs
   const bootMaterial = resources.standardMaterial('hero-boots', 0x080e18, { roughness: 0.88 });
-  for (const x of [-0.22, 0.22]) {
-    const boot = addMesh(root, resources.box('hero-boot'), bootMaterial);
-    boot.scale.set(0.26, 0.22, 0.38);
-    boot.position.set(x, 0.22, 0.08);
+  const pantMaterial = resources.standardMaterial('hero-pants', 0x101f38, { roughness: 0.82 });
+  const legs: THREE.Group[] = [];
+  for (const x of [-0.20, 0.20]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(x, 0.44, 0.0);
+    const thigh = addMesh(legGroup, resources.cylinder('hero-leg-thigh'), pantMaterial);
+    thigh.scale.set(0.13, 0.36, 0.13);
+    thigh.position.set(0, -0.16, 0.02);
+    const boot = addMesh(legGroup, resources.box('hero-boot'), bootMaterial);
+    boot.scale.set(0.24, 0.18, 0.36);
+    boot.position.set(0, -0.32, 0.08);
+    root.add(legGroup);
+    legs.push(legGroup);
   }
 
   const staff = addMesh(root, resources.cylinder('hero-staff'), resources.standardMaterial('hero-staff', 0x382218, { roughness: 0.92 }));
@@ -128,7 +136,7 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
   crystalHalo.position.copy(crystal.position);
   crystalHalo.rotation.x = Math.PI / 2;
 
-  root.userData.parts = { body, cloak, goldHem, hood, hoodRim, scarf, scarfTail, arms, staff, crystal, crystalHalo };
+  root.userData.parts = { body, cloak, goldHem, hood, hoodRim, scarf, scarfTail, arms, legs, staff, crystal, crystalHalo };
 
   return { root, aura, shadow };
 }
@@ -140,20 +148,18 @@ export function createWarriorVisual(resources: SharedResources): { root: THREE.G
 
   const shadow = new THREE.Mesh(
     resources.plane('hero-warrior-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(1.05, 0.55, 1);
-  shadow.position.y = 0.018;
-  root.add(shadow);
+  shadow.position.y = 0.005;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-warrior-aura', 0.82, 0.92),
-    resources.basicMaterial('hero-warrior-aura', 0xf59e0b, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+    resources.basicMaterial('hero-warrior-aura', 0xf59e0b, { transparent: true, opacity: 0.65, side: THREE.DoubleSide, depthWrite: false }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.04;
-  root.add(aura);
+  aura.position.y = 0.014;
 
   const mSteel = resources.standardMaterial('warrior-steel', 0x243247, { metalness: 0.72, roughness: 0.38 });
   const mGold = resources.standardMaterial('warrior-gold', 0xd97706, { metalness: 0.75, roughness: 0.35 });
@@ -194,6 +200,21 @@ export function createWarriorVisual(resources: SharedResources): { root: THREE.G
     arms.push(arm);
   }
 
+  // Hip-pivoted armored legs
+  const legs: THREE.Group[] = [];
+  for (const x of [-0.24, 0.24]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(x, 0.46, 0.0);
+    const greave = addMesh(legGroup, resources.cylinder('warrior-leg-geom'), mSteel);
+    greave.scale.set(0.16, 0.40, 0.16);
+    greave.position.set(0, -0.18, 0.02);
+    const sabaton = addMesh(legGroup, resources.box('warrior-boot-geom'), mSteel);
+    sabaton.scale.set(0.26, 0.18, 0.38);
+    sabaton.position.set(0, -0.34, 0.08);
+    root.add(legGroup);
+    legs.push(legGroup);
+  }
+
   const sword = addMesh(root, resources.box('warrior-sword'), resources.standardMaterial('warrior-blade', 0x94a3b8, { metalness: 0.82, roughness: 0.25 }));
   sword.scale.set(0.1, 1.35, 0.06);
   sword.position.set(0.72, 0.88, 0.15);
@@ -213,7 +234,7 @@ export function createWarriorVisual(resources: SharedResources): { root: THREE.G
   shieldBoss.scale.setScalar(0.18);
   shieldBoss.position.set(-0.68, 0.78, 0.25);
 
-  root.userData.parts = { body, helmet, arms, sword, weapon: sword, shield };
+  root.userData.parts = { body, helmet, arms, legs, sword, weapon: sword, shield };
   return { root, aura, shadow };
 }
 
@@ -224,20 +245,18 @@ export function createMonkVisual(resources: SharedResources): { root: THREE.Grou
 
   const shadow = new THREE.Mesh(
     resources.plane('hero-monk-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(0.95, 0.5, 1);
-  shadow.position.y = 0.018;
-  root.add(shadow);
+  shadow.position.y = 0.005;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-monk-aura', 0.76, 0.88),
-    resources.basicMaterial('hero-monk-aura', 0x10b981, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+    resources.basicMaterial('hero-monk-aura', 0x10b981, { transparent: true, opacity: 0.65, side: THREE.DoubleSide, depthWrite: false }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.04;
-  root.add(aura);
+  aura.position.y = 0.014;
 
   const mRobe = resources.standardMaterial('monk-robe', 0x0f766e, { roughness: 0.78 });
   const mWrap = resources.standardMaterial('monk-wrap', 0xfef08a, { roughness: 0.85 });
@@ -271,6 +290,21 @@ export function createMonkVisual(resources: SharedResources): { root: THREE.Grou
     arms.push(arm);
   }
 
+  // Hip-pivoted monk legs
+  const legs: THREE.Group[] = [];
+  for (const x of [-0.20, 0.20]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(x, 0.44, 0.0);
+    const legCyl = addMesh(legGroup, resources.cylinder('monk-leg-geom'), mWrap);
+    legCyl.scale.set(0.13, 0.38, 0.13);
+    legCyl.position.set(0, -0.16, 0.02);
+    const sandal = addMesh(legGroup, resources.box('monk-sandal-geom'), mBeads);
+    sandal.scale.set(0.22, 0.14, 0.34);
+    sandal.position.set(0, -0.32, 0.06);
+    root.add(legGroup);
+    legs.push(legGroup);
+  }
+
   const chiL = addMesh(root, resources.ico('monk-chi-l'), resources.basicMaterial('monk-chi-mat', 0x34d399, { transparent: true, opacity: 0.85 }));
   chiL.scale.setScalar(0.16);
   chiL.position.set(-0.52, 0.55, 0.18);
@@ -279,7 +313,7 @@ export function createMonkVisual(resources: SharedResources): { root: THREE.Grou
   chiR.scale.setScalar(0.16);
   chiR.position.set(0.52, 0.55, 0.18);
 
-  root.userData.parts = { body, head, arms, chiL, chiR, weapon: chiR };
+  root.userData.parts = { body, head, arms, legs, chiL, chiR, weapon: chiR };
   return { root, aura, shadow };
 }
 
@@ -290,20 +324,18 @@ export function createGunslingerVisual(resources: SharedResources): { root: THRE
 
   const shadow = new THREE.Mesh(
     resources.plane('hero-gunslinger-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.58 }),
+    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(0.9, 0.48, 1);
-  shadow.position.y = 0.018;
-  root.add(shadow);
+  shadow.position.y = 0.005;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-gunslinger-aura', 0.74, 0.84),
-    resources.basicMaterial('hero-gunslinger-aura', 0xc084fc, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+    resources.basicMaterial('hero-gunslinger-aura', 0xc084fc, { transparent: true, opacity: 0.65, side: THREE.DoubleSide, depthWrite: false }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.04;
-  root.add(aura);
+  aura.position.y = 0.014;
 
   const mCoat = resources.standardMaterial('gun-coat', 0x2e1065, { roughness: 0.75 });
   const mVest = resources.standardMaterial('gun-vest', 0x581c87, { roughness: 0.65 });
@@ -376,7 +408,22 @@ export function createGunslingerVisual(resources: SharedResources): { root: THRE
     arms.push(arm);
   }
 
-  root.userData.parts = { body, head, arms, coatTail, weapon: pistolR, pistolR, pistolL };
+  // Hip-pivoted gunslinger boots
+  const legs: THREE.Group[] = [];
+  for (const x of [-0.22, 0.22]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(x, 0.46, 0.0);
+    const legCyl = addMesh(legGroup, resources.cylinder('gun-leg-geom'), mCoat);
+    legCyl.scale.set(0.13, 0.4, 0.13);
+    legCyl.position.set(0, -0.17, 0.02);
+    const boot = addMesh(legGroup, resources.box('gun-boot-geom'), mLeather);
+    boot.scale.set(0.24, 0.18, 0.36);
+    boot.position.set(0, -0.34, 0.08);
+    root.add(legGroup);
+    legs.push(legGroup);
+  }
+
+  root.userData.parts = { body, head, arms, legs, coatTail, weapon: pistolR, pistolR, pistolL };
   return { root, aura, shadow };
 }
 
@@ -484,49 +531,87 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
   } else if (kind === 'archer') {
     const body = addMesh(root, resources.cylinder('enemy-archer-body'), darkMaterial);
     body.scale.set(0.48, 0.82, 0.42);
-    body.position.y = 0.55;
+    body.position.y = 0.65;
     const head = addMesh(root, resources.ico('enemy-archer-head'), bodyMaterial);
     head.scale.setScalar(0.5);
-    head.position.y = 1.22;
+    head.position.y = 1.32;
     const bow = addMesh(root, resources.torus('enemy-bow'), resources.standardMaterial('enemy-bow', 0x9fe9ff, { roughness: 0.55 }));
     bow.scale.set(0.5, 0.5, 0.5);
-    bow.position.set(0.5, 0.65, 0.12);
+    bow.position.set(0.5, 0.75, 0.12);
     bow.rotation.y = Math.PI / 2;
-    root.userData.parts = { body, head, bow };
-    addEyes(root, resources, 0x271f38, 1.25);
+
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.18, 0.18]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.42, 0);
+      const legCyl = addMesh(legGroup, resources.cylinder('enemy-archer-leg'), darkMaterial);
+      legCyl.scale.set(0.1, 0.38, 0.1);
+      legCyl.position.set(0, -0.16, 0.02);
+      root.add(legGroup);
+      legs.push(legGroup);
+    }
+    root.userData.parts = { body, head, bow, legs };
+    addEyes(root, resources, 0x271f38, 1.35);
   } else if (kind === 'knight') {
     const body = addMesh(root, resources.cylinder('enemy-knight-body'), darkMaterial);
     body.scale.set(0.7, 1.05, 0.58);
-    body.position.y = 0.68;
+    body.position.y = 0.78;
     const helmet = addMesh(root, resources.cylinder('enemy-knight-helmet'), bodyMaterial);
     helmet.scale.set(0.78, 0.65, 0.72);
-    helmet.position.y = 1.45;
+    helmet.position.y = 1.55;
     const visor = addMesh(root, resources.box('enemy-visor'), resources.standardMaterial('enemy-visor', 0xe64e67, { roughness: 0.75 }));
     visor.scale.set(0.54, 0.08, 0.08);
-    visor.position.set(0, 1.48, 0.4);
+    visor.position.set(0, 1.58, 0.4);
     const sword = addMesh(root, resources.box('enemy-sword'), resources.standardMaterial('enemy-sword', 0xffc66b, { metalness: 0.4, roughness: 0.38 }));
     sword.scale.set(0.1, 0.95, 0.1);
-    sword.position.set(0.72, 0.86, 0.04);
+    sword.position.set(0.72, 0.96, 0.04);
     sword.rotation.z = -0.45;
     const shield = addMesh(root, resources.cylinder('enemy-shield'), resources.standardMaterial('enemy-shield', 0x5e7d9c, { metalness: 0.36, roughness: 0.48 }));
     shield.scale.set(0.42, 0.12, 0.42);
-    shield.position.set(-0.66, 0.76, 0.16);
+    shield.position.set(-0.66, 0.86, 0.16);
     shield.rotation.x = Math.PI / 2;
-    root.userData.parts = { body, helmet, visor, sword, shield };
+
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.22, 0.22]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.46, 0);
+      const greave = addMesh(legGroup, resources.cylinder('enemy-knight-greave'), bodyMaterial);
+      greave.scale.set(0.16, 0.42, 0.16);
+      greave.position.set(0, -0.18, 0.02);
+      const sabaton = addMesh(legGroup, resources.box('enemy-knight-sabaton'), bodyMaterial);
+      sabaton.scale.set(0.24, 0.16, 0.34);
+      sabaton.position.set(0, -0.36, 0.08);
+      root.add(legGroup);
+      legs.push(legGroup);
+    }
+    root.userData.parts = { body, helmet, visor, sword, shield, legs };
   } else if (kind === 'demon' || kind === 'imp') {
     const body = addMesh(root, resources.ico(`enemy-${kind}-body`), bodyMaterial);
     body.scale.setScalar(kind === 'imp' ? 0.66 : 0.84);
-    body.position.y = 0.7;
+    body.position.y = 0.76;
     const horns: THREE.Object3D[] = [];
     for (const x of [-0.32, 0.32]) {
       const horn = addMesh(root, resources.cone(`enemy-${kind}-horn`), darkMaterial);
       horn.scale.set(0.2, 0.62, 0.2);
-      horn.position.set(x, 1.35, 0);
+      horn.position.set(x, 1.42, 0);
       horn.rotation.z = x < 0 ? -0.28 : 0.28;
       horns.push(horn);
     }
-    root.userData.parts = { body, horns };
-    addEyes(root, resources, 0xffd175, 0.8);
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.20, 0.20]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.44, 0);
+      const thigh = addMesh(legGroup, resources.cylinder(`enemy-${kind}-thigh`), darkMaterial);
+      thigh.scale.set(0.12, 0.4, 0.12);
+      thigh.position.set(0, -0.18, 0.02);
+      const hoof = addMesh(legGroup, resources.box(`enemy-${kind}-hoof`), darkMaterial);
+      hoof.scale.set(0.18, 0.14, 0.24);
+      hoof.position.set(0, -0.34, 0.04);
+      root.add(legGroup);
+      legs.push(legGroup);
+    }
+    root.userData.parts = { body, horns, legs };
+    addEyes(root, resources, 0xffd175, 0.88);
   } else if (kind === 'cursed-wolf') {
     const body = addMesh(root, resources.box('enemy-wolf-body'), bodyMaterial);
     body.scale.set(0.48, 0.42, 0.88);
@@ -543,13 +628,16 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
     tail.scale.set(0.14, 0.55, 0.14);
     tail.position.set(0, 0.62, -0.55);
     tail.rotation.x = -0.75;
-    const legs: THREE.Object3D[] = [];
+    const legs: THREE.Group[] = [];
     for (const x of [-0.22, 0.22]) {
       for (const z of [-0.32, 0.32]) {
-        const leg = addMesh(root, resources.cylinder('enemy-wolf-leg'), darkMaterial);
-        leg.scale.set(0.1, 0.42, 0.1);
-        leg.position.set(x, 0.21, z);
-        legs.push(leg);
+        const legGroup = new THREE.Group();
+        legGroup.position.set(x, 0.36, z);
+        const legCyl = addMesh(legGroup, resources.cylinder('enemy-wolf-leg'), darkMaterial);
+        legCyl.scale.set(0.1, 0.36, 0.1);
+        legCyl.position.set(0, -0.16, 0);
+        root.add(legGroup);
+        legs.push(legGroup);
       }
     }
     root.userData.parts = { body, head, tail, legs };
@@ -557,40 +645,60 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
   } else if (kind === 'thornling') {
     const body = addMesh(root, resources.sphere('enemy-thornling-body'), bodyMaterial);
     body.scale.set(0.48, 0.55, 0.44);
-    body.position.y = 0.46;
+    body.position.y = 0.52;
     for (const x of [-0.18, 0, 0.18]) {
       const thorn = addMesh(root, resources.cone('enemy-thornling-thorn'), darkMaterial);
       thorn.scale.set(0.08, 0.38, 0.08);
-      thorn.position.set(x, 0.86, 0.02);
+      thorn.position.set(x, 0.92, 0.02);
       thorn.rotation.z = x < 0 ? 0.2 : x > 0 ? -0.2 : 0;
     }
     const arms: THREE.Object3D[] = [];
     for (const x of [-0.36, 0.36]) {
       const arm = addMesh(root, resources.cylinder('enemy-thornling-arm'), darkMaterial);
       arm.scale.set(0.08, 0.44, 0.08);
-      arm.position.set(x, 0.46, 0.1);
+      arm.position.set(x, 0.52, 0.1);
       arm.rotation.z = x < 0 ? -0.45 : 0.45;
       arms.push(arm);
     }
-    root.userData.parts = { body, arms };
-    addEyes(root, resources, 0x84cc16, 0.54);
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.16, 0.16]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.32, 0);
+      const sprig = addMesh(legGroup, resources.cylinder('enemy-thornling-leg'), darkMaterial);
+      sprig.scale.set(0.08, 0.30, 0.08);
+      sprig.position.set(0, -0.14, 0.01);
+      root.add(legGroup);
+      legs.push(legGroup);
+    }
+    root.userData.parts = { body, arms, legs };
+    addEyes(root, resources, 0x84cc16, 0.60);
   } else if (kind === 'treant') {
     const body = addMesh(root, resources.cylinder('enemy-treant-trunk'), darkMaterial);
     body.scale.set(0.95, 1.35, 0.78);
-    body.position.y = 0.82;
+    body.position.y = 0.96;
     const crown = addMesh(root, resources.ico('enemy-treant-crown'), bodyMaterial);
     crown.scale.set(0.85, 0.65, 0.85);
-    crown.position.set(0, 1.72, 0.05);
+    crown.position.set(0, 1.86, 0.05);
     const arms: THREE.Object3D[] = [];
     for (const x of [-0.72, 0.72]) {
       const arm = addMesh(root, resources.cylinder('enemy-treant-arm'), darkMaterial);
       arm.scale.set(0.28, 0.95, 0.28);
-      arm.position.set(x, 0.92, 0.06);
+      arm.position.set(x, 1.06, 0.06);
       arm.rotation.z = x < 0 ? -0.32 : 0.32;
       arms.push(arm);
     }
-    root.userData.parts = { body, crown, arms };
-    addEyes(root, resources, 0xf97316, 1.25);
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.34, 0.34]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.58, 0);
+      const rootLeg = addMesh(legGroup, resources.cylinder('enemy-treant-leg'), darkMaterial);
+      rootLeg.scale.set(0.24, 0.56, 0.24);
+      rootLeg.position.set(0, -0.26, 0.02);
+      root.add(legGroup);
+      legs.push(legGroup);
+    }
+    root.userData.parts = { body, crown, arms, legs };
+    addEyes(root, resources, 0xf97316, 1.38);
   } else if (kind === 'frost-wraith') {
     const body = addMesh(root, resources.cone('enemy-wraith-body'), resources.standardMaterial(`enemy-wraith-${color}`, 0x38bdf8, { transparent: true, opacity: 0.78, roughness: 0.3 }));
     body.scale.set(0.68, 1.15, 0.58);
@@ -610,37 +718,42 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
   } else {
     const torso = addMesh(root, resources.cylinder('enemy-skeleton-body'), darkMaterial);
     torso.scale.set(0.48, 0.8, 0.38);
-    torso.position.y = 0.55;
+    torso.position.y = 0.72;
     const head = addMesh(root, resources.ico('enemy-skeleton-head'), boneMaterial);
     head.scale.setScalar(0.52);
-    head.position.y = 1.24;
+    head.position.y = 1.36;
     const jaw = addMesh(root, resources.box('enemy-skeleton-jaw'), boneMaterial);
     jaw.scale.set(0.38, 0.1, 0.3);
-    jaw.position.set(0, 0.98, 0.14);
-    addEyes(root, resources, 0x5ddcff, 1.28);
+    jaw.position.set(0, 1.10, 0.14);
+    addEyes(root, resources, 0x5ddcff, 1.38);
     const sword = addMesh(root, resources.box('enemy-skeleton-sword'), boneMaterial);
     sword.scale.set(0.08, 0.72, 0.08);
-    sword.position.set(0.55, 0.66, 0.02);
+    sword.position.set(0.55, 0.76, 0.02);
     sword.rotation.z = -0.35;
     const arms: THREE.Object3D[] = [];
     for (const x of [-0.38, 0.38]) {
       const arm = addMesh(root, resources.cylinder('enemy-skeleton-arm'), boneMaterial);
       arm.scale.set(0.09, 0.52, 0.09);
-      arm.position.set(x, 0.72, 0.02);
+      arm.position.set(x, 0.82, 0.02);
       arm.rotation.z = x < 0 ? -0.34 : 0.34;
       arms.push(arm);
     }
-    const legs: THREE.Object3D[] = [];
-    for (const x of [-0.2, 0.2]) {
-      const leg = addMesh(root, resources.cylinder('enemy-skeleton-leg'), boneMaterial);
-      leg.scale.set(0.1, 0.45, 0.1);
-      leg.position.set(x, 0.18, 0.02);
-      leg.rotation.z = x < 0 ? -0.1 : 0.1;
-      legs.push(leg);
+    const legs: THREE.Group[] = [];
+    for (const x of [-0.18, 0.18]) {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(x, 0.42, 0);
+      const femur = addMesh(legGroup, resources.cylinder('enemy-skel-femur'), boneMaterial);
+      femur.scale.set(0.09, 0.42, 0.09);
+      femur.position.set(0, -0.18, 0.01);
+      const foot = addMesh(legGroup, resources.box('enemy-skel-foot'), boneMaterial);
+      foot.scale.set(0.13, 0.08, 0.24);
+      foot.position.set(0, -0.36, 0.06);
+      root.add(legGroup);
+      legs.push(legGroup);
     }
     const shield = addMesh(root, resources.cylinder('enemy-skeleton-shield'), resources.standardMaterial('enemy-skeleton-shield', 0x46637c, { metalness: 0.36, roughness: 0.5 }));
     shield.scale.set(0.36, 0.1, 0.36);
-    shield.position.set(-0.58, 0.62, 0.14);
+    shield.position.set(-0.58, 0.72, 0.14);
     shield.rotation.x = Math.PI / 2;
     root.userData.parts = { torso, head, jaw, sword, arms, legs, shield };
   }
