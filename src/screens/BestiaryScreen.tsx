@@ -1,4 +1,16 @@
-import { Check, ChevronLeft, Flame, Ghost, Lock, Shield, Skull, Sparkles, Swords, Zap } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  Ghost,
+  Lightbulb,
+  Lock,
+  Shield,
+  Skull,
+  Sparkles,
+  Swords,
+  Zap,
+} from 'lucide-react';
 import { useState } from 'react';
 import { CreaturePreview3D } from '../components/CreaturePreview3D';
 import { ENEMY_BALANCE } from '../data/balance';
@@ -44,7 +56,7 @@ function getEntryImage(id: string): string | undefined {
     knight: '/assets/images/creature_knight.jpg',
     demon: '/assets/images/creature_demon.jpg',
     imp: '/assets/images/creature_imp.jpg',
-    'skeleton-king': '/assets/images/boss_skeleton_king.jpg',
+    'skeleton-king': '/assets/images/portrait_skeleton_king.jpg',
     'forest-witch': '/assets/images/boss_forest_witch.jpg',
     'frost-golem': '/assets/images/boss_frost_golem.jpg',
     'demon-lord': '/assets/images/boss_demon_lord.jpg',
@@ -59,11 +71,24 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
   const visibleEntries = allEntries.filter((entry) => matchesFilter(entry, filter));
   const selected = allEntries.find((entry) => entry.id === selectedId) ?? visibleEntries[0] ?? allEntries[0];
 
+  const currentIndex = visibleEntries.findIndex((e) => e.id === selected?.id);
   const discoveredCount = allEntries.filter((e) => e.discovered).length;
 
   const selectEntry = (id: string) => {
     setSelectedId(id);
     onSelect(id);
+  };
+
+  const handlePrev = () => {
+    if (visibleEntries.length <= 1) return;
+    const newIdx = (currentIndex - 1 + visibleEntries.length) % visibleEntries.length;
+    selectEntry(visibleEntries[newIdx].id);
+  };
+
+  const handleNext = () => {
+    if (visibleEntries.length <= 1) return;
+    const newIdx = (currentIndex + 1) % visibleEntries.length;
+    selectEntry(visibleEntries[newIdx].id);
   };
 
   const monster = selected?.kind ? getMonsterDefinition(selected.kind) : undefined;
@@ -75,25 +100,37 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
   const kills = selected?.kind
     ? save.enemyKillCounts[selected.kind] ?? 0
     : save.bossKillCounts[selected?.id ?? ''] ?? 0;
-  const worldName = WORLD_META[worldId - 1]?.name ?? 'Graveyard';
-  const categoryTag = boss ? `WORLD BOSS · ${worldName.toUpperCase()}` : `MONSTER · ${worldName.toUpperCase()}`;
+  const imgUrl = selected ? getEntryImage(selected.id) : undefined;
+
+  // Segmented Stat Calculations (1 to 5)
+  const hpSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.hp / (selected?.kind ? 55 : 550)))) : 3;
+  const dmgSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.damage / 6))) : 2;
+  const spdSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.speed / (selected?.kind ? 18 : 8)))) : 4;
 
   return (
     <main className="meta-screen codex-screen-landscape">
       {/* Header Bar */}
       <header className="codex-header">
         <button type="button" className="codex-back-btn" onClick={onBack} aria-label="Back">
-          <ChevronLeft size={24} />
+          <ChevronLeft size={20} />
+          <span>BACK</span>
         </button>
-        <h1 className="codex-title">MONSTER CODEX</h1>
+
+        <div className="codex-title-wrap">
+          <h1 className="codex-title">MONSTER CODEX</h1>
+          <div className="codex-title-ornament">
+            <span className="codex-title-diamond" />
+          </div>
+        </div>
+
         <span className="codex-discovery-count">
-          {discoveredCount} / {allEntries.length} DISCOVERED
+          <strong>{discoveredCount}</strong> / {allEntries.length} DISCOVERED
         </span>
       </header>
 
       {/* 3-Column Landscape Body */}
       <div className="codex-tri-layout">
-        {/* Left Column ~26%: Filter & Monster Roster */}
+        {/* Left Column: Category Tabs + Scrollable Roster */}
         <aside className="codex-roster-col">
           <nav className="codex-tabs-row" role="tablist" aria-label="Codex category tabs">
             {filters.map((item) => (
@@ -113,7 +150,7 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
           <div className="codex-roster-list">
             {visibleEntries.map((entry) => {
               const isSelected = entry.id === selected?.id;
-              const imgUrl = getEntryImage(entry.id);
+              const entryImg = getEntryImage(entry.id);
 
               return (
                 <button
@@ -125,17 +162,21 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                   onClick={() => selectEntry(entry.id)}
                 >
                   <div className="codex-roster-thumb">
-                    {entry.discovered && imgUrl ? (
-                      <img src={imgUrl} alt={entry.name} className="codex-card__img" />
+                    {entry.discovered && entryImg ? (
+                      <img src={entryImg} alt={entry.name} className="codex-roster-img" />
                     ) : entry.discovered ? (
-                      <CodexIcon id={entry.id} />
+                      <Skull size={18} className="codex-fallback-icon" />
                     ) : (
-                      <Lock size={14} className="codex-lock-icon" />
+                      <Lock size={16} className="codex-lock-icon" />
                     )}
                   </div>
                   <div className="codex-roster-info">
-                    <strong className="codex-roster-name">{entry.discovered ? entry.name : '???'}</strong>
-                    <small className="codex-roster-sub">{entry.discovered ? entry.role : 'Undiscovered'}</small>
+                    <strong className="codex-roster-name">
+                      {entry.discovered ? entry.name : '???'}
+                    </strong>
+                    <small className="codex-roster-sub">
+                      {entry.discovered ? entry.role : 'Undiscovered'}
+                    </small>
                   </div>
                 </button>
               );
@@ -143,85 +184,174 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
           </div>
         </aside>
 
-        {/* Center Column ~38%: 3D Model Stage */}
+        {/* Center Column: 3D Stage + Runic Pedestal + Stepper */}
         <section className="codex-stage-col">
           <div className="codex-stage-container">
-            <CreaturePreview3D
-              kind={selected?.kind}
-              bossId={boss?.id}
-              worldId={worldId}
-              discovered={selected?.discovered ?? false}
-              className="codex-3d-canvas"
-            />
-            <div className="codex-stage-pedestal" />
+            <button
+              type="button"
+              className="codex-stepper-btn codex-stepper-btn--left"
+              onClick={handlePrev}
+              aria-label="Previous monster"
+            >
+              <ChevronLeft size={28} />
+            </button>
+
+            <div className="codex-stage-inner">
+              <CreaturePreview3D
+                kind={selected?.kind}
+                bossId={boss?.id}
+                worldId={worldId}
+                discovered={selected?.discovered ?? false}
+                className="codex-3d-canvas"
+              />
+              <div className="codex-stage-pedestal" />
+            </div>
+
+            <button
+              type="button"
+              className="codex-stepper-btn codex-stepper-btn--right"
+              onClick={handleNext}
+              aria-label="Next monster"
+            >
+              <ChevronRight size={28} />
+            </button>
           </div>
-          <div className="codex-stage-tag">{selected?.discovered ? categoryTag : 'UNDISCOVERED'}</div>
+
+          <div className="codex-stage-pagination">
+            <span className="codex-stage-name-caps">
+              {selected?.discovered ? selected.name.toUpperCase() : 'UNDISCOVERED'}
+            </span>
+            <div className="codex-stage-dots">
+              <Skull size={14} className="codex-stage-skull" />
+              <span>
+                {Math.max(1, currentIndex + 1)} / {Math.max(1, visibleEntries.length)}
+              </span>
+            </div>
+          </div>
         </section>
 
-        {/* Right Column ~36%: Lore, Combat Behavior, Stats */}
+        {/* Right Column: Intel Card */}
         <section className="codex-intel-col">
           {selected?.discovered ? (
-            <div className="codex-intel-content">
+            <div className="codex-intel-card">
+              {/* Top Header with Monster Portrait */}
               <div className="codex-intel-header">
-                <span className="eyebrow">{selected.role.toUpperCase()}</span>
-                <h2>{selected.name}</h2>
+                <div className="codex-intel-title-group">
+                  <span className="codex-intel-role">{selected.role.toUpperCase()}</span>
+                  <h2 className="codex-intel-name">{selected.name}</h2>
+                </div>
+
+                {imgUrl && (
+                  <div className="codex-intel-portrait-box">
+                    <img src={imgUrl} alt={selected.name} className="codex-intel-portrait-img" />
+                    <div className="codex-intel-portrait-frame" />
+                  </div>
+                )}
               </div>
 
-              {/* Stat Pips */}
-              <div className="codex-stat-bars">
-                <StatPips
-                  label="Health"
-                  value={balance ? Math.min(5, Math.max(1, Math.ceil(balance.hp / (selected.kind ? 55 : 550)))) : 2}
-                />
-                <StatPips
-                  label="Damage"
-                  value={balance ? Math.min(5, Math.max(1, Math.ceil(balance.damage / (selected.kind ? 7 : 7)))) : 3}
-                />
-                <StatPips
-                  label="Speed"
-                  value={balance ? Math.min(5, Math.max(1, Math.ceil(balance.speed / (selected.kind ? 15 : 7)))) : 2}
-                />
+              <div className="codex-intel-divider">
+                <span className="codex-intel-diamond" />
+              </div>
+
+              {/* Segmented Stat Bars */}
+              <div className="codex-segmented-stats">
+                <div className="codex-stat-row">
+                  <span className="codex-stat-label">Health</span>
+                  <div className="codex-stat-segments">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`codex-stat-seg ${i < hpSegments ? 'is-filled' : ''}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="codex-stat-row">
+                  <span className="codex-stat-label">Damage</span>
+                  <div className="codex-stat-segments">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`codex-stat-seg ${i < dmgSegments ? 'is-filled' : ''}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="codex-stat-row">
+                  <span className="codex-stat-label">Speed</span>
+                  <div className="codex-stat-segments">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`codex-stat-seg ${i < spdSegments ? 'is-filled' : ''}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Elemental Affinities */}
-              <div className="codex-affinity-row">
-                <div className="codex-affinity-item">
-                  <span className="codex-affinity-label">WEAK TO</span>
-                  <span className="codex-badge codex-badge--weak">
-                    <Swords size={13} /> {formatWeakness(weakness)}
-                  </span>
+              <div className="codex-affinities-row">
+                <div className="codex-affinity-box">
+                  <span className="codex-affinity-tag">WEAK TO</span>
+                  <div className="codex-pill codex-pill--weak">
+                    <Swords size={13} />
+                    <span>{formatWeakness(weakness)}</span>
+                  </div>
                 </div>
-                <div className="codex-affinity-item">
-                  <span className="codex-affinity-label">RESISTS</span>
-                  <span className="codex-badge codex-badge--resist">{formatResistance(resistance)}</span>
+
+                <div className="codex-affinity-box">
+                  <span className="codex-affinity-tag">RESISTS</span>
+                  <div className="codex-pill codex-pill--resist">
+                    <Shield size={13} />
+                    <span>{formatResistance(resistance)}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Attack Pattern & Tip */}
-              <div className="codex-combat-intel">
-                <div className="codex-combat-section">
-                  <span className="eyebrow">ATTACK BEHAVIOR</span>
-                  <p>{monster?.behavior ?? boss?.description ?? 'Approaches and attacks in readable patterns.'}</p>
+              {/* Attack Behavior */}
+              <div className="codex-intel-section">
+                <div className="codex-section-label">
+                  <Swords size={14} className="text-cyan" />
+                  <span>ATTACK BEHAVIOR</span>
                 </div>
-                <div className="codex-combat-section codex-combat-section--tip">
-                  <span className="eyebrow">TACTICAL COUNTER</span>
-                  <p>{monster?.combatTip ?? 'Watch for the telegraph window and strike during recovery.'}</p>
-                </div>
+                <p className="codex-section-desc">
+                  {monster?.behavior ??
+                    boss?.description ??
+                    'Winds up a readable forward sword slash, locks direction, and executes. Recovers before pursuing again.'}
+                </p>
               </div>
 
-              {/* Defeated Count */}
-              <div className="codex-detail__kills">
-                <Skull size={15} />
-                <span>
+              {/* Tactical Counter Box */}
+              <div className="codex-counter-box">
+                <div className="codex-counter-header">
+                  <Lightbulb size={15} className="codex-counter-icon" />
+                  <span className="codex-counter-label">TACTICAL COUNTER</span>
+                </div>
+                <p className="codex-counter-desc">
+                  {monster?.combatTip ??
+                    'Sidestep during its 0.4s windup. Normal body touch deals no damage—only the blade swing hurts.'}
+                </p>
+              </div>
+
+              {/* Enemies Defeated Footer */}
+              <div className="codex-intel-footer">
+                <Skull size={15} className="codex-kills-icon" />
+                <span className="codex-kills-text">
                   Enemies Defeated: <strong>{kills.toLocaleString()}</strong>
                 </span>
               </div>
             </div>
           ) : (
             <div className="codex-locked-panel">
-              <Lock size={36} />
+              <Lock size={40} className="codex-locked-big-icon" />
               <h3>Undiscovered Monster</h3>
-              <p>Encounter this enemy or boss in the arena to analyze its attack telegraphs, stats, and elemental weaknesses.</p>
+              <p>
+                Encounter this enemy or boss in the arena to analyze its attack telegraphs, stats,
+                and elemental weaknesses.
+              </p>
             </div>
           )}
         </section>
@@ -239,54 +369,39 @@ function createEntries(save: SaveData): CodexEntry[] {
       name: monster.name,
       worldIds: monster.worldIds,
       role: monster.role,
-      discovered: save.discoveredEnemies.includes(kind),
+      discovered: (save.enemyKillCounts[kind] ?? 0) > 0 || (save.discoveredEnemies ?? []).includes(kind),
     };
   });
-  const bosses = (Object.values(BOSS_DEFINITIONS) as BossDefinition[]).map((boss) => ({
+
+  const bosses = Object.values(BOSS_DEFINITIONS).map((boss) => ({
     id: boss.id,
     boss,
     name: boss.name,
     worldIds: [boss.worldId],
     role: 'World Boss',
-    discovered: save.discoveredBosses.includes(boss.id),
+    discovered: (save.bossKillCounts[boss.id] ?? 0) > 0 || (save.discoveredBosses ?? []).includes(boss.id),
   }));
+
   return [...monsters, ...bosses];
 }
 
 function matchesFilter(entry: CodexEntry, filter: Filter): boolean {
   if (filter === 'all') return true;
   if (filter === 'bosses') return Boolean(entry.boss);
-  const worldId = filters.find((item) => item.id === filter)?.worldId;
-  return Boolean(worldId && entry.worldIds.includes(worldId));
+  const worldId = filters.find((f) => f.id === filter)?.worldId;
+  return worldId !== undefined && entry.worldIds.includes(worldId);
 }
 
-function StatPips({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="codex-pip-row">
-      <span className="codex-pip-label">{label}</span>
-      <div className="codex-pips">
-        {Array.from({ length: 5 }, (_, i) => (
-          <span key={i} className={`codex-pip ${i < value ? 'is-filled' : ''}`} />
-        ))}
-      </div>
-    </div>
-  );
+function formatWeakness(weakness: DamageType[]): string {
+  if (weakness.length === 0) return 'None';
+  return weakness
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(', ');
 }
 
-function formatWeakness(types: DamageType[]): string {
-  if (!types.length) return 'Physical';
-  return types.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(', ');
-}
-
-function formatResistance(types: DamageType[]): string {
-  if (!types.length) return 'None';
-  return types.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(', ');
-}
-
-function CodexIcon({ id }: { id: string }) {
-  if (id.includes('witch')) return <Sparkles size={20} />;
-  if (id.includes('golem')) return <Shield size={20} />;
-  if (id.includes('demon') || id.includes('imp')) return <Flame size={20} />;
-  if (id.includes('ghost') || id.includes('bat')) return <Ghost size={20} />;
-  return <Skull size={20} />;
+function formatResistance(resists: DamageType[]): string {
+  if (resists.length === 0) return 'None';
+  return resists
+    .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
+    .join(', ');
 }

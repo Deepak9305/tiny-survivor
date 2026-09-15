@@ -7,11 +7,11 @@ interface NavRailProps {
 }
 
 const navItems: Array<{ id: Screen; label: string; icon: typeof Home }> = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'heroes', label: 'Heroes', icon: Swords },
-  { id: 'upgrades', label: 'Upgrades', icon: Crown },
-  { id: 'missions', label: 'Missions', icon: ScrollText },
-  { id: 'bestiary', label: 'Codex', icon: BookOpen },
+  { id: 'home', label: 'HOME', icon: Home },
+  { id: 'heroes', label: 'HEROES', icon: Swords },
+  { id: 'upgrades', label: 'UPGRADES', icon: Crown },
+  { id: 'missions', label: 'MISSIONS', icon: ScrollText },
+  { id: 'bestiary', label: 'CODEX', icon: BookOpen },
 ];
 
 export function NavRail({ current, onNavigate }: NavRailProps) {

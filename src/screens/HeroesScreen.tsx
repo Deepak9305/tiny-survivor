@@ -1,7 +1,19 @@
-import { Check, ChevronRight, Lock, Shield, Sparkles, Swords, X, Zap } from 'lucide-react';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Gem,
+  Heart,
+  Lock,
+  Move,
+  PawPrint,
+  Shield,
+  Sparkles,
+  Swords,
+  X,
+  Zap,
+} from 'lucide-react';
 import { useState } from 'react';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { HeroPreview3D } from '../components/HeroPreview3D';
 import { ALL_HERO_IDS, getHeroDefinition, HERO_DEFINITIONS } from '../data/heroes';
 import { getEquipmentDefinition } from '../data/equipment';
@@ -15,11 +27,21 @@ interface HeroesScreenProps {
   onEquip?: (heroId: HeroId, slot: EquipmentSlot, equipmentId?: EquipmentId) => void;
 }
 
-const SLOT_CONFIG: Record<EquipmentSlot, { label: string; icon: string; emptyLabel: string }> = {
-  armor: { label: 'ARMOR', icon: '🛡️', emptyLabel: 'No Armor' },
-  relic: { label: 'RELIC', icon: '💎', emptyLabel: 'No Relic' },
-  pet: { label: 'PET', icon: '🐾', emptyLabel: 'No Pet' },
-  charm: { label: 'CHARM', icon: '✨', emptyLabel: 'No Charm' },
+const SLOT_CONFIG: Record<
+  EquipmentSlot,
+  { label: string; icon: typeof Shield; emptyLabel: string; color: string }
+> = {
+  armor: { label: 'ARMOR', icon: Shield, emptyLabel: 'No Armor', color: '#38bdf8' },
+  relic: { label: 'RELIC', icon: Gem, emptyLabel: 'No Relic', color: '#60a5fa' },
+  pet: { label: 'PET', icon: PawPrint, emptyLabel: 'No Pet', color: '#c084fc' },
+  charm: { label: 'CHARM', icon: Sparkles, emptyLabel: 'No Charm', color: '#facc15' },
+};
+
+const HERO_ICONS: Record<HeroId, typeof Swords> = {
+  shadow: Sparkles,
+  warrior: Shield,
+  monk: Heart,
+  gunslinger: Swords,
 };
 
 export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenProps) {
@@ -44,7 +66,6 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
     setActiveSlotModal(null);
   };
 
-  // Filter owned equipment for the active slot
   const slotOwnedItems = activeSlotModal
     ? save.ownedEquipment
         .map((id) => getEquipmentDefinition(id))
@@ -53,20 +74,34 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
 
   return (
     <main className="meta-screen heroes-landscape-screen">
-      <ScreenHeader
-        title="HEROES & LOADOUT"
-        onBack={onBack}
-        right={
-          <span className="header-progress">
-            {save.heroesUnlocked.length} / {ALL_HERO_IDS.length} HEROES UNLOCKED
-          </span>
-        }
-      />
+      {/* Top Header */}
+      <header className="heroes-header">
+        <button
+          type="button"
+          className="heroes-back-btn"
+          onClick={onBack}
+          aria-label="Back to home"
+        >
+          <ChevronLeft size={24} />
+        </button>
 
+        <div className="heroes-title-wrap">
+          <h1 className="heroes-main-title">HEROES &amp; LOADOUT</h1>
+          <div className="heroes-title-ornament">
+            <span className="heroes-title-diamond" />
+          </div>
+        </div>
+
+        <span className="heroes-progress-badge">
+          {save.heroesUnlocked.length} / {ALL_HERO_IDS.length} HEROES UNLOCKED
+        </span>
+      </header>
+
+      {/* Main Container */}
       <div className="heroes-landscape-container">
-        {/* Left Column: 3D Preview + Hero Status */}
+        {/* Left Column: 3D Preview Pedestal */}
         <div className={`heroes-left-stage heroes-left-stage--${heroDef.tone}`}>
-          <div className="heroes-stage-glow" />
+          <div className="heroes-pedestal-rune-circle" />
 
           <HeroPreview3D
             key={`${previewHeroId}-${currentLoadout.pet ?? ''}-${currentLoadout.relic ?? ''}`}
@@ -88,12 +123,17 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
           <div className="heroes-stage-footer">
             {isCurrentlySelected ? (
               <div className="heroes-active-pill">
-                <Check size={16} /> ACTIVE SURVIVOR
+                <Check size={16} />
+                <span>ACTIVE SURVIVOR</span>
               </div>
             ) : isUnlocked ? (
-              <PrimaryButton variant="gold" onClick={handleSelectHero}>
+              <button
+                type="button"
+                className="heroes-select-btn"
+                onClick={handleSelectHero}
+              >
                 SELECT HERO
-              </PrimaryButton>
+              </button>
             ) : (
               <div className="heroes-unowned-tag">
                 <Lock size={14} /> UNLOCK IN SHOP
@@ -102,56 +142,95 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
           </div>
         </div>
 
-        {/* Right Column: Hero Details, Stats, Equipment Loadout & Selector */}
+        {/* Right Column: Hero Specs, Stats, Loadout & Hero Selectors */}
         <div className="heroes-right-details">
-          {/* Header Info */}
+          {/* Hero Header & Lore */}
           <div className="heroes-header-info">
             <div className="heroes-title-row">
-              <span className="eyebrow">{heroDef.role}</span>
+              <span className="heroes-role-subtitle">
+                {heroDef.role.toUpperCase()}
+              </span>
               <span className={`heroes-gender-tag heroes-gender-tag--${heroDef.gender}`}>
                 {heroDef.gender.toUpperCase()}
               </span>
             </div>
-            <h1 className="heroes-name">{heroDef.name}</h1>
+            <h2 className="heroes-name">{heroDef.name}</h2>
+            <p className="heroes-lore">{heroDef.description}</p>
             <p className="heroes-trait-desc">
-              <strong>{heroDef.traitName}:</strong> {heroDef.traitDescription}
+              <span className="heroes-trait-name">{heroDef.traitName}:</span>{' '}
+              {heroDef.traitDescription}
             </p>
           </div>
 
-          {/* Resolved Concrete Gameplay Stats */}
-          <div className="heroes-stats-bar">
-            <div className="heroes-stat-badge" title="Max Health">
-              <span className="stat-label">HP</span>
-              <strong>{resolvedStats.maxHp}</strong>
+          {/* 6 High-Contrast Stat Boxes */}
+          <div className="heroes-stats-row">
+            <div className="heroes-stat-box">
+              <Heart size={16} className="heroes-stat-box__icon heroes-stat-box__icon--hp" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">HP</span>
+                <strong className="heroes-stat-box__val">{resolvedStats.maxHp}</strong>
+              </div>
             </div>
-            <div className="heroes-stat-badge" title="Damage Reduction Armor">
-              <span className="stat-label">ARMOR</span>
-              <strong>{Math.round(resolvedStats.armor * 100)}%</strong>
+
+            <div className="heroes-stat-box">
+              <Shield size={16} className="heroes-stat-box__icon heroes-stat-box__icon--armor" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">ARMOR</span>
+                <strong className="heroes-stat-box__val">
+                  {Math.round(resolvedStats.armor * 100)}%
+                </strong>
+              </div>
             </div>
-            <div className="heroes-stat-badge" title="Movement Speed">
-              <span className="stat-label">SPD</span>
-              <strong>{resolvedStats.moveSpeed}</strong>
+
+            <div className="heroes-stat-box">
+              <Move size={16} className="heroes-stat-box__icon heroes-stat-box__icon--spd" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">SPD</span>
+                <strong className="heroes-stat-box__val">{resolvedStats.moveSpeed}</strong>
+              </div>
             </div>
-            <div className="heroes-stat-badge" title="Critical Strike Chance">
-              <span className="stat-label">CRIT</span>
-              <strong>{Math.round(resolvedStats.critChance * 100)}%</strong>
+
+            <div className="heroes-stat-box">
+              <Sparkles size={16} className="heroes-stat-box__icon heroes-stat-box__icon--crit" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">CRIT</span>
+                <strong className="heroes-stat-box__val">
+                  {Math.round(resolvedStats.critChance * 100)}%
+                </strong>
+              </div>
             </div>
-            <div className="heroes-stat-badge" title="Primary Attack Damage">
-              <span className="stat-label">PRIMARY</span>
-              <strong>{resolvedStats.primaryDamage}</strong>
+
+            <div className="heroes-stat-box">
+              <Swords size={16} className="heroes-stat-box__icon heroes-stat-box__icon--primary" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">PRIMARY</span>
+                <strong className="heroes-stat-box__val">{resolvedStats.primaryDamage}%</strong>
+              </div>
             </div>
-            <div className="heroes-stat-badge" title="Special Ability Damage Multiplier">
-              <span className="stat-label">SPECIAL</span>
-              <strong>{Math.round(resolvedStats.specialDamageMultiplier * 100)}%</strong>
+
+            <div className="heroes-stat-box">
+              <Zap size={16} className="heroes-stat-box__icon heroes-stat-box__icon--special" />
+              <div className="heroes-stat-box__data">
+                <span className="heroes-stat-box__label">SPECIAL</span>
+                <strong className="heroes-stat-box__val">
+                  {Math.round(resolvedStats.specialDamageMultiplier * 100)}%
+                </strong>
+              </div>
             </div>
           </div>
 
-          {/* 4 Universal Equipment Slots */}
+          {/* Equipped Loadout 4 Slots (2x2 Grid) */}
           <div className="heroes-loadout-section">
-            <span className="eyebrow">EQUIPPED LOADOUT ({heroDef.name})</span>
+            <div className="heroes-loadout-divider">
+              <span className="heroes-loadout-title">
+                EQUIPPED LOADOUT ({heroDef.name.toUpperCase()})
+              </span>
+            </div>
+
             <div className="heroes-slots-grid">
               {(['armor', 'relic', 'pet', 'charm'] as const).map((slot) => {
                 const config = SLOT_CONFIG[slot];
+                const SlotIcon = config.icon;
                 const equippedId = currentLoadout[slot];
                 const itemDef = equippedId ? getEquipmentDefinition(equippedId) : undefined;
 
@@ -162,7 +241,12 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
                     className={`heroes-slot-card ${itemDef ? 'is-equipped' : 'is-empty'}`}
                     onClick={() => setActiveSlotModal(slot)}
                   >
-                    <div className="heroes-slot-card__icon">{itemDef?.icon ?? config.icon}</div>
+                    <div
+                      className="heroes-slot-card__icon-box"
+                      style={{ color: config.color }}
+                    >
+                      <SlotIcon size={20} />
+                    </div>
                     <div className="heroes-slot-card__info">
                       <span className="heroes-slot-card__slot-name">{config.label}</span>
                       <strong className="heroes-slot-card__item-name">
@@ -172,7 +256,7 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
                         {itemDef ? itemDef.shortEffect : 'Tap to equip'}
                       </small>
                     </div>
-                    <ChevronRight size={14} className="heroes-slot-card__arrow" />
+                    <ChevronRight size={16} className="heroes-slot-card__arrow" />
                   </button>
                 );
               })}
@@ -186,33 +270,30 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
               const unlocked = save.heroesUnlocked.includes(id);
               const isSelected = previewHeroId === id;
               const isActive = save.selectedHero === id;
+              const Icon = HERO_ICONS[id];
 
               return (
                 <button
                   type="button"
                   key={id}
-                  className={`heroes-thumb-card ${isSelected ? 'is-selected' : ''} ${
+                  className={`heroes-roster-card ${isSelected ? 'is-selected' : ''} ${
                     unlocked ? 'is-unlocked' : 'is-locked'
                   }`}
                   onClick={() => setPreviewHeroId(id)}
                   aria-label={`${def.name}${unlocked ? '' : `, ${def.requirement}`}`}
                 >
-                  <span className="heroes-thumb-card__icon">
-                    {id === 'warrior' ? (
-                      <Swords size={20} />
-                    ) : id === 'monk' ? (
-                      <Shield size={20} />
-                    ) : id === 'gunslinger' ? (
-                      <Sparkles size={20} />
-                    ) : (
-                      <Zap size={20} />
-                    )}
-                    {!unlocked && <Lock size={12} className="heroes-thumb-card__lock" />}
+                  <div className="heroes-roster-card__avatar">
+                    <Icon size={24} />
+                    {!unlocked && <Lock size={14} className="heroes-roster-card__lock" />}
+                  </div>
+                  <strong className="heroes-roster-card__name">{def.name}</strong>
+                  <span
+                    className={`heroes-roster-card__tag ${
+                      isActive ? 'is-active' : unlocked ? 'is-ready' : 'is-locked'
+                    }`}
+                  >
+                    {isActive ? 'ACTIVE' : unlocked ? 'READY' : 'LOCKED'}
                   </span>
-                  <strong>{def.name}</strong>
-                  <small>
-                    {isActive ? 'ACTIVE' : isSelected ? 'VIEWING' : unlocked ? 'SELECT' : 'LOCKED'}
-                  </small>
                 </button>
               );
             })}
@@ -220,85 +301,58 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
         </div>
       </div>
 
-      {/* Equipment Selector Modal */}
+      {/* Equipment Selection Modal */}
       {activeSlotModal && (
-        <div className="heroes-modal-backdrop" onClick={() => setActiveSlotModal(null)}>
-          <div className="heroes-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="heroes-modal-header">
-              <div className="heroes-modal-title">
-                <span className="heroes-modal-icon">{SLOT_CONFIG[activeSlotModal].icon}</span>
-                <h3>SELECT {SLOT_CONFIG[activeSlotModal].label}</h3>
-              </div>
+        <div className="modal-overlay" onClick={() => setActiveSlotModal(null)}>
+          <div
+            className="heroes-equip-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Select ${activeSlotModal}`}
+          >
+            <div className="heroes-equip-modal__header">
+              <h3>Select {SLOT_CONFIG[activeSlotModal].label}</h3>
               <button
                 type="button"
-                className="heroes-modal-close"
+                className="heroes-equip-modal__close"
                 onClick={() => setActiveSlotModal(null)}
+                aria-label="Close modal"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="heroes-modal-content">
-              {/* Unequip button */}
-              {currentLoadout[activeSlotModal] && (
-                <div className="heroes-modal-item heroes-modal-item--unequip">
-                  <div className="heroes-modal-item__info">
-                    <strong>Unequip {SLOT_CONFIG[activeSlotModal].label}</strong>
-                    <small>Remove item from this slot</small>
-                  </div>
+            <div className="heroes-equip-modal__list">
+              <button
+                type="button"
+                className={`heroes-equip-option ${!currentLoadout[activeSlotModal] ? 'is-active' : ''}`}
+                onClick={() => handleEquipItem(activeSlotModal, undefined)}
+              >
+                <div className="heroes-equip-option__info">
+                  <strong>None</strong>
+                  <small>Unequip item</small>
+                </div>
+                {!currentLoadout[activeSlotModal] && <Check size={16} className="text-blue" />}
+              </button>
+
+              {slotOwnedItems.map((item) => {
+                const isEquipped = currentLoadout[activeSlotModal] === item.id;
+                return (
                   <button
                     type="button"
-                    className="heroes-modal-btn heroes-modal-btn--unequip"
-                    onClick={() => handleEquipItem(activeSlotModal, undefined)}
+                    key={item.id}
+                    className={`heroes-equip-option ${isEquipped ? 'is-active' : ''}`}
+                    onClick={() => handleEquipItem(activeSlotModal, item.id)}
                   >
-                    UNEQUIP
-                  </button>
-                </div>
-              )}
-
-              {slotOwnedItems.length === 0 ? (
-                <div className="heroes-modal-empty">
-                  <p>
-                    No owned {SLOT_CONFIG[activeSlotModal].label.toLowerCase()} yet.
-                  </p>
-                  <small>
-                    Defeat World Bosses on first clear or visit the Shop to acquire gear!
-                  </small>
-                </div>
-              ) : (
-                slotOwnedItems.map((item) => {
-                  const isEquippedHere = currentLoadout[activeSlotModal] === item.id;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`heroes-modal-item ${isEquippedHere ? 'is-currently-equipped' : ''}`}
-                    >
-                      <span className="heroes-modal-item__icon">{item.icon}</span>
-                      <div className="heroes-modal-item__info">
-                        <div className="heroes-modal-item__title-row">
-                          <strong>{item.name}</strong>
-                          <span className={`item-rarity-badge item-rarity--${item.rarity}`}>
-                            {item.rarity.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="heroes-modal-item__desc">{item.description}</p>
-                        <small className="heroes-modal-item__effect">{item.shortEffect}</small>
-                      </div>
-                      <button
-                        type="button"
-                        className={`heroes-modal-btn ${
-                          isEquippedHere ? 'heroes-modal-btn--active' : 'heroes-modal-btn--equip'
-                        }`}
-                        onClick={() => handleEquipItem(activeSlotModal, item.id)}
-                        disabled={isEquippedHere}
-                      >
-                        {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
-                      </button>
+                    <div className="heroes-equip-option__info">
+                      <strong>{item.name}</strong>
+                      <small>{item.shortEffect}</small>
                     </div>
-                  );
-                })
-              )}
+                    {isEquipped && <Check size={16} className="text-blue" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

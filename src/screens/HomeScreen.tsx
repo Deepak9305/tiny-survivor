@@ -1,8 +1,7 @@
-import { BookOpen, Flame, Lock, Map, Play, Shield } from 'lucide-react';
+import { BookOpen, ChevronRight, Flame, Globe, Lock, Map, Swords } from 'lucide-react';
 import { CurrencyBar } from '../components/CurrencyBar';
 import { GameLogo } from '../components/GameLogo';
 import { NavRail } from '../components/NavRail';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { getCurrentStage, isWorldCleared, WORLD_META } from '../data/stages';
 import type { SaveData, Screen } from '../types';
 
@@ -16,46 +15,78 @@ function getWorldBg(worldId: number): string {
   if (worldId === 2) return '/assets/images/bg_forest.jpg';
   if (worldId === 3) return '/assets/images/bg_frozen.jpg';
   if (worldId === 4) return '/assets/images/bg_castle.jpg';
-  return '/assets/images/bg_graveyard.jpg';
+  return '/assets/images/bg_gothic_cemetery.jpg';
 }
+
+interface CampaignBossMeta {
+  name: string;
+  lore: string;
+  portrait: string;
+}
+
+const CAMPAIGN_BOSS_META: Record<number, CampaignBossMeta> = {
+  1: {
+    name: 'SKELETON KING',
+    lore: 'The first king still guards his realm. Defeat the Skeleton King and push deeper into the darkness.',
+    portrait: '/assets/images/portrait_skeleton_king.jpg',
+  },
+  2: {
+    name: 'FOREST WITCH',
+    lore: 'Corrupted roots twist at her command. Quell the greenfire before the forest swallows all hope.',
+    portrait: '/assets/images/boss_forest_witch.jpg',
+  },
+  3: {
+    name: 'FROST GOLEM',
+    lore: 'An ancient guardian of glacial peaks. Shatter the frozen heart before hypothermia claims you.',
+    portrait: '/assets/images/boss_frost_golem.jpg',
+  },
+  4: {
+    name: 'DEMON LORD',
+    lore: 'The arch-ruler of the burning depths. End the infernal reign to restore light to the realm.',
+    portrait: '/assets/images/boss_demon_lord.jpg',
+  },
+};
 
 export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
   const stage = getCurrentStage(save);
   const worldMeta = WORLD_META.find((w) => w.id === stage.worldId) ?? WORLD_META[0];
   const worldBg = getWorldBg(stage.worldId);
   const survivalUnlocked = isWorldCleared(2, save);
+  const bossMeta = CAMPAIGN_BOSS_META[stage.worldId] ?? CAMPAIGN_BOSS_META[1];
 
   return (
-    <main className="home-landscape-screen">
+    <main
+      className="home-landscape-screen"
+      style={{ backgroundImage: `url(${worldBg})` }}
+    >
+      <div className="home-screen-backdrop-overlay" />
+
+      {/* Left Floating Nav Rail */}
       <NavRail current="home" onNavigate={onNavigate} />
 
       <div className="home-landscape-body">
-        {/* Left ~56%: Cinematic World Diorama + Logo */}
-        <section
-          className={`home-cinema-panel home-cinema-panel--world-${stage.worldId}`}
-          style={{ backgroundImage: `url(${worldBg})` }}
-        >
-          <div className="home-cinema-panel__overlay" />
-          <div className="home-cinema-panel__content">
-            <div className="home-cinema-panel__brand">
+        {/* Left Section: Brand Logo, Tagline, and World Badge */}
+        <section className="home-brand-panel">
+          <div className="home-brand-panel__content">
+            <div className="home-brand-panel__logo-box">
               <GameLogo />
-              <p className="home-cinema-panel__tagline">
-                TWIN-STICK SURVIVOR &middot; LANDSCAPE ACTION ROGUELITE
+              <p className="home-brand-panel__subtag">
+                TWIN-STICK SURVIVOR &bull; LANDSCAPE ACTION ROGUELITE
               </p>
             </div>
 
-            <div className="home-cinema-panel__world-pill">
-              <Shield size={14} className="home-cinema-panel__world-icon" />
-              <span>
-                WORLD {stage.worldId}: {worldMeta.name.toUpperCase()} &middot; {worldMeta.subtitle}
+            <div className="home-world-pill">
+              <Globe size={15} className="home-world-pill__icon" />
+              <span className="home-world-pill__text">
+                WORLD {stage.worldId}: {worldMeta.name.toUpperCase()} &mdash; {worldMeta.subtitle}
               </span>
             </div>
           </div>
         </section>
 
-        {/* Right ~44%: Controls & Action */}
+        {/* Right Section: Currencies + Campaign Hub Card + Battle Now CTA */}
         <section className="home-action-panel">
-          {/* Top Bar: Currencies, Shop, Settings */}
+          {/* Top Currency & Actions Row */}
           <header className="home-action-panel__header">
             <CurrencyBar
               coins={save.coins}
@@ -67,71 +98,106 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
             />
           </header>
 
-          {/* Center Stage & Mission Summary */}
-          <div className="home-action-panel__center">
-            <div className="home-stage-card">
-              <div className="home-stage-card__badge">CURRENT CAMPAIGN</div>
-              <div className="home-stage-card__details">
-                <span className="home-stage-card__sub">
-                  STAGE {stage.id} &bull; {stage.biome.toUpperCase()}
-                </span>
-                <strong className="home-stage-card__name">{stage.name}</strong>
-              </div>
-              <button
-                type="button"
-                className="home-stage-card__map-btn"
-                onClick={() => onNavigate('map')}
-                aria-label="View world stage map"
-              >
-                <Map size={18} />
-                <span>WORLD MAP</span>
-              </button>
+          {/* Campaign Hub Card */}
+          <div className="home-campaign-card">
+            <div className="home-campaign-card__ornament">
+              <span className="home-campaign-card__diamond" />
             </div>
 
-            <div className="home-secondary-row">
+            <div className="home-campaign-card__header">
+              <div className="home-campaign-card__info">
+                <span className="home-campaign-card__kicker">CURRENT CAMPAIGN</span>
+                <span className="home-campaign-card__stage-tag">
+                  STAGE {stage.id} &bull; {worldMeta.name.toUpperCase()}
+                </span>
+                <h2 className="home-campaign-card__boss-name">{bossMeta.name}</h2>
+                <p className="home-campaign-card__lore">{bossMeta.lore}</p>
+              </div>
+
+              <div className="home-campaign-card__portrait-box">
+                <img
+                  src={bossMeta.portrait}
+                  alt={bossMeta.name}
+                  className="home-campaign-card__portrait-img"
+                />
+                <div className="home-campaign-card__portrait-frame" />
+              </div>
+            </div>
+
+            {/* 3 Stacked Menu Action Rows */}
+            <div className="home-menu-stack">
               <button
                 type="button"
-                className="home-secondary-btn home-secondary-btn--codex"
+                className="home-menu-row"
+                onClick={() => onNavigate('map')}
+                aria-label="Open World Map"
+              >
+                <div className="home-menu-row__icon-wrap">
+                  <Map size={20} />
+                </div>
+                <div className="home-menu-row__copy">
+                  <strong className="home-menu-row__title">WORLD MAP</strong>
+                  <span className="home-menu-row__sub">Explore new worlds and stages</span>
+                </div>
+                <ChevronRight size={18} className="home-menu-row__arrow" />
+              </button>
+
+              <button
+                type="button"
+                className="home-menu-row"
                 onClick={() => onNavigate('bestiary')}
                 aria-label="Open Monster Codex"
               >
-                <BookOpen size={18} />
-                <span>MONSTER CODEX</span>
+                <div className="home-menu-row__icon-wrap">
+                  <BookOpen size={20} />
+                </div>
+                <div className="home-menu-row__copy">
+                  <strong className="home-menu-row__title">MONSTER CODEX</strong>
+                  <span className="home-menu-row__sub">Discover enemies, learn their secrets</span>
+                </div>
+                <ChevronRight size={18} className="home-menu-row__arrow" />
               </button>
 
               <button
                 type="button"
-                className={`home-secondary-btn home-secondary-btn--survival ${survivalUnlocked ? 'is-unlocked' : 'is-locked'}`}
+                className={`home-menu-row ${survivalUnlocked ? 'is-unlocked' : 'is-locked'}`}
                 onClick={() => survivalUnlocked && onNavigate('survival')}
                 disabled={!survivalUnlocked}
-                aria-label={survivalUnlocked ? 'Open Survival Mode' : 'Survival Mode Locked: Clear World 2'}
+                aria-label={survivalUnlocked ? 'Open Survival Mode' : 'Survival Mode locked, clear World 2'}
               >
+                <div className="home-menu-row__icon-wrap home-menu-row__icon-wrap--survival">
+                  {survivalUnlocked ? <Flame size={20} /> : <Lock size={18} />}
+                </div>
+                <div className="home-menu-row__copy">
+                  <strong className="home-menu-row__title">SURVIVAL MODE</strong>
+                  <span className="home-menu-row__sub">
+                    {survivalUnlocked ? 'Endless onslaught leaderboard' : 'Clear World 2 to unlock.'}
+                  </span>
+                </div>
                 {survivalUnlocked ? (
-                  <>
-                    <Flame size={18} className="home-survival-icon" />
-                    <span>SURVIVAL</span>
-                  </>
+                  <ChevronRight size={18} className="home-menu-row__arrow" />
                 ) : (
-                  <>
-                    <Lock size={16} />
-                    <span>SURVIVAL (CLEAR W2)</span>
-                  </>
+                  <span className="home-menu-row__locked-badge">LOCKED</span>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Bottom Primary CTA */}
+          {/* Primary CTA: Glowing Gold Battle Button */}
           <footer className="home-action-panel__footer">
-            <PrimaryButton
-              wide
-              variant="gold"
-              className="home-play-btn-landscape"
+            <button
+              type="button"
+              className="battle-now-gold-btn"
               onClick={onPlay}
+              aria-label="Start Stage Battle"
             >
-              <Play size={26} fill="currentColor" />
-              <span>BATTLE NOW</span>
-            </PrimaryButton>
+              <span className="battle-now-gold-btn__glow" />
+              <div className="battle-now-gold-btn__content">
+                <Swords size={24} className="battle-now-gold-btn__icon" />
+                <span className="battle-now-gold-btn__text">BATTLE NOW</span>
+                <ChevronRight size={22} className="battle-now-gold-btn__arrow" />
+              </div>
+            </button>
           </footer>
         </section>
       </div>

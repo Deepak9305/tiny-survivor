@@ -1,11 +1,18 @@
-interface GameLogoProps { compact?: boolean }
+interface GameLogoProps {
+  compact?: boolean;
+  showSubtitle?: boolean;
+}
 
-export function GameLogo({ compact = false }: GameLogoProps) {
+export function GameLogo({ compact = false, showSubtitle = true }: GameLogoProps) {
   return (
     <div className={`game-logo ${compact ? 'game-logo--compact' : ''}`} aria-label="Tiny Survivor">
-      <span className="game-logo__tiny">TINY</span>
-      <span className="game-logo__survivor">SURVIVOR</span>
-      {!compact && <span className="game-logo__tagline">SURVIVE · UPGRADE · GET STRONGER</span>}
+      <div className="game-logo__title-group">
+        <span className="game-logo__tiny" data-text="TINY">TINY</span>
+        <span className="game-logo__survivor" data-text="SURVIVOR">SURVIVOR</span>
+      </div>
+      {!compact && showSubtitle && (
+        <span className="game-logo__tagline">SURVIVE &bull; UPGRADE &bull; GET STRONGER</span>
+      )}
     </div>
   );
 }
