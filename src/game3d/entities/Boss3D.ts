@@ -102,7 +102,8 @@ export class Boss3D {
     this.attackTime = Math.max(0, this.attackTime - delta);
     if (this.attackTime === 0) this.attackKind = undefined;
     this.aura.scale.setScalar(1 + Math.sin(this.visualTime * 3.4) * 0.1);
-    this.shadow.scale.x = 2.2 + Math.sin(this.visualTime * 2.1) * 0.08;
+    this.shadow.scale.x = 2.5 + Math.sin(this.visualTime * 2.1) * 0.12;
+    this.shadow.scale.y = 1.45 + Math.cos(this.visualTime * 2.1) * 0.08;
   }
 
   startAttack(attack: string): void { this.attackKind = attack; this.attackTime = 0.72; }

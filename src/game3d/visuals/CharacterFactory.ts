@@ -8,13 +8,9 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
   root.name = 'shadow-mage';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
 
-  const shadow = new THREE.Mesh(
-    resources.plane('hero-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(0.95, 0.5, 1);
-  shadow.position.y = 0.005;
+  const shadow = resources.createContactShadow('hero-shadow', 1, 1, 0.65);
+  shadow.scale.set(1.05, 0.65, 1);
+  shadow.position.y = 0.006;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-aura', 0.66, 0.76),
@@ -126,13 +122,9 @@ export function createWarriorVisual(resources: SharedResources): { root: THREE.G
   root.name = 'hero-warrior';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
 
-  const shadow = new THREE.Mesh(
-    resources.plane('hero-warrior-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(1.05, 0.55, 1);
-  shadow.position.y = 0.005;
+  const shadow = resources.createContactShadow('hero-warrior-shadow', 1, 1, 0.68);
+  shadow.scale.set(1.18, 0.72, 1);
+  shadow.position.y = 0.006;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-warrior-aura', 0.82, 0.92),
@@ -223,13 +215,9 @@ export function createMonkVisual(resources: SharedResources): { root: THREE.Grou
   root.name = 'hero-monk';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
 
-  const shadow = new THREE.Mesh(
-    resources.plane('hero-monk-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(0.95, 0.5, 1);
-  shadow.position.y = 0.005;
+  const shadow = resources.createContactShadow('hero-monk-shadow', 1, 1, 0.64);
+  shadow.scale.set(1.05, 0.65, 1);
+  shadow.position.y = 0.006;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-monk-aura', 0.76, 0.88),
@@ -302,13 +290,9 @@ export function createGunslingerVisual(resources: SharedResources): { root: THRE
   root.name = 'hero-gunslinger';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
 
-  const shadow = new THREE.Mesh(
-    resources.plane('hero-gunslinger-shadow', 1, 1),
-    resources.basicMaterial('hero-shadow', 0x01050b, { transparent: true, opacity: 0.62, depthWrite: false }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(0.9, 0.48, 1);
-  shadow.position.y = 0.005;
+  const shadow = resources.createContactShadow('hero-gunslinger-shadow', 1, 1, 0.62);
+  shadow.scale.set(1.0, 0.62, 1);
+  shadow.position.y = 0.006;
 
   const aura = new THREE.Mesh(
     resources.ring('hero-gunslinger-aura', 0.74, 0.84),
@@ -736,10 +720,9 @@ function createSkeletonKingModel(resources: SharedResources): { root: THREE.Grou
   const root = new THREE.Group();
   root.name = 'skeleton-king';
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
-  const shadow = new THREE.Mesh(resources.plane('boss-shadow', 1, 1), resources.basicMaterial('boss-shadow', 0x010207, { transparent: true, opacity: 0.7 }));
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(2.2, 1.1, 1);
-  shadow.position.y = 0.02;
+  const shadow = resources.createContactShadow('boss-shadow', 1, 1, 0.75);
+  shadow.scale.set(2.5, 1.45, 1);
+  shadow.position.y = 0.008;
   root.add(shadow);
   const aura = addMesh(root, resources.ring('boss-aura', 1.15, 1.3), resources.basicMaterial('boss-aura', 0xff4e62, { transparent: true, opacity: 0.52, side: THREE.DoubleSide }));
   aura.rotation.x = -Math.PI / 2;
@@ -819,10 +802,9 @@ function createAlternativeBossModel(bossId: Exclude<BossId, 'skeleton-king'>, re
   const root = new THREE.Group();
   root.name = bossId;
   root.userData.parts = {} as Record<string, THREE.Object3D | THREE.Object3D[]>;
-  const shadow = new THREE.Mesh(resources.plane(`boss-shadow-${bossId}`, 1, 1), resources.basicMaterial(`boss-shadow-${bossId}`, 0x010207, { transparent: true, opacity: 0.72 }));
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(2.3, 1.18, 1);
-  shadow.position.y = 0.02;
+  const shadow = resources.createContactShadow(`boss-shadow-${bossId}`, 1, 1, 0.76);
+  shadow.scale.set(2.6, 1.55, 1);
+  shadow.position.y = 0.008;
   root.add(shadow);
   const aura = addMesh(root, resources.ring(`boss-aura-${bossId}`, 1.15, 1.34), resources.basicMaterial(`boss-aura-${bossId}`, palette.aura, { transparent: true, opacity: 0.54, side: THREE.DoubleSide }));
   aura.rotation.x = -Math.PI / 2;
@@ -948,6 +930,11 @@ function addBossEyes(root: THREE.Group, resources: SharedResources, color: numbe
 export function createPetModel(petId: string, resources: SharedResources): THREE.Group {
   const group = new THREE.Group();
   group.name = `pet-${petId}`;
+
+  // Grounded soft contact shadow for pet
+  const petShadow = resources.createContactShadow(`pet-shadow-${petId}`, 0.6, 0.6, 0.48);
+  petShadow.scale.set(0.68, 0.45, 1);
+  group.add(petShadow);
 
   if (petId === 'spirit-fox') {
     const body = addMesh(group, resources.box('pet-fox-body'), resources.standardMaterial('pet-fox-body', 0x059669, { roughness: 0.6 }));

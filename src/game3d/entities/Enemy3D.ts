@@ -112,15 +112,8 @@ export class Enemy3D implements SpatialEntity {
     if (elite) addEliteAccent(this.model, resources);
 
     // Ground Contact Shadow (Soft oval grounded to terrain at y=0.006)
-    const shadowMat = resources.basicMaterial('enemy-contact-shadow-mat', 0x01050a, {
-      transparent: true,
-      opacity: 0.62,
-      depthWrite: false,
-    });
-    const shadowMesh = new THREE.Mesh(resources.plane('enemy-contact-shadow-geom', 1, 1), shadowMat);
-    shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.scale.set(visualScale * 1.1, visualScale * 0.68, 1);
-    shadowMesh.position.y = 0.006;
+    const shadowMesh = resources.createContactShadow('enemy-contact-shadow', 1, 1, 0.62);
+    shadowMesh.scale.set(visualScale * 1.18, visualScale * 0.72, 1);
     this.group.add(shadowMesh);
     this.shadowMesh = shadowMesh;
 

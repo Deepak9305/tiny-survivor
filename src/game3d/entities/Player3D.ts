@@ -213,9 +213,9 @@ export class Player3D {
     this.character.position.y = bob;
 
     // Grounded contact shadow stays strictly on terrain
-    this.shadow.position.y = 0.005;
+    this.shadow.position.y = 0.006;
     const shadowContract = Math.max(0, bob * 1.6);
-    this.shadow.scale.set(0.95 - shadowContract * 0.35, 0.5 - shadowContract * 0.2, 1);
+    this.shadow.scale.set(1.05 - shadowContract * 0.35, 0.65 - shadowContract * 0.22, 1);
 
     const targetFacing = this.aimActive ? this.aimDirection : this.direction;
     this.character.rotation.y = lerpAngle(this.character.rotation.y, targetFacing, Math.min(1, delta * 14));

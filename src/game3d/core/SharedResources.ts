@@ -11,6 +11,30 @@ type MaterialOptions = {
   depthWrite?: boolean;
 };
 
+let sharedShadowTexture: THREE.CanvasTexture | null = null;
+
+export function getSoftShadowTexture(): THREE.CanvasTexture {
+  if (sharedShadowTexture) return sharedShadowTexture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+    gradient.addColorStop(0.25, 'rgba(0, 0, 0, 0.82)');
+    gradient.addColorStop(0.52, 'rgba(0, 0, 0, 0.48)');
+    gradient.addColorStop(0.76, 'rgba(0, 0, 0, 0.16)');
+    gradient.addColorStop(0.92, 'rgba(0, 0, 0, 0.03)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+  }
+  sharedShadowTexture = new THREE.CanvasTexture(canvas);
+  sharedShadowTexture.needsUpdate = true;
+  return sharedShadowTexture;
+}
+
 export class SharedResources {
   private readonly geometries = new Map<string, THREE.BufferGeometry>();
   private readonly materials = new Map<string, THREE.Material>();
@@ -55,6 +79,34 @@ export class SharedResources {
     });
     this.materials.set(materialKey, material);
     return material;
+  }
+
+  shadowMaterial(key = 'contact-shadow', opacity = 0.62): THREE.MeshBasicMaterial {
+    const materialKey = `shadow:${key}:${opacity}`;
+    const existing = this.materials.get(materialKey);
+    if (existing) return existing as THREE.MeshBasicMaterial;
+    const material = new THREE.MeshBasicMaterial({
+      map: getSoftShadowTexture(),
+      color: 0x000206,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    this.materials.set(materialKey, material);
+    return material;
+  }
+
+  createContactShadow(key = 'contact-shadow', width = 1, height = 1, opacity = 0.62): THREE.Mesh {
+    const geom = this.plane(`shadow-plane:${width}:${height}`, width, height);
+    const mat = this.shadowMaterial(key, opacity);
+    const meshObj = new THREE.Mesh(geom, mat);
+    meshObj.rotation.x = -Math.PI / 2;
+    meshObj.position.y = 0.006;
+    meshObj.renderOrder = 1;
+    return meshObj;
   }
 
   box(key = 'box'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.BoxGeometry(1, 1, 1)); }
