@@ -49,10 +49,10 @@ export function createArena(
   const groundMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: groundTexture,
-    roughness: stage.worldId === 3 ? 0.55 : (stage.worldId === 1 ? 0.72 : (stage.worldId === 4 ? 0.78 : 0.88)),
-    metalness: stage.worldId === 4 ? 0.22 : (stage.worldId === 3 ? 0.18 : (stage.worldId === 1 ? 0.1 : 0.05)),
-    emissive: stage.worldId === 1 ? 0x162432 : (stage.worldId === 4 ? 0x220a0a : theme.groundDeep),
-    emissiveIntensity: stage.worldId === 4 ? 0.38 : (stage.worldId === 1 ? 0.28 : (stage.worldId === 3 ? 0.25 : 0.18)),
+    roughness: stage.worldId === 3 ? 0.48 : (stage.worldId === 1 ? 0.62 : (stage.worldId === 2 ? 0.65 : 0.68)),
+    metalness: stage.worldId === 4 ? 0.25 : (stage.worldId === 3 ? 0.24 : (stage.worldId === 1 ? 0.18 : 0.14)),
+    emissive: stage.worldId === 1 ? 0x162432 : (stage.worldId === 2 ? 0x142820 : (stage.worldId === 4 ? 0x2a0c0e : 0x1a2e44)),
+    emissiveIntensity: stage.worldId === 4 ? 0.42 : (stage.worldId === 1 ? 0.32 : (stage.worldId === 2 ? 0.28 : 0.30)),
   });
 
   const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH, ARENA_DEPTH), groundMaterial);

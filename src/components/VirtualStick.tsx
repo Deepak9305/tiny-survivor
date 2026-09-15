@@ -94,8 +94,9 @@ export function VirtualStick({
     >
       <div className="virtual-stick__touch-area" />
       <span className="virtual-stick__ring" />
+      <span className="virtual-stick__ticks" aria-hidden="true" />
       {mode === 'aim' && (
-        <span className="virtual-stick__aim-crosshair" />
+        <span className="virtual-stick__aim-crosshair" aria-hidden="true" />
       )}
       <span ref={knobRef} className="virtual-stick__knob">
         <span className="virtual-stick__knob-center" />

@@ -18,8 +18,8 @@ export class EnvironmentMaterials {
 
     const mat = new THREE.MeshStandardMaterial({
       color: alt ? theme.propAlt : theme.prop,
-      roughness: 0.84,
-      metalness: 0.08,
+      roughness: 0.74,
+      metalness: 0.12,
     });
     this.cache.set(key, mat);
     return mat;
@@ -29,11 +29,11 @@ export class EnvironmentMaterials {
     const key = `wet-stone-${theme.prop}`;
     if (this.cache.has(key)) return this.cache.get(key) as THREE.MeshStandardMaterial;
 
-    const color = new THREE.Color(theme.prop).multiplyScalar(0.72);
+    const color = new THREE.Color(theme.prop).multiplyScalar(0.82);
     const mat = new THREE.MeshStandardMaterial({
       color,
-      roughness: 0.38,
-      metalness: 0.22,
+      roughness: 0.26,
+      metalness: 0.35,
     });
     this.cache.set(key, mat);
     return mat;
@@ -44,9 +44,9 @@ export class EnvironmentMaterials {
     if (this.cache.has(key)) return this.cache.get(key) as THREE.MeshStandardMaterial;
 
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x16202c,
-      roughness: 0.52,
-      metalness: 0.68,
+      color: 0x253242,
+      roughness: 0.44,
+      metalness: 0.72,
     });
     this.cache.set(key, mat);
     return mat;
@@ -56,9 +56,23 @@ export class EnvironmentMaterials {
     const key = `wood-${dark ? 'dark' : 'regular'}`;
     if (this.cache.has(key)) return this.cache.get(key) as THREE.MeshStandardMaterial;
 
+    // Readable dark fantasy timber & gnarled mossy bark (prevents pure black silhouettes)
     const mat = new THREE.MeshStandardMaterial({
-      color: dark ? 0x18120e : 0x2e2016,
-      roughness: 0.92,
+      color: dark ? 0x382d24 : 0x584232,
+      roughness: 0.76,
+      metalness: 0.04,
+    });
+    this.cache.set(key, mat);
+    return mat;
+  }
+
+  getMossyBark(): THREE.MeshStandardMaterial {
+    const key = 'wood-mossy-bark';
+    if (this.cache.has(key)) return this.cache.get(key) as THREE.MeshStandardMaterial;
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x2c3a2e,
+      roughness: 0.80,
       metalness: 0.02,
     });
     this.cache.set(key, mat);

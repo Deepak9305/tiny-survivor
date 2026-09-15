@@ -11,7 +11,7 @@ export class DamageText3D {
 
   constructor(parent: THREE.Group, lowPerformanceMode: boolean) {
     this.parent = parent;
-    this.maxLabels = lowPerformanceMode ? 24 : 48;
+    this.maxLabels = lowPerformanceMode ? 20 : 36;
   }
 
   show(x: number, y: number, value: number, critical: boolean, color: number): void {
@@ -19,21 +19,21 @@ export class DamageText3D {
     if (!label) return;
     const text = critical ? `${Math.round(value)}!` : `${Math.round(value)}`;
     label.context.clearRect(0, 0, label.canvas.width, label.canvas.height);
-    label.context.font = `${critical ? '800 42px' : '800 32px'} Arial, sans-serif`;
+    label.context.font = `${critical ? '900 40px' : '800 32px'} 'Barlow Condensed', Arial, sans-serif`;
     label.context.textAlign = 'center';
     label.context.textBaseline = 'middle';
-    label.context.lineWidth = 8;
-    label.context.strokeStyle = 'rgba(4, 12, 24, .95)';
+    label.context.lineWidth = critical ? 7 : 5;
+    label.context.strokeStyle = 'rgba(2, 6, 14, 0.96)';
     label.context.strokeText(text, 64, 34);
-    label.context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    label.context.fillStyle = critical ? '#ffd54a' : `#${color.toString(16).padStart(6, '0')}`;
     label.context.fillText(text, 64, 34);
     label.texture.needsUpdate = true;
     const point = logicalToWorld(x + (Math.random() * 8 - 4), y);
     label.sprite.position.set(point.x, 1.35, point.z);
-    label.sprite.scale.set(critical ? 1.25 : 0.96, critical ? 0.62 : 0.48, 1);
+    label.sprite.scale.set(critical ? 1.25 : 0.95, critical ? 0.64 : 0.48, 1);
     label.sprite.visible = true;
     label.life = 0;
-    label.maxLife = critical ? 0.68 : 0.52;
+    label.maxLife = critical ? 0.62 : 0.48;
     label.baseY = 1.35;
     this.labels.push(label);
   }
@@ -43,8 +43,8 @@ export class DamageText3D {
       const label = this.labels[index];
       label.life += delta;
       const progress = label.life / label.maxLife;
-      label.sprite.position.y = label.baseY + progress * 0.72;
-      label.sprite.material.opacity = Math.max(0, 1 - progress);
+      label.sprite.position.y = label.baseY + progress * 0.65;
+      label.sprite.material.opacity = Math.max(0, 1 - Math.pow(progress, 1.4));
       if (label.life >= label.maxLife) {
         label.sprite.visible = false;
         this.labels.splice(index, 1);

@@ -90,28 +90,37 @@ export class Player3D {
     heroPointLight.position.set(0, 1.2, 0.2);
     this.group.add(heroPointLight);
 
-    // Subtle Arcane Aim Indicator under hero
+    // Warm red-orange directional aim trajectory cone matching reference screenshot
     const aimIndicatorGroup = new THREE.Group();
     aimIndicatorGroup.name = 'aim-indicator';
     aimIndicatorGroup.position.set(0, 0.04, 0);
 
-    const aimChevron = addMesh(
+    const aimCone = addMesh(
       aimIndicatorGroup,
-      resources.cone('aim-chevron-geom'),
-      resources.basicMaterial('aim-chevron-mat', 0x38bdf8, { transparent: true, opacity: 0.28 })
+      resources.cone('aim-cone-geom'),
+      resources.basicMaterial('aim-cone-mat', 0xff382e, { transparent: true, opacity: 0.72, depthWrite: false })
     );
-    aimChevron.scale.set(0.18, 0.55, 0.12);
-    aimChevron.rotation.x = Math.PI / 2;
-    aimChevron.position.set(0, 0, 0.85);
+    aimCone.scale.set(0.36, 1.85, 0.08);
+    aimCone.rotation.x = Math.PI / 2;
+    aimCone.position.set(0, 0, 1.15);
+
+    const aimCore = addMesh(
+      aimIndicatorGroup,
+      resources.cylinder('aim-core-geom'),
+      resources.basicMaterial('aim-core-mat', 0xffaa44, { transparent: true, opacity: 0.9, depthWrite: false })
+    );
+    aimCore.scale.set(0.035, 1.65, 0.035);
+    aimCore.rotation.x = Math.PI / 2;
+    aimCore.position.set(0, 0.005, 1.05);
 
     const aimDot = addMesh(
       aimIndicatorGroup,
       resources.circle('aim-dot-geom'),
-      resources.basicMaterial('aim-dot-mat', 0x7dd3fc, { transparent: true, opacity: 0.45 })
+      resources.basicMaterial('aim-dot-mat', 0xffea77, { transparent: true, opacity: 0.85, depthWrite: false })
     );
-    aimDot.scale.setScalar(0.12);
+    aimDot.scale.setScalar(0.14);
     aimDot.rotation.x = -Math.PI / 2;
-    aimDot.position.set(0, 0, 1.22);
+    aimDot.position.set(0, 0.008, 2.05);
 
     this.group.add(aimIndicatorGroup);
     this.aimIndicator = aimIndicatorGroup;
@@ -174,13 +183,14 @@ export class Player3D {
     if (this.aimIndicator) {
       this.aimIndicator.rotation.y = this.aimDirection;
       const targetIndicatorOpacity = this.aimActive ? 0.88 : (this.hasAimed ? 0.28 : 0);
-      const chevron = this.aimIndicator.children[0] as THREE.Mesh | undefined;
-      if (chevron?.material && 'opacity' in chevron.material) {
-        (chevron.material as THREE.Material & { opacity: number }).opacity = THREE.MathUtils.lerp(
-          (chevron.material as THREE.Material & { opacity: number }).opacity,
-          targetIndicatorOpacity,
-          Math.min(1, delta * 10)
-        );
+      for (const child of this.aimIndicator.children) {
+        if (child instanceof THREE.Mesh && child.material && 'opacity' in child.material) {
+          (child.material as THREE.Material & { opacity: number }).opacity = THREE.MathUtils.lerp(
+            (child.material as THREE.Material & { opacity: number }).opacity,
+            targetIndicatorOpacity,
+            Math.min(1, delta * 10)
+          );
+        }
       }
     }
     this.attackTime = Math.max(0, this.attackTime - delta);

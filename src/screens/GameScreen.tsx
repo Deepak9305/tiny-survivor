@@ -150,7 +150,9 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
             </div>
           </div>
           <div className="game-timer">
-            <span className="game-stage-title">Stage {stage.id.includes('-') ? stage.id.split('-')[1] : stage.id}</span>
+            <span className="game-stage-title">
+              {mode === 'survival' ? 'SURVIVAL' : stage.bossStage ? 'BOSS' : `STAGE ${stage.stageNumber || (stage.id.includes('-') ? stage.id.split('-')[1] : stage.id)}`}
+            </span>
             <strong className="game-stage-time">{formatRunTime(snapshot.time)}</strong>
           </div>
           <div className="game-actions">

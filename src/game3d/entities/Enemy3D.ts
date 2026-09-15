@@ -103,6 +103,43 @@ export class Enemy3D implements SpatialEntity {
     this.group.add(this.model);
     if (elite) addEliteAccent(this.model, resources);
 
+    // Ground Contact Shadow (Soft oval grounded to terrain)
+    const shadowMat = resources.basicMaterial('enemy-contact-shadow-mat', 0x01050a, {
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+    });
+    const shadowMesh = new THREE.Mesh(resources.plane('enemy-contact-shadow-geom', 1, 1), shadowMat);
+    shadowMesh.rotation.x = -Math.PI / 2;
+    shadowMesh.scale.set(visualScale * 1.1, visualScale * 0.68, 1);
+    shadowMesh.position.y = 0.012;
+    this.group.add(shadowMesh);
+
+    // Slime Glowing Green Residue / Ground Pool
+    if (kind === 'slime') {
+      const slimePoolMat = resources.basicMaterial('slime-ground-pool-mat', 0x22c55e, {
+        transparent: true,
+        opacity: 0.46,
+        depthWrite: false,
+      });
+      const slimePool = new THREE.Mesh(resources.circle('slime-ground-pool-geom'), slimePoolMat);
+      slimePool.rotation.x = -Math.PI / 2;
+      slimePool.scale.set(visualScale * 1.25, visualScale * 0.95, 1);
+      slimePool.position.y = 0.016;
+      this.group.add(slimePool);
+    } else if (kind === 'ghost' || kind === 'frost-wraith') {
+      const spectralMat = resources.basicMaterial(`spectral-pool-${kind}`, 0x60a5fa, {
+        transparent: true,
+        opacity: 0.38,
+        depthWrite: false,
+      });
+      const spectralPool = new THREE.Mesh(resources.circle('spectral-pool-geom'), spectralMat);
+      spectralPool.rotation.x = -Math.PI / 2;
+      spectralPool.scale.set(visualScale * 1.15, visualScale * 0.85, 1);
+      spectralPool.position.y = 0.016;
+      this.group.add(spectralPool);
+    }
+
     // Telegraph Visual
     this.telegraphGroup = new THREE.Group();
     this.telegraphGroup.position.set(0, 0.03, 0);

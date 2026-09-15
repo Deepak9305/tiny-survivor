@@ -223,9 +223,9 @@ export class CombatEffects3D {
     });
 
     const outerMesh = addMesh(group, beamGeom, outerMat);
-    outerMesh.scale.set(0.56, distance, 0.56);
+    outerMesh.scale.set(0.48, distance, 0.48);
     const coreMesh = addMesh(group, beamGeom, coreMat);
-    coreMesh.scale.set(0.24, distance, 0.24);
+    coreMesh.scale.set(0.18, distance, 0.18);
 
     outerMesh.userData.baseOpacity = 0.88;
     coreMesh.userData.baseOpacity = 0.95;
@@ -235,14 +235,37 @@ export class CombatEffects3D {
     group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
 
     this.parent.add(group);
-    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.18 : 0.28, kind: 'lightning' });
+    this.effects.push({ group, life: 0, maxLife: this.reducedEffects ? 0.16 : 0.24, kind: 'lightning' });
 
+    // Origin spark + target impact spark
+    this.burst(fromX, fromY, color, false);
     this.burst(toX, toY, color, true);
   }
 
   healPulse(x: number, y: number): void {
-    this.ring(x, y, 0.95, 0x48e076);
-    this.burst(x, y, 0x76f59b, false);
+    this.ring(x, y, 1.1, 0x22c55e);
+    this.ring(x, y, 0.7, 0x86efac);
+    const point = logicalToWorld(x, y);
+    const count = this.reducedEffects ? 5 : 10;
+    for (let i = 0; i < count; i++) {
+      const pColor = i % 2 === 0 ? 0x4ade80 : 0xdcfce7;
+      const mat = this.resources.basicMaterial(`heal-mote-${pColor}`, pColor, {
+        transparent: true,
+        opacity: 0.9,
+      }).clone();
+      const mesh = addMesh(this.parent, this.resources.sphere('heal-mote-geom'), mat);
+      mesh.scale.setScalar(0.08);
+      const angle = (i / count) * Math.PI * 2;
+      const rad = 0.2 + Math.random() * 0.4;
+      mesh.position.set(point.x + Math.cos(angle) * rad, 0.3 + Math.random() * 0.3, point.z + Math.sin(angle) * rad);
+      this.particles.push({
+        mesh,
+        velocity: new THREE.Vector3((Math.random() - 0.5) * 0.3, 1.4 + Math.random() * 0.6, (Math.random() - 0.5) * 0.3),
+        life: 0,
+        maxLife: this.reducedEffects ? 0.35 : 0.55,
+        baseScale: 0.08,
+      });
+    }
   }
 
   update(delta: number): void {

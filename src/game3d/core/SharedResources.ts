@@ -8,6 +8,7 @@ type MaterialOptions = {
   roughness?: number;
   metalness?: number;
   side?: THREE.Side;
+  depthWrite?: boolean;
 };
 
 export class SharedResources {
@@ -35,6 +36,7 @@ export class SharedResources {
       emissive: options.emissive ?? 0,
       emissiveIntensity: options.emissiveIntensity ?? 0,
       side: options.side,
+      depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
     this.materials.set(materialKey, material);
     return material;
@@ -49,7 +51,7 @@ export class SharedResources {
       transparent: options.transparent ?? false,
       opacity: options.opacity ?? 1,
       side: options.side,
-      depthWrite: options.transparent ? false : true,
+      depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
     this.materials.set(materialKey, material);
     return material;

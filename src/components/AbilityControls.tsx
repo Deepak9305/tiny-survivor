@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock } from 'lucide-react';
+import { Flame, Lock, Snowflake, Heart, Sparkles } from 'lucide-react';
 import { ABILITY_DEFINITIONS, getAbilityUnlockStage } from '../data/abilities';
 import { getActiveThreeGame } from '../game3d/ThreeGame';
 import type { AbilityId, AbilityStateSnapshot } from '../types';
@@ -10,7 +10,7 @@ interface AbilityControlsProps {
 }
 
 export function AbilityControls({ abilities = [], disabled = false }: AbilityControlsProps) {
-  const abilityOrder: AbilityId[] = ['fireball', 'arcane-beam', 'freeze', 'heal'];
+  const abilityOrder: AbilityId[] = ['fireball', 'freeze', 'heal', 'arcane-beam'];
 
   const getAbilityState = (id: AbilityId): AbilityStateSnapshot => {
     const found = abilities.find((a) => a.id === id);
@@ -33,9 +33,27 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
     getActiveThreeGame()?.activateAbility(id);
   };
 
+  const renderIcon = (id: AbilityId, isLocked: boolean) => {
+    if (isLocked) {
+      return <Lock size={16} className="ability-btn__lock" />;
+    }
+    switch (id) {
+      case 'fireball':
+        return <Flame size={24} className="ability-btn__svg-icon" />;
+      case 'freeze':
+        return <Snowflake size={24} className="ability-btn__svg-icon" />;
+      case 'heal':
+        return <Heart size={22} fill="currentColor" className="ability-btn__svg-icon" />;
+      case 'arcane-beam':
+        return <Sparkles size={22} className="ability-btn__svg-icon" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={`ability-controls${disabled ? ' is-disabled' : ''}`} aria-label="Manual abilities">
-      {abilityOrder.map((id) => {
+      {abilityOrder.map((id, index) => {
         const def = ABILITY_DEFINITIONS[id];
         const state = getAbilityState(id);
         const isLocked = !state.unlocked;
@@ -53,28 +71,30 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
           ? Math.max(0, Math.min(1, state.cooldownRemaining / state.cooldownDuration))
           : 0;
 
+        const cooldownAngle = Math.round(cooldownProgress * 360);
+
         return (
           <button
             key={id}
             type="button"
-            className={`ability-btn ability-btn--${id} ${statusClass}`}
+            className={`ability-btn ability-btn--${id} ability-btn--slot-${index + 1} ${statusClass}`}
             disabled={disabled || isLocked || isOnCooldown}
             onPointerDown={(e) => handleActivate(id, e)}
+            onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            style={{ '--cooldown-angle': `${cooldownAngle}deg` } as React.CSSProperties}
             aria-label={`${def.name}: ${isLocked ? `Locked until stage ${milestoneStage}` : isReady ? 'Ready' : isOnCooldown ? `${Math.ceil(state.cooldownRemaining)}s cooldown` : 'Active'}`}
           >
-            {/* Cooldown radial shade overlay */}
+            {/* Outer decorative rune ring */}
+            <span className="ability-btn__rune-ring" aria-hidden="true" />
+
+            {/* Cooldown radial sweep shade overlay */}
             {isOnCooldown && (
-              <div
-                className="ability-btn__cooldown-fill"
-                style={{
-                  clipPath: `inset(${Math.round((1 - cooldownProgress) * 100)}% 0 0 0)`,
-                }}
-              />
+              <span className="ability-btn__cooldown-fill" aria-hidden="true" />
             )}
 
             {/* Icon */}
             <span className="ability-btn__icon" aria-hidden="true">
-              {isLocked ? <Lock size={16} className="ability-btn__lock" /> : def.icon}
+              {renderIcon(id, isLocked)}
             </span>
 
             {/* Cooldown timer text */}
@@ -83,7 +103,6 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
                 {state.cooldownRemaining >= 10
                   ? Math.ceil(state.cooldownRemaining)
                   : state.cooldownRemaining.toFixed(1)}
-                s
               </span>
             )}
 
@@ -107,3 +126,4 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
     </div>
   );
 }
+

@@ -156,32 +156,57 @@ export class CameraController {
   }
 
   /**
-   * Lightweight Camera Occlusion System:
+   * Camera Occlusion System:
    * Smoothly fades tall scenery between camera and player (~140ms in/out).
+   * Clones material per occluding mesh so other arena scenery never fades accidentally.
    */
   private updateOcclusion(playerPos: THREE.Vector3, occluders: THREE.Object3D[], delta: number): void {
-    const rayDir = playerPos.clone().sub(this.camera.position);
-    const distance = rayDir.length();
-    rayDir.normalize();
+    const hitMeshSet = new Set<THREE.Mesh>();
+    const testOffsets = [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(-0.6, 0.25, 0),
+      new THREE.Vector3(0.6, 0.25, 0),
+      new THREE.Vector3(0, 0.7, 0),
+    ];
 
-    this.raycaster.set(this.camera.position, rayDir);
-    this.raycaster.far = distance;
+    for (const offset of testOffsets) {
+      const target = playerPos.clone().add(offset);
+      const rayDir = target.clone().sub(this.camera.position);
+      const distance = rayDir.length();
+      rayDir.normalize();
 
-    const hits = this.raycaster.intersectObjects(occluders, true);
+      this.raycaster.set(this.camera.position, rayDir);
+      this.raycaster.far = distance;
+
+      const hits = this.raycaster.intersectObjects(occluders, true);
+      for (const hit of hits) {
+        if (hit.object instanceof THREE.Mesh) {
+          hitMeshSet.add(hit.object);
+        }
+      }
+    }
+
     const hitMaterials = new Set<THREE.Material>();
-
-    for (const hit of hits) {
-      if (hit.object instanceof THREE.Mesh && hit.object.material) {
-        const mats = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
-        for (const mat of mats) {
+    for (const mesh of hitMeshSet) {
+      if (!mesh.userData.isClonedForOcclusion && mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material = mesh.material.map((m) => m.clone());
+        } else {
+          mesh.material = mesh.material.clone();
+        }
+        mesh.userData.isClonedForOcclusion = true;
+      }
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const mat of mats) {
+        if (mat) {
           hitMaterials.add(mat);
           mat.transparent = true;
           let entry = this.fadedObjects.get(mat);
           if (!entry) {
-            entry = { currentOpacity: mat.opacity, targetOpacity: 0.25 };
+            entry = { currentOpacity: mat.opacity, targetOpacity: 0.24 };
             this.fadedObjects.set(mat, entry);
           } else {
-            entry.targetOpacity = 0.25;
+            entry.targetOpacity = 0.24;
           }
         }
       }

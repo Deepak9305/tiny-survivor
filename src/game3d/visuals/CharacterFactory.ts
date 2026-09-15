@@ -18,11 +18,11 @@ export function createShadowMage(resources: SharedResources): { root: THREE.Grou
   root.add(shadow);
 
   const aura = new THREE.Mesh(
-    resources.ring('hero-aura', 0.76, 0.84),
-    resources.basicMaterial('hero-aura', 0x4bdcff, { transparent: true, opacity: 0.65, side: THREE.DoubleSide }),
+    resources.ring('hero-aura', 0.66, 0.76),
+    resources.basicMaterial('hero-aura', 0x38bdf8, { transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }),
   );
   aura.rotation.x = -Math.PI / 2;
-  aura.position.y = 0.04;
+  aura.position.y = 0.035;
   root.add(aura);
 
   // Try production GLB first
@@ -456,11 +456,17 @@ export function createEnemyModel(kind: string, color: number, resources: SharedR
     root.userData.parts = { body, wings };
     addEyes(root, resources, 0xffd86d, 0.82);
   } else if (kind === 'slime') {
-    const body = addMesh(root, resources.sphere('enemy-slime-body'), bodyMaterial);
+    const slimeJellyMat = resources.standardMaterial('enemy-slime-jelly', 0x22c55e, {
+      roughness: 0.18,
+      metalness: 0.14,
+      emissive: 0x16a34a,
+      emissiveIntensity: 0.95,
+    });
+    const body = addMesh(root, resources.sphere('enemy-slime-body'), slimeJellyMat);
     body.scale.set(0.82, 0.62, 0.72);
     body.position.y = 0.48;
     root.userData.parts = { body };
-    addEyes(root, resources, 0x113349, 0.56);
+    addEyes(root, resources, 0x052e16, 0.56);
   } else if (kind === 'ghost') {
     const body = addMesh(root, resources.ico('enemy-ghost-body'), resources.standardMaterial(`enemy-ghost-${color}`, color, { transparent: true, opacity: 0.74, roughness: 0.52 }));
     body.scale.set(0.62, 0.86, 0.54);
