@@ -6,6 +6,7 @@ import './styles/compact-landscape.css';
 import './styles/phone-polish.css';
 import './styles/combat-controls.css';
 import './styles/fun-overhaul.css';
+import './styles/premium-studio.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
