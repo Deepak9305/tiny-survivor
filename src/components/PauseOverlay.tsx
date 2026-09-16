@@ -18,7 +18,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import type { GameSnapshot, RunMode, SaveData, StageDefinition } from '../types';
+import type { GameSnapshot, RunMode, SaveData, Settings, StageDefinition } from '../types';
 import { HERO_DEFINITIONS } from '../data/heroes';
 import { ABILITY_DEFINITIONS } from '../data/abilities';
 import { WEAPON_BALANCE, PASSIVE_BALANCE } from '../data/balance';
@@ -34,6 +34,7 @@ interface PauseOverlayProps {
   onResume: () => void;
   onHome: () => void;
   onBestiary: () => void;
+  onSettingsChange?: (settings: Settings) => void;
 }
 
 export function PauseOverlay({
@@ -44,6 +45,7 @@ export function PauseOverlay({
   onResume,
   onHome,
   onBestiary,
+  onSettingsChange,
 }: PauseOverlayProps) {
   const [musicOn, setMusicOn] = useState(save.settings.music);
   const [sfxOn, setSfxOn] = useState(save.settings.soundEffects);
@@ -57,7 +59,7 @@ export function PauseOverlay({
     const next = !musicOn;
     setMusicOn(next);
     audioService.setMusicEnabled(next);
-    save.settings.music = next;
+    onSettingsChange?.({ ...save.settings, music: next });
     audioService.playUISound('tap');
   };
 
@@ -65,7 +67,7 @@ export function PauseOverlay({
     const next = !sfxOn;
     setSfxOn(next);
     audioService.setSfxEnabled(next);
-    save.settings.soundEffects = next;
+    onSettingsChange?.({ ...save.settings, soundEffects: next });
     audioService.playUISound('tap');
   };
 
