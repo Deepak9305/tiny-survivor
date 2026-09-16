@@ -9,6 +9,7 @@ import { buildHauntedForestArena, buildForestGroundTexture } from './worlds/Haun
 import { buildFrozenRuinsArena, buildFrozenGroundTexture } from './worlds/FrozenRuinsArena';
 import { buildDemonCastleArena, buildCastleGroundTexture } from './worlds/DemonCastleArena';
 import { getObstaclesForWorld } from './WorldObstacles';
+import { createArenaFlavor } from './ArenaFlavor';
 
 export function paletteFor(stage: StageDefinition): BiomeTheme {
   return biomeThemeFor(stage);
@@ -25,10 +26,8 @@ export function createArena(
   const arena = new THREE.Group();
   arena.name = 'arena';
 
-  // Registered occluder meshes for camera occlusion fading
   const occluders: THREE.Object3D[] = [];
 
-  // 1. Authored 1024x1024 Ground Texture for all 4 worlds
   let groundTexture: THREE.CanvasTexture;
   switch (stage.worldId) {
     case 1:
@@ -55,7 +54,6 @@ export function createArena(
     emissiveIntensity: stage.worldId === 4 ? 0.42 : (stage.worldId === 1 ? 0.32 : (stage.worldId === 2 ? 0.28 : 0.30)),
   });
 
-  // 1a. Expansive Outer Terrain Ground Skirt (130 x 100) to ensure zero empty black voids
   const outerTerrainTex = buildOuterTerrainTexture(theme);
   const outerTerrainMat = new THREE.MeshStandardMaterial({
     map: outerTerrainTex,
@@ -70,17 +68,14 @@ export function createArena(
   outerGround.receiveShadow = false;
   arena.add(outerGround);
 
-  // 1b. Primary Authored Court Ground
   const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH + 2.0, ARENA_DEPTH + 2.0), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.015;
   ground.receiveShadow = false;
   arena.add(ground);
 
-  // 2. Camera-Relative Distant Moon & Horizon Ridge
   const skyGroup = createDistantSky(arena, resources, theme, stage.worldId);
 
-  // 3. Authored Biome World Landmarks & Architecture
   let worldResult: { lanternPositions: THREE.Vector3[] };
   const rng = () => {
     let s = mapSeed;
@@ -107,16 +102,17 @@ export function createArena(
       break;
   }
 
-  // 4. Dynamic Lantern Light Pool (Budget: 4 PointLights in normal, 1 in low performance)
+  // Small instanced biome clutter plus local shroud patches make the battlefield
+  // feel inhabited without turning the whole arena into collision clutter.
+  const flavor = createArenaFlavor(arena, resources, theme, stage.worldId, mapRng, lowPerformanceMode);
+
   const dynamicLightPool = createDynamicLightPool(arena, theme, lowPerformanceMode, worldResult.lanternPositions);
 
-  // 5. Rich Natural Alpha Ground Mist
   let mistUpdate: ((delta: number) => void) | undefined;
   if (!lowPerformanceMode) {
     mistUpdate = createAtmosphericMist(arena, theme, stage.worldId);
   }
 
-  // 6. Optional Dev-Only Debug Collider Visualization
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     if (params.get('debugColliders') === '1' || (window as unknown as { __debugColliders?: boolean }).__debugColliders) {
@@ -125,33 +121,26 @@ export function createArena(
     }
   }
 
-  // 7. UserData wiring for simulation loop
   arena.userData.theme = theme;
   arena.userData.mapSeed = mapSeed;
   arena.userData.mapSignature = getWorldMapSignature(stage.worldId);
   arena.userData.mapValidation = WORLD_LAYOUT_VALIDATION;
   arena.userData.occluders = occluders;
   arena.userData.lanternPositions = worldResult.lanternPositions;
+  arena.userData.visionPatches = flavor.visionPatches;
   arena.userData.update = (cameraPos: THREE.Vector3, playerPos: THREE.Vector3, delta: number) => {
-    // Keep distant sky anchored to camera's horizontal traversal so moon stays in the sky
     if (skyGroup) {
       skyGroup.position.x = cameraPos.x * 0.75;
     }
-    // Reposition light pool to closest lanterns
     dynamicLightPool.update(playerPos);
-    // Drift mist
-    if (mistUpdate) {
-      mistUpdate(delta);
-    }
+    if (mistUpdate) mistUpdate(delta);
+    flavor.update(playerPos, delta);
   };
 
   scene.add(arena);
   return arena;
 }
 
-// -------------------------------------------------------------
-// DYNAMIC LANTERN LIGHT POOL (Tracks Nearest Lanterns to Player)
-// -------------------------------------------------------------
 function createDynamicLightPool(
   parent: THREE.Group,
   theme: BiomeTheme,
@@ -171,7 +160,6 @@ function createDynamicLightPool(
   return {
     update: (playerPos: THREE.Vector3) => {
       if (lanterns.length === 0 || lights.length === 0) return;
-      // Sort lanterns by distance to player
       const sorted = lanterns
         .slice()
         .sort((a, b) => a.distanceToSquared(playerPos) - b.distanceToSquared(playerPos));
@@ -184,9 +172,6 @@ function createDynamicLightPool(
   };
 }
 
-// -------------------------------------------------------------
-// DISTANT HORIZON & CELESTIAL MOON
-// -------------------------------------------------------------
 function createDistantSky(
   parent: THREE.Group,
   resources: SharedResources,
@@ -196,7 +181,6 @@ function createDistantSky(
   const skyGroup = new THREE.Group();
   skyGroup.name = 'distant-sky-horizon';
 
-  // Celestial Moon (Very distant, camera-relative)
   const moonZ = -38.0;
   const moonY = 19.5;
   const moonMesh = new THREE.Mesh(
@@ -210,7 +194,6 @@ function createDistantSky(
   moonMesh.position.set(-9.5, moonY, moonZ);
   skyGroup.add(moonMesh);
 
-  // Soft Moon Glow Halo
   const haloCanvas = document.createElement('canvas');
   haloCanvas.width = 128;
   haloCanvas.height = 128;
@@ -238,7 +221,6 @@ function createDistantSky(
   haloSprite.scale.set(15.0, 15.0, 1);
   skyGroup.add(haloSprite);
 
-  // Layered Distant Horizon Silhouettes (Layer 1: Far, Layer 2: Mid)
   const ridgeCount = 14;
   const ridgeZ = -35.0;
   const ridgeMat = resources.basicMaterial(`horizon-ridge-mat-${worldId}`, theme.groundDeep, {
@@ -261,9 +243,6 @@ function createDistantSky(
   return skyGroup;
 }
 
-// -------------------------------------------------------------
-// ATMOSPHERIC GROUND MIST (Normal Alpha Blending, Non-Neon)
-// -------------------------------------------------------------
 function createAtmosphericMist(
   parent: THREE.Group,
   theme: BiomeTheme,
@@ -298,7 +277,7 @@ function createAtmosphericMist(
       color: mistColor,
       transparent: true,
       opacity: 0.16 + (i % 4) * 0.05,
-      blending: THREE.NormalBlending, // Normal alpha blending, NOT additive
+      blending: THREE.NormalBlending,
       depthWrite: false,
     });
     const sp = new THREE.Sprite(mat);
@@ -318,9 +297,7 @@ function createAtmosphericMist(
     const halfW = ARENA_WIDTH / 2;
     for (const item of sprites) {
       item.sprite.position.x += item.speedX * delta;
-      if (item.sprite.position.x > halfW) {
-        item.sprite.position.x = -halfW;
-      }
+      if (item.sprite.position.x > halfW) item.sprite.position.x = -halfW;
     }
   };
 }
@@ -409,7 +386,6 @@ function buildOuterTerrainTexture(theme: BiomeTheme): THREE.CanvasTexture {
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 512, 512);
 
-  // Large value organic soil noise
   for (let i = 0; i < 80; i++) {
     const x = Math.random() * 512;
     const y = Math.random() * 512;
@@ -424,7 +400,6 @@ function buildOuterTerrainTexture(theme: BiomeTheme): THREE.CanvasTexture {
     ctx.fill();
   }
 
-  // Fine terrain grit & pebbles
   for (let i = 0; i < 200; i++) {
     const x = Math.random() * 512;
     const y = Math.random() * 512;
