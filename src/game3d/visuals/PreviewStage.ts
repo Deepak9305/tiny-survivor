@@ -2,14 +2,17 @@ import * as THREE from 'three';
 import type { BiomeTheme } from '../scene/BiomeTheme';
 import { SharedResources, addMesh } from '../core/SharedResources';
 
-export interface PreviewStageRig {
-  runeRing: THREE.Mesh;
+interface PreviewLightingRig {
   accentLight: THREE.PointLight;
   warmLight: THREE.PointLight;
   decor: THREE.Group;
 }
 
-export function addPreviewLighting(scene: THREE.Scene, theme: BiomeTheme, intensity = 1): PreviewStageRig {
+export interface PreviewStageRig extends PreviewLightingRig {
+  runeRing: THREE.Mesh;
+}
+
+function addPreviewLighting(scene: THREE.Scene, theme: BiomeTheme, intensity = 1): PreviewLightingRig {
   scene.add(new THREE.HemisphereLight(theme.keyLight, theme.fillLight, 1.28 * intensity));
 
   const key = new THREE.DirectionalLight(theme.keyLight, 2.0 * intensity);
@@ -28,10 +31,7 @@ export function addPreviewLighting(scene: THREE.Scene, theme: BiomeTheme, intens
   decor.name = 'preview-stage-decor';
   scene.add(decor);
 
-  // Returned below after the actual rune ring is built by addPreviewStage().
-  const placeholder = new THREE.Mesh();
-  placeholder.visible = false;
-  return { runeRing: placeholder, accentLight, warmLight, decor };
+  return { accentLight, warmLight, decor };
 }
 
 export function addPreviewStage(
@@ -81,8 +81,6 @@ export function addPreviewStage(
   runeRing.rotation.x = -Math.PI / 2;
   runeRing.position.y = 0.17;
 
-  // Cheap world-themed silhouettes make preview screens feel like part of the game,
-  // while staying far below gameplay draw-call density.
   const decorMat = resources.standardMaterial(`preview-decor-${worldId}`, theme.prop, {
     roughness: 0.92,
     metalness: worldId === 4 ? 0.18 : 0.04,
@@ -116,7 +114,11 @@ export function addPreviewStage(
   } else if (worldId === 4) {
     addPillar(-1.55, -0.35, 1.25, true);
     addPillar(1.5, -0.35, 1.25, true);
-    const brazierL = addMesh(lights.decor, resources.sphere('preview-brazier-l'), resources.basicMaterial('preview-brazier-flame', theme.warm, { transparent: true, opacity: 0.8 }));
+    const brazierL = addMesh(
+      lights.decor,
+      resources.sphere('preview-brazier-l'),
+      resources.basicMaterial('preview-brazier-flame', theme.warm, { transparent: true, opacity: 0.8 }),
+    );
     brazierL.scale.setScalar(0.12);
     brazierL.position.set(-1.55, 1.15, -0.32);
     const brazierR = brazierL.clone();
