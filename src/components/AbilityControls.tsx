@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flame, Lock, Snowflake, Heart, Sparkles } from 'lucide-react';
 import { ABILITY_DEFINITIONS, getAbilityUnlockStage } from '../data/abilities';
+import { getCombatAutoAim } from '../game/systems/CombatTargeting';
 import { getActiveThreeGame } from '../game3d/ThreeGame';
 import type { AbilityId, AbilityStateSnapshot } from '../types';
 
@@ -30,7 +31,21 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
     e.preventDefault();
     e.stopPropagation();
     if (disabled) return;
-    getActiveThreeGame()?.activateAbility(id);
+
+    const game = getActiveThreeGame();
+    if (!game) return;
+
+    // Directional specials borrow the live auto-target for this tap only. Clearing
+    // it immediately prevents the retired manual-aim line from becoming visible.
+    if (id === 'fireball' || id === 'arcane-beam') {
+      const autoAim = getCombatAutoAim(650);
+      if (autoAim) game.setAimVector(autoAim.x, autoAim.y);
+      game.activateAbility(id);
+      if (autoAim) game.setAimVector(0, 0);
+      return;
+    }
+
+    game.activateAbility(id);
   };
 
   const renderIcon = (id: AbilityId, isLocked: boolean) => {
@@ -84,46 +99,20 @@ export function AbilityControls({ abilities = [], disabled = false }: AbilityCon
             style={{ '--cooldown-angle': `${cooldownAngle}deg` } as React.CSSProperties}
             aria-label={`${def.name}: ${isLocked ? `Locked until stage ${milestoneStage}` : isReady ? 'Ready' : isOnCooldown ? `${Math.ceil(state.cooldownRemaining)}s cooldown` : 'Active'}`}
           >
-            {/* Outer decorative rune ring */}
             <span className="ability-btn__rune-ring" aria-hidden="true" />
-
-            {/* Cooldown radial sweep shade overlay */}
-            {isOnCooldown && (
-              <span className="ability-btn__cooldown-fill" aria-hidden="true" />
-            )}
-
-            {/* Icon */}
-            <span className="ability-btn__icon" aria-hidden="true">
-              {renderIcon(id, isLocked)}
-            </span>
-
-            {/* Cooldown timer text */}
+            {isOnCooldown && <span className="ability-btn__cooldown-fill" aria-hidden="true" />}
+            <span className="ability-btn__icon" aria-hidden="true">{renderIcon(id, isLocked)}</span>
             {isOnCooldown && (
               <span className="ability-btn__timer">
-                {state.cooldownRemaining >= 10
-                  ? Math.ceil(state.cooldownRemaining)
-                  : state.cooldownRemaining.toFixed(1)}
+                {state.cooldownRemaining >= 10 ? Math.ceil(state.cooldownRemaining) : state.cooldownRemaining.toFixed(1)}
               </span>
             )}
-
-            {/* Active healing indicator */}
-            {isActive && (
-              <span className="ability-btn__active-label">REGEN</span>
-            )}
-
-            {/* Locked milestone badge */}
-            {isLocked && (
-              <span className="ability-btn__milestone">W{milestoneStage}</span>
-            )}
-
-            {/* Subtle level badge if upgraded beyond level 1 */}
-            {!isLocked && state.level > 1 && (
-              <span className="ability-btn__level">Lv.{state.level}</span>
-            )}
+            {isActive && <span className="ability-btn__active-label">REGEN</span>}
+            {isLocked && <span className="ability-btn__milestone">W{milestoneStage}</span>}
+            {!isLocked && state.level > 1 && <span className="ability-btn__level">Lv.{state.level}</span>}
           </button>
         );
       })}
     </div>
   );
 }
-
