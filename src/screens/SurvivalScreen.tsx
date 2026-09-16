@@ -1,4 +1,5 @@
-import { Clock, Skull, Trophy, Play, Shield, Sparkles, Sword } from 'lucide-react';
+import { Clock, Play, Skull, Trophy } from 'lucide-react';
+import { EquipmentIcon } from '../components/EquipmentIcon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { getHeroDefinition } from '../data/heroes';
@@ -58,6 +59,7 @@ export function SurvivalScreen({ save, onBack, onStart, onSelectHero }: Survival
           </div>
 
           <div className="survival-desc-box">
+            <span className="survival-desc-box__kicker">ENDLESS ESCALATION</span>
             <p className="survival-lead">No finish line. No mercy.</p>
             <p className="survival-sub">
               Enemy pressure escalates continuously while conquered world bosses return at intervals. Build fast, move clean, and chase a new record.
@@ -68,12 +70,8 @@ export function SurvivalScreen({ save, onBack, onStart, onSelectHero }: Survival
         <div className="survival-loadout-panel">
           <div className="survival-hero-card">
             <div className="survival-hero-header">
-              <div className="survival-hero-icon-box" style={{ overflow: 'hidden', padding: 0 }}>
-                <img
-                  src={HERO_PORTRAITS[heroId]}
-                  alt={heroDef.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 24%', display: 'block' }}
-                />
+              <div className="survival-hero-icon-box survival-hero-icon-box--portrait">
+                <img src={HERO_PORTRAITS[heroId]} alt={heroDef.name} className="survival-hero-portrait" />
               </div>
               <div className="survival-hero-info">
                 <span className="eyebrow">EQUIPPED HERO</span>
@@ -85,21 +83,29 @@ export function SurvivalScreen({ save, onBack, onStart, onSelectHero }: Survival
 
             <div className="survival-equipment-strip">
               <div className={`survival-eq-chip ${armorDef ? 'is-equipped' : 'is-empty'}`}>
-                <Shield size={14} /><span>{armorDef ? armorDef.name : 'No Armor'}</span>
+                <EquipmentIcon id={armorDef?.id} slot="armor" size={15} />
+                <span>{armorDef ? armorDef.name : 'No Armor'}</span>
               </div>
               <div className={`survival-eq-chip ${relicDef ? 'is-equipped' : 'is-empty'}`}>
-                <Sword size={14} /><span>{relicDef ? relicDef.name : 'No Relic'}</span>
+                <EquipmentIcon id={relicDef?.id} slot="relic" size={15} />
+                <span>{relicDef ? relicDef.name : 'No Relic'}</span>
               </div>
               <div className={`survival-eq-chip ${petDef ? 'is-equipped' : 'is-empty'}`}>
-                <Sparkles size={14} /><span>{petDef ? petDef.name : 'No Pet'}</span>
+                <EquipmentIcon id={petDef?.id} slot="pet" size={15} />
+                <span>{petDef ? petDef.name : 'No Pet'}</span>
               </div>
               <div className={`survival-eq-chip ${charmDef ? 'is-equipped' : 'is-empty'}`}>
-                <Sparkles size={14} /><span>{charmDef ? charmDef.name : 'No Charm'}</span>
+                <EquipmentIcon id={charmDef?.id} slot="charm" size={15} />
+                <span>{charmDef ? charmDef.name : 'No Charm'}</span>
               </div>
             </div>
           </div>
 
           <div className="survival-actions">
+            <div className="survival-actions__copy">
+              <span>Threat increases without limit</span>
+              <small>One run. One record.</small>
+            </div>
             <PrimaryButton variant="danger" wide onClick={onStart}>
               <Play size={20} fill="currentColor" /> START SURVIVAL
             </PrimaryButton>
