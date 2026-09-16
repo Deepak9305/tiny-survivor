@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
+  Crosshair,
   Heart,
   Lock,
   Move,
@@ -14,8 +15,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { EquipmentIcon } from '../components/EquipmentIcon';
+import { HeroPreview3D } from '../components/HeroPreview3D';
 import { ALL_HERO_IDS, HERO_DEFINITIONS, getHeroDefinition } from '../data/heroes';
 import { getEquipmentDefinition } from '../data/equipment';
+import { getCurrentStage } from '../data/stages';
 import { resolvePlayerStats } from '../data/statsResolver';
 import type { EquipmentId, EquipmentSlot, HeroId, SaveData } from '../types';
 
@@ -26,13 +29,6 @@ interface HeroesScreenProps {
   onSelect: (id: HeroId) => void;
   onEquip?: (heroId: HeroId, slot: EquipmentSlot, equipmentId?: EquipmentId) => void;
 }
-
-const HERO_PORTRAITS: Record<HeroId, string> = {
-  shadow: '/assets/images/hero_portrait_shadow.jpg',
-  warrior: '/assets/images/hero_portrait_warrior.jpg',
-  monk: '/assets/images/hero_portrait_monk.jpg',
-  gunslinger: '/assets/images/hero_portrait_gunslinger.jpg',
-};
 
 const SLOT_LABELS: Record<EquipmentSlot, string> = { armor: 'Armor', relic: 'Relic', pet: 'Pet', charm: 'Charm' };
 
@@ -46,6 +42,7 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
   const canAffordHero = save.coins >= heroDef.price;
   const currentLoadout = save.heroLoadouts?.[previewHeroId] ?? {};
   const resolvedStats = resolvePlayerStats(previewHeroId, currentLoadout, save.permanentUpgrades);
+  const previewWorldId = getCurrentStage(save).worldId;
 
   const slotOwnedItems = activeSlotModal
     ? save.ownedEquipment
@@ -59,7 +56,7 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
   };
 
   return (
-    <main className="hero-deck-screen">
+    <main className="hero-deck-screen hero-deck-screen--3d">
       <header className="hero-deck-header">
         <button type="button" className="hero-deck-back" onClick={onBack} aria-label="Back"><ChevronLeft size={19} /></button>
         <div className="hero-deck-heading"><span>ROSTER</span><h1>Heroes & Loadout</h1></div>
@@ -67,11 +64,20 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
       </header>
 
       <div className="hero-deck-layout">
-        <section className={`hero-deck-feature hero-deck-feature--${heroDef.tone}`}>
-          <img src={HERO_PORTRAITS[previewHeroId]} alt={heroDef.name} className="hero-deck-feature__art" />
+        <section className={`hero-deck-feature hero-deck-feature--${heroDef.tone} hero-deck-feature--live`}>
+          <div className="hero-deck-feature__model-stage" aria-label={`${heroDef.name} live 3D preview`}>
+            <HeroPreview3D
+              heroId={previewHeroId}
+              equippedPet={currentLoadout.pet}
+              equippedRelic={currentLoadout.relic}
+              worldId={previewWorldId}
+              className="hero-deck-feature__model"
+            />
+          </div>
           <div className="hero-deck-feature__shade" />
           <div className="hero-deck-feature__topline">
             <span>{heroDef.role}</span>
+            <span className="hero-deck-live-tag">LIVE 3D</span>
             {!isUnlocked && <span><Lock size={12} /> Locked</span>}
           </div>
           <div className="hero-deck-feature__copy"><h2>{heroDef.name}</h2><p>{heroDef.traitName}</p></div>
@@ -135,7 +141,7 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
               const selected = previewHeroId === id;
               return (
                 <button type="button" key={id} className={`hero-deck-roster__item ${selected ? 'is-selected' : ''} ${unlocked ? '' : 'is-locked'}`} onClick={() => setPreviewHeroId(id)} aria-label={`${def.name}${unlocked ? '' : `, ${def.price} coins`}`}>
-                  <img src={HERO_PORTRAITS[id]} alt="" />
+                  <span className={`hero-deck-roster__sigil hero-deck-roster__sigil--${id}`} aria-hidden="true"><HeroGlyph id={id} /></span>
                   <span><strong>{def.name}</strong><small>{active ? 'Equipped' : unlocked ? def.role : `${def.price.toLocaleString()} coins`}</small></span>
                   {active && <Check size={13} />}
                   {!unlocked && <Lock size={12} />}
@@ -176,6 +182,13 @@ export function HeroesScreen({ save, onBack, onSelect, onEquip }: HeroesScreenPr
       )}
     </main>
   );
+}
+
+function HeroGlyph({ id }: { id: HeroId }) {
+  if (id === 'warrior') return <Shield size={18} />;
+  if (id === 'monk') return <Sparkles size={18} />;
+  if (id === 'gunslinger') return <Crosshair size={18} />;
+  return <Zap size={18} />;
 }
 
 function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
