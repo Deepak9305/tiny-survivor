@@ -8,7 +8,8 @@
 
 .codex-mobile-intel-btn,
 .codex-mobile-intel-close,
-.codex-mobile-intel-backdrop {
+.codex-mobile-intel-backdrop,
+.pause-compact-tabs {
   display: none;
 }
 
@@ -67,7 +68,6 @@
   .home-world-pill__text { font-size: 9px; }
   .home-campaign-card__boss-name { font-size: clamp(20px, 3vw, 25px); }
 
-  /* Scroll rich information instead of crushing it into unreadably tiny type. */
   .heroes-right-details {
     overflow-y: auto;
     overflow-x: hidden;
@@ -100,7 +100,6 @@
     font-size: 11px;
   }
 
-  /* Missions use the width of landscape rather than three squeezed desktop rows. */
   .missions-cards-list { align-items: stretch; }
   .mission-card-landscape__content {
     display: grid;
@@ -159,9 +158,7 @@
   .shop-card__desc,
   .shop-card__trait,
   .shop-card__effect,
-  .shop-card__drop-source {
-    font-size: 9px;
-  }
+  .shop-card__drop-source { font-size: 9px; }
   .shop-buy-btn,
   .shop-owned-tag { font-size: 10px; }
 
@@ -216,18 +213,12 @@
   .stage-clear-btn { font-size: 10px; }
 }
 
-/* Compact phones get a 2-pane Codex. Intel opens as a proper side sheet instead
-   of stealing a third of the width from the 3D preview. */
 @media (orientation: landscape) and (max-height: 440px) and (max-width: 980px) {
   .codex-tri-layout {
     grid-template-columns: clamp(145px, 20vw, 175px) minmax(0, 1fr);
     position: relative;
   }
-
-  .codex-stage-pagination {
-    gap: 6px;
-  }
-
+  .codex-stage-pagination { gap: 6px; }
   .codex-mobile-intel-btn {
     display: inline-flex;
     min-width: 64px;
@@ -245,7 +236,6 @@
     letter-spacing: .7px;
     pointer-events: auto;
   }
-
   .codex-intel-col {
     position: fixed;
     z-index: 130;
@@ -264,11 +254,7 @@
     box-shadow: -18px 0 44px rgba(0, 0, 0, .52);
     backdrop-filter: blur(14px);
   }
-
-  .codex-intel-col.is-mobile-open {
-    transform: translateX(0);
-  }
-
+  .codex-intel-col.is-mobile-open { transform: translateX(0); }
   .codex-mobile-intel-close {
     display: grid;
     width: 36px;
@@ -283,7 +269,6 @@
     background: rgba(10, 34, 51, .92);
     color: #dff7ff;
   }
-
   .codex-mobile-intel-backdrop {
     display: block;
     position: fixed;
@@ -294,24 +279,71 @@
     background: rgba(2, 7, 13, .58);
     transition: opacity .18s ease;
   }
-
   .codex-mobile-intel-backdrop.is-open {
     opacity: 1;
     pointer-events: auto;
   }
-
-  .codex-intel-card {
-    padding: 8px;
-  }
-
+  .codex-intel-card { padding: 8px; }
   .codex-intel-portrait-box {
     display: block;
     width: 54px;
     height: 54px;
   }
+
+  /* Pause becomes a single useful pane with tabs instead of three 250px columns. */
+  .pause-modal-landscape {
+    display: flex;
+    flex-direction: column;
+  }
+  .pause-compact-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px 7px 0;
+  }
+  .pause-compact-tabs button {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px solid rgba(95, 169, 204, .24);
+    border-radius: 8px;
+    background: rgba(9, 30, 47, .78);
+    color: #89aabd;
+    font: 800 9px/1 'Barlow Condensed', sans-serif;
+    letter-spacing: .6px;
+  }
+  .pause-compact-tabs button.is-active {
+    border-color: rgba(69, 205, 255, .62);
+    background: rgba(20, 70, 103, .92);
+    color: #e9faff;
+    box-shadow: inset 0 0 12px rgba(56, 189, 248, .12);
+  }
+  .pause-body-grid {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    padding-top: 5px;
+  }
+  .pause-col {
+    display: none;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .pause-col.is-compact-active {
+    display: flex;
+    flex-direction: column;
+  }
+  .pause-col--actions .pause-actions-group {
+    margin-top: auto;
+  }
 }
 
-/* Extra-short Android phones: remove secondary copy rather than shrinking critical text. */
 @media (orientation: landscape) and (max-height: 400px) {
   .home-campaign-card__lore,
   .heroes-lore,
@@ -327,10 +359,8 @@
   .pause-item-desc {
     display: none;
   }
-
   .heroes-trait-desc,
   .talents-forge-desc { font-size: 9px; }
-
   .heroes-stat-box__label,
   .heroes-slot-card__slot-name,
   .talent-card__rank-label,
@@ -342,7 +372,6 @@
   .pause-stat-chip__label,
   .run-over-stat-label,
   .stat-label { font-size: 8px; }
-
   .missions-top-banner {
     flex-basis: 52px;
     min-height: 52px;
@@ -357,7 +386,6 @@
   .stat-val { font-size: 19px; }
 }
 
-/* 720–900px devices need wider shop cards, not three mini cards. */
 @media (orientation: landscape) and (max-height: 410px) and (max-width: 900px) {
   .shop-grid,
   .shop-grid--heroes,
