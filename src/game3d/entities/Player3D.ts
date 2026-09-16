@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { setLogicalPosition } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 import { createHeroVisual, createPetModel, createRelicAccent } from '../visuals/CharacterFactory';
+import { createPremiumHeroDetailRig, type HeroDetailRig } from '../visuals/HeroDetailRig';
 import { resolveObstacleCollision } from '../scene/WorldObstacles';
 import { getCombatFlowState } from '../../game/systems/CombatTargeting';
 import type { HeroId, HeroLoadout } from '../../types';
@@ -48,6 +49,7 @@ export class Player3D {
   private readonly heroLight: THREE.PointLight;
   private readonly powerHalo: THREE.Mesh;
   private readonly heroAccent = new THREE.Group();
+  private readonly detailRig: HeroDetailRig;
   private invulnerableUntil = 0;
   private visualTime = 0;
   private hitFlash = 0;
@@ -125,14 +127,14 @@ export class Player3D {
       parent.add(this.petObject);
     }
 
-    // Every hero gets a distinct combat light instead of the previous universal cyan.
+    this.detailRig = createPremiumHeroDetailRig(heroId, resources);
+    this.character.add(this.detailRig.root);
+
     this.heroLight = new THREE.PointLight(heroColor, 0.82, 5.2, 1.75);
     this.heroLight.name = `hero-point-light-${heroId}`;
     this.heroLight.position.set(0, 1.15, 0.18);
     this.group.add(this.heroLight);
 
-    // Lightweight hero identity accents. They stay subtle during normal play and
-    // flare up as FLOW rises / OVERDRIVE activates.
     this.powerHalo = addMesh(
       this.group,
       resources.torus(`hero-power-halo-${heroId}`),
@@ -162,7 +164,6 @@ export class Player3D {
     }
     this.group.add(this.heroAccent);
 
-    // Auto-target direction is now a thin hero-colored guide, not a large red cone.
     const aimIndicatorGroup = new THREE.Group();
     aimIndicatorGroup.name = 'aim-indicator';
     aimIndicatorGroup.position.set(0, 0.02, 0);
@@ -411,8 +412,6 @@ export class Player3D {
       scarfTail.rotation.z = Math.cos(this.visualTime * 5.5) * (0.06 + 0.16 * speedRatio);
     }
 
-    // Hero-specific attack personality. All heroes share the same combat system,
-    // but no longer look like the same puppet firing the same animation.
     if (this.heroId === 'warrior') {
       const weapon = this.parts.weapon;
       if (weapon instanceof THREE.Object3D) {
@@ -480,6 +479,8 @@ export class Player3D {
       shard.rotation.y += delta * 5.2;
       shard.scale.setScalar((overdrive ? 0.13 : 0.085) * (1 + attackSwing * 0.30));
     }
+
+    this.detailRig.update(this.visualTime, attackSwing, flowRatio, overdrive);
 
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
     this.aura.scale.setScalar(
