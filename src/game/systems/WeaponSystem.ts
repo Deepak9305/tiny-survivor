@@ -1,5 +1,10 @@
 import { WEAPON_BALANCE } from '../../data/balance';
 import type { DamageType, WeaponId } from '../../types';
+import {
+  clearCombatAutoAim,
+  isPrimaryFireActive,
+  setCombatAutoAim,
+} from './CombatTargeting';
 
 export interface TargetPoint {
   id: string;
@@ -23,8 +28,16 @@ export interface ProjectileSpec {
 
 export interface WeaponHooks {
   getPlayerPosition: () => { x: number; y: number };
-  isPrimaryFireActive: () => boolean;
-  findAutoTarget: (originX: number, originY: number, maxDist: number) => TargetPoint | undefined;
+  getAimVector: () => { x: number; y: number };
+  isAimActive: () => boolean;
+  findAimAssistTarget: (
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number,
+    maxAngleRad: number,
+    maxDist: number
+  ) => TargetPoint | undefined;
   findTargetsInRadius: (x: number, y: number, radius: number) => TargetPoint[];
   fireProjectile: (spec: ProjectileSpec) => void;
   dealAreaDamage: (
@@ -52,6 +65,8 @@ export class WeaponSystem {
   private readonly cooldowns = new Map<WeaponId, number>();
   private primaryHitCounter = 0;
   private chainFallbackTimer = 0;
+  private lockedTargetId?: string;
+  private autoTarget?: TargetPoint;
 
   constructor(private readonly hooks: WeaponHooks) {
     this.levels.set('magic-bolt', 1);
@@ -85,18 +100,26 @@ export class WeaponSystem {
   }
 
   update(delta: number): void {
-    const primaryFiring = this.hooks.isPrimaryFireActive();
+    this.autoTarget = this.findAutoTarget(570);
+    if (this.autoTarget) {
+      const player = this.hooks.getPlayerPosition();
+      setCombatAutoAim(this.autoTarget.x - player.x, this.autoTarget.y - player.y);
+    } else {
+      clearCombatAutoAim();
+      this.lockedTargetId = undefined;
+    }
 
-    // Primary is now hold-to-fire. Target selection is automatic and deterministic,
-    // so the right thumb is used for timing rather than manual trajectory steering.
+    // Primary now means: hold FIRE, then automatically track a nearby threat.
+    // Legacy keyboard/manual aiming still counts as firing for web/debug play.
+    const primaryFiring = isPrimaryFireActive() || this.hooks.isAimActive();
     const boltCooldown = (this.cooldowns.get('magic-bolt') ?? 0) - delta;
     if (boltCooldown <= 0) {
-      if (primaryFiring && this.triggerMagicBolt()) {
+      if (primaryFiring && this.autoTarget && this.triggerMagicBolt(this.autoTarget)) {
         const level = this.getWeaponLevel('magic-bolt');
         const base = WEAPON_BALANCE['magic-bolt'].cooldown * this.hooks.getCooldownMultiplier();
         this.cooldowns.set('magic-bolt', Math.max(0.09, base * (level >= 4 ? 0.80 : level >= 2 ? 0.90 : 1)));
       } else {
-        // Do not punish the player for holding fire before an enemy enters range.
+        // Holding fire before an enemy enters range should not spend a cooldown.
         this.cooldowns.set('magic-bolt', 0);
       }
     } else {
@@ -154,12 +177,54 @@ export class WeaponSystem {
     }
   }
 
-  private triggerMagicBolt(): boolean {
+  private findAutoTarget(maxDist: number): TargetPoint | undefined {
+    const player = this.hooks.getPlayerPosition();
+    const candidates = new Map<string, TargetPoint>();
+
+    // Normal enemies are available directly through the spatial grid hook.
+    for (const target of this.hooks.findTargetsInRadius(player.x, player.y, maxDist)) {
+      candidates.set(target.id, target);
+    }
+
+    // Sample eight cones to also discover boss / boss-echo targets exposed by
+    // SurvivorGame's existing aim-assist query without adding another engine API.
+    const sampleCount = 8;
+    for (let index = 0; index < sampleCount; index += 1) {
+      const angle = (index / sampleCount) * Math.PI * 2;
+      const target = this.hooks.findAimAssistTarget(
+        player.x,
+        player.y,
+        Math.cos(angle),
+        Math.sin(angle),
+        Math.PI / 4 + 0.04,
+        maxDist
+      );
+      if (target) candidates.set(target.id, target);
+    }
+
+    const locked = this.lockedTargetId ? candidates.get(this.lockedTargetId) : undefined;
+    if (locked) {
+      const lockedDistance = Math.hypot(locked.x - player.x, locked.y - player.y);
+      if (lockedDistance <= maxDist * 1.08) return locked;
+    }
+
+    let best: TargetPoint | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const target of candidates.values()) {
+      const distance = Math.hypot(target.x - player.x, target.y - player.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = target;
+      }
+    }
+
+    this.lockedTargetId = best?.id;
+    return best;
+  }
+
+  private triggerMagicBolt(target: TargetPoint): boolean {
     const level = this.getWeaponLevel('magic-bolt');
     const player = this.hooks.getPlayerPosition();
-    const target = this.hooks.findAutoTarget(player.x, player.y, 560);
-    if (!target) return false;
-
     const dx = target.x - player.x;
     const dy = target.y - player.y;
     const distance = Math.hypot(dx, dy);
