@@ -41,7 +41,7 @@ const CAMPAIGN_BOSS_META: Record<number, CampaignBossMeta> = {
     portrait: '/assets/images/boss_frost_golem.jpg',
   },
   4: {
-    name: 'DEMON LORD',
+    name: 'DEMON KING',
     lore: 'The arch-ruler of the burning depths. End the infernal reign to restore light to the realm.',
     portrait: '/assets/images/boss_demon_lord.jpg',
   },
@@ -61,17 +61,15 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
     >
       <div className="home-screen-backdrop-overlay" />
 
-      {/* Left Floating Nav Rail */}
       <NavRail current="home" onNavigate={onNavigate} />
 
       <div className="home-landscape-body">
-        {/* Left Section: Brand Logo, Tagline, and World Badge */}
         <section className="home-brand-panel">
           <div className="home-brand-panel__content">
             <div className="home-brand-panel__logo-box">
               <GameLogo />
               <p className="home-brand-panel__subtag">
-                TWIN-STICK SURVIVOR &bull; LANDSCAPE ACTION ROGUELITE
+                AUTO-AIM SURVIVOR &bull; DARK FANTASY ACTION ROGUELITE
               </p>
             </div>
 
@@ -84,9 +82,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
           </div>
         </section>
 
-        {/* Right Section: Currencies + Campaign Hub Card + Battle Now CTA */}
         <section className="home-action-panel">
-          {/* Top Currency & Actions Row */}
           <header className="home-action-panel__header">
             <CurrencyBar
               coins={save.coins}
@@ -98,7 +94,6 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
             />
           </header>
 
-          {/* Campaign Hub Card */}
           <div className="home-campaign-card">
             <div className="home-campaign-card__ornament">
               <span className="home-campaign-card__diamond" />
@@ -124,7 +119,6 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
               </div>
             </div>
 
-            {/* 3 Stacked Menu Action Rows */}
             <div className="home-menu-stack">
               <button
                 type="button"
@@ -171,7 +165,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                 <div className="home-menu-row__copy">
                   <strong className="home-menu-row__title">SURVIVAL MODE</strong>
                   <span className="home-menu-row__sub">
-                    {survivalUnlocked ? 'Endless onslaught leaderboard' : 'Clear World 2 to unlock.'}
+                    {survivalUnlocked ? 'Endless escalating onslaught' : 'Clear World 2 to unlock.'}
                   </span>
                 </div>
                 {survivalUnlocked ? (
@@ -183,7 +177,6 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
             </div>
           </div>
 
-          {/* Primary CTA: Glowing Gold Battle Button */}
           <footer className="home-action-panel__footer">
             <button
               type="button"
