@@ -54,7 +54,8 @@ export class InputController {
   }
 
   getAimVector(): THREE.Vector2 {
-    // Hold-to-fire uses the live automatic target direction supplied by WeaponSystem.
+    // Hold-to-fire still consumes the live automatic target direction, but this
+    // automatic channel is deliberately NOT exposed as "manual aim active".
     if (isPrimaryFireActive()) {
       const autoAim = getCombatAutoAim(500);
       if (autoAim) {
@@ -63,7 +64,6 @@ export class InputController {
       }
     }
 
-    // Desktop/debug manual aiming remains available.
     const aimKeyX =
       Number(this.keys.has('arrowright') || this.keys.has('l')) -
       Number(this.keys.has('arrowleft') || this.keys.has('j'));
@@ -91,7 +91,9 @@ export class InputController {
       this.keys.has('k') ||
       this.keys.has('l');
 
-    return isPrimaryFireActive() || this.aimActive || aimKeyActive;
+    // Auto-targeting is not a manual aim state. This keeps the legacy Three.js
+    // aim cone/line hidden while hold-to-fire continues using getCombatAutoAim().
+    return this.aimActive || aimKeyActive;
   }
 
   getLastAimVector(): THREE.Vector2 {
