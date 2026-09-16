@@ -24,6 +24,8 @@ import { ABILITY_DEFINITIONS } from '../data/abilities';
 import { WEAPON_BALANCE, PASSIVE_BALANCE } from '../data/balance';
 import { audioService } from '../services/audioService';
 
+type PausePane = 'run' | 'build' | 'stats';
+
 interface PauseOverlayProps {
   snapshot: GameSnapshot;
   stage: StageDefinition;
@@ -45,6 +47,7 @@ export function PauseOverlay({
 }: PauseOverlayProps) {
   const [musicOn, setMusicOn] = useState(save.settings.music);
   const [sfxOn, setSfxOn] = useState(save.settings.soundEffects);
+  const [compactPane, setCompactPane] = useState<PausePane>('run');
 
   const heroDef = HERO_DEFINITIONS[save.selectedHero] ?? HERO_DEFINITIONS.shadow;
   const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, (snapshot.hp / snapshot.maxHp) * 100)) : 0;
@@ -73,7 +76,6 @@ export function PauseOverlay({
   return (
     <div className="pause-overlay" role="dialog" aria-modal="true" aria-label="Run Paused">
       <div className="pause-modal-landscape">
-        {/* Top Header Bar */}
         <header className="pause-header">
           <div className="pause-header__left">
             <span className="pause-header__badge">SANCTUARY RESPITE</span>
@@ -92,21 +94,41 @@ export function PauseOverlay({
               <Timer size={15} />
               <span>{formatRunTime(snapshot.time)}</span>
             </div>
-            <button
-              type="button"
-              className="pause-close-btn"
-              onClick={onResume}
-              aria-label="Resume Run"
-            >
+            <button type="button" className="pause-close-btn" onClick={onResume} aria-label="Resume Run">
               <X size={20} />
             </button>
           </div>
         </header>
 
-        {/* 3-Column Tactical Layout */}
+        <nav className="pause-compact-tabs" aria-label="Pause journal sections">
+          <button
+            type="button"
+            className={compactPane === 'run' ? 'is-active' : ''}
+            onClick={() => setCompactPane('run')}
+            aria-pressed={compactPane === 'run'}
+          >
+            <Heart size={14} /> RUN
+          </button>
+          <button
+            type="button"
+            className={compactPane === 'build' ? 'is-active' : ''}
+            onClick={() => setCompactPane('build')}
+            aria-pressed={compactPane === 'build'}
+          >
+            <Swords size={14} /> BUILD
+          </button>
+          <button
+            type="button"
+            className={compactPane === 'stats' ? 'is-active' : ''}
+            onClick={() => setCompactPane('stats')}
+            aria-pressed={compactPane === 'stats'}
+          >
+            <Compass size={14} /> STATS
+          </button>
+        </nav>
+
         <div className="pause-body-grid">
-          {/* Column 1: Hero & Run Status */}
-          <section className="pause-col pause-col--hero">
+          <section className={`pause-col pause-col--hero ${compactPane === 'run' ? 'is-compact-active' : ''}`}>
             <div className="pause-hero-card">
               <div className="pause-hero-avatar-box">
                 <span className="pause-hero-rune">✦</span>
@@ -117,7 +139,6 @@ export function PauseOverlay({
               </div>
             </div>
 
-            {/* Vitality & Level Bars */}
             <div className="pause-vitals-group">
               <div className="pause-vital-row">
                 <div className="pause-vital-label">
@@ -146,20 +167,17 @@ export function PauseOverlay({
               </div>
             </div>
 
-            {/* Run Tally Box */}
             <div className="pause-tallies-grid">
               <div className="pause-tally-box">
                 <Skull size={15} />
                 <span className="pause-tally-num">{snapshot.kills.toLocaleString()}</span>
                 <small className="pause-tally-label">Foes Slain</small>
               </div>
-
               <div className="pause-tally-box">
                 <Shield size={15} className="text-amber" />
                 <span className="pause-tally-num">{snapshot.eliteKills}</span>
                 <small className="pause-tally-label">Elites Slain</small>
               </div>
-
               <div className="pause-tally-box pause-tally-box--coins">
                 <Sparkles size={15} className="text-gold" />
                 <span className="pause-tally-num">+{snapshot.coins.toLocaleString()}</span>
@@ -168,8 +186,7 @@ export function PauseOverlay({
             </div>
           </section>
 
-          {/* Column 2: Active Arsenal & Blessings */}
-          <section className="pause-col pause-col--arsenal">
+          <section className={`pause-col pause-col--arsenal ${compactPane === 'build' ? 'is-compact-active' : ''}`}>
             <h4 className="pause-section-title">
               <Swords size={16} /> ACTIVE WEAPONS & SPELLS
             </h4>
@@ -205,9 +222,7 @@ export function PauseOverlay({
                     const def = ABILITY_DEFINITIONS[id as keyof typeof ABILITY_DEFINITIONS];
                     return (
                       <div key={id} className="pause-item-card pause-item-card--ability">
-                        <div className="pause-item-icon">
-                          <Zap size={16} />
-                        </div>
+                        <div className="pause-item-icon"><Zap size={16} /></div>
                         <div className="pause-item-details">
                           <strong className="pause-item-name">{def?.name ?? id.replaceAll('-', ' ')}</strong>
                           <span className="pause-item-desc">{def?.description ?? 'Manual trigger spell'}</span>
@@ -230,9 +245,7 @@ export function PauseOverlay({
                     const def = PASSIVE_BALANCE[id as keyof typeof PASSIVE_BALANCE];
                     return (
                       <div key={id} className="pause-item-card pause-item-card--passive">
-                        <div className="pause-item-icon">
-                          <Sparkles size={16} />
-                        </div>
+                        <div className="pause-item-icon"><Sparkles size={16} /></div>
                         <div className="pause-item-details">
                           <strong className="pause-item-name">{def?.name ?? id.replaceAll('-', ' ')}</strong>
                           <span className="pause-item-desc">Tier {lvl} persistent enhancement</span>
@@ -246,56 +259,19 @@ export function PauseOverlay({
             )}
           </section>
 
-          {/* Column 3: Combat Attributes & Controls */}
-          <section className="pause-col pause-col--actions">
+          <section className={`pause-col pause-col--actions ${compactPane === 'stats' ? 'is-compact-active' : ''}`}>
             <h4 className="pause-section-title">
               <Compass size={16} /> COMBAT ATTRIBUTES
             </h4>
             <div className="pause-stats-grid">
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">ATTACK MIGHT</span>
-                <strong className="pause-stat-chip__val">
-                  +{Math.round(((snapshot.stats?.damageMultiplier ?? 1) - 1) * 100)}%
-                </strong>
-              </div>
-
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">ARMOR DEFENSE</span>
-                <strong className="pause-stat-chip__val">
-                  {Math.round((snapshot.stats?.armor ?? 0) * 100)}%
-                </strong>
-              </div>
-
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">MOVE SPEED</span>
-                <strong className="pause-stat-chip__val">
-                  {Math.round(snapshot.stats?.moveSpeed ?? 140)}
-                </strong>
-              </div>
-
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">CRITICAL HIT</span>
-                <strong className="pause-stat-chip__val">
-                  {Math.round((snapshot.stats?.critChance ?? 0.05) * 100)}%
-                </strong>
-              </div>
-
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">MAGNET RADIUS</span>
-                <strong className="pause-stat-chip__val">
-                  {Math.round(snapshot.stats?.pickupRadius ?? 60)}
-                </strong>
-              </div>
-
-              <div className="pause-stat-chip">
-                <span className="pause-stat-chip__label">COOLDOWN RED.</span>
-                <strong className="pause-stat-chip__val">
-                  -{Math.round((1 - (snapshot.stats?.cooldownMultiplier ?? 1)) * 100)}%
-                </strong>
-              </div>
+              <PauseStat label="ATTACK MIGHT" value={`+${Math.round(((snapshot.stats?.damageMultiplier ?? 1) - 1) * 100)}%`} />
+              <PauseStat label="ARMOR DEFENSE" value={`${Math.round((snapshot.stats?.armor ?? 0) * 100)}%`} />
+              <PauseStat label="MOVE SPEED" value={`${Math.round(snapshot.stats?.moveSpeed ?? 140)}`} />
+              <PauseStat label="CRITICAL HIT" value={`${Math.round((snapshot.stats?.critChance ?? 0.05) * 100)}%`} />
+              <PauseStat label="MAGNET RADIUS" value={`${Math.round(snapshot.stats?.pickupRadius ?? 60)}`} />
+              <PauseStat label="COOLDOWN RED." value={`-${Math.round((1 - (snapshot.stats?.cooldownMultiplier ?? 1)) * 100)}%`} />
             </div>
 
-            {/* Quick Audio Controls */}
             <div className="pause-audio-toggles">
               <button
                 type="button"
@@ -305,7 +281,6 @@ export function PauseOverlay({
                 <Music size={16} />
                 <span>MUSIC: {musicOn ? 'ON' : 'OFF'}</span>
               </button>
-
               <button
                 type="button"
                 className={`pause-audio-btn ${sfxOn ? 'pause-audio-btn--active' : ''}`}
@@ -316,31 +291,16 @@ export function PauseOverlay({
               </button>
             </div>
 
-            {/* Main Action Buttons */}
             <div className="pause-actions-group">
-              <button
-                type="button"
-                className="pause-btn-resume"
-                onClick={onResume}
-              >
+              <button type="button" className="pause-btn-resume" onClick={onResume}>
                 <Play size={18} fill="currentColor" />
                 <span>RESUME BATTLE</span>
               </button>
-
-              <button
-                type="button"
-                className="pause-btn-bestiary"
-                onClick={onBestiary}
-              >
+              <button type="button" className="pause-btn-bestiary" onClick={onBestiary}>
                 <BookOpen size={17} />
                 <span>MONSTER CODEX / BESTIARY</span>
               </button>
-
-              <button
-                type="button"
-                className="pause-btn-quit"
-                onClick={onHome}
-              >
+              <button type="button" className="pause-btn-quit" onClick={onHome}>
                 <RotateCw size={16} />
                 <span>ABANDON RUN & RETURN</span>
               </button>
@@ -348,6 +308,15 @@ export function PauseOverlay({
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PauseStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="pause-stat-chip">
+      <span className="pause-stat-chip__label">{label}</span>
+      <strong className="pause-stat-chip__val">{value}</strong>
     </div>
   );
 }
