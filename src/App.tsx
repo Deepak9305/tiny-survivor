@@ -7,6 +7,7 @@ import { DEFAULT_SAVE, loadSave, normalizeSave, resetSave, saveGame } from './se
 import { getPermanentUpgradeCost } from './data/balance';
 import { getCurrentStage, getNextCampaignStageId, getStage, getTotalCampaignStageCount, isStageUnlocked, isWorldCleared, stageNumber } from './data/stages';
 import { getBossFirstClearEquipment } from './data/equipment';
+import { getHeroDefinition } from './data/heroes';
 import { HomeScreen } from './screens/HomeScreen';
 import { SplashScreen } from './screens/SplashScreen';
 import { ScreenTransition } from './components/ScreenTransition';
@@ -107,7 +108,6 @@ export default function App() {
     if (ready && screen !== 'game') audioService.playMusic('menu');
   }, [ready, save.settings.music, save.settings.soundEffects, screen]);
 
-  // Keep splash/home light, then quietly warm the most likely next screens.
   useEffect(() => {
     if (!ready || screen !== 'home') return undefined;
     const timer = window.setTimeout(() => {
@@ -220,8 +220,19 @@ export default function App() {
 
   const handleHeroSelect = useCallback((id: HeroId | string) => {
     const heroId = id as HeroId;
-    if (!save.heroesUnlocked.includes(heroId)) return;
-    persist({ ...save, selectedHero: heroId });
+    if (save.heroesUnlocked.includes(heroId)) {
+      persist({ ...save, selectedHero: heroId });
+      return;
+    }
+
+    const cost = getHeroDefinition(heroId).price;
+    if (cost <= 0 || save.coins < cost) return;
+    persist({
+      ...save,
+      coins: save.coins - cost,
+      heroesUnlocked: [...save.heroesUnlocked, heroId],
+      selectedHero: heroId,
+    });
   }, [persist, save]);
 
   const handleEquip = useCallback((heroId: HeroId, slot: EquipmentSlot, equipmentId?: EquipmentId) => {
