@@ -28,6 +28,9 @@ const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteK
 
 export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary, onSettingsChange }: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
+  // GameScreen is keyed per run. Keep the run-start save snapshot stable so changing
+  // settings while paused cannot tear down/recreate the live Three.js game.
+  const runSave = useRef(save);
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
   const [paused, setPaused] = useState(false);
@@ -46,9 +49,10 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
   useEffect(() => {
     let mounted = true;
     let cleanupGame: (() => void) | undefined;
+    const initialSave = runSave.current;
 
     void (async () => {
-      await modelRegistry.preloadStage(stage, save.selectedHero, (loaded, total) => {
+      await modelRegistry.preloadStage(stage, initialSave.selectedHero, (loaded, total) => {
         if (!mounted) return;
         const pct = Math.max(15, Math.min(95, Math.round((loaded / Math.max(1, total)) * 100)));
         setPreloadProgress(pct);
@@ -63,14 +67,14 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
 
       if (!gameRoot.current) return;
       audioService.initialize();
-      audioService.setMusicEnabled(save.settings.music);
-      audioService.setSfxEnabled(save.settings.soundEffects);
+      audioService.setMusicEnabled(initialSave.settings.music);
+      audioService.setSfxEnabled(initialSave.settings.soundEffects);
       audioService.playMusic('run');
 
       mountThreeGame(
         gameRoot.current,
         stage,
-        save,
+        initialSave,
         {
           onSnapshot: setSnapshot,
           onLevelUp: setUpgradeChoices,
@@ -81,7 +85,7 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
           onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
           onRendererError: setRendererError,
         },
-        mode
+        mode,
       );
 
       cleanupGame = () => {
@@ -96,7 +100,13 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
       mounted = false;
       cleanupGame?.();
     };
-  }, [save.settings.music, save.settings.soundEffects, stage.id]);
+  }, [mode, onGameOver, onStageClear, stage]);
+
+  // Audio preferences can update live without remounting or resetting the run.
+  useEffect(() => {
+    audioService.setMusicEnabled(save.settings.music);
+    audioService.setSfxEnabled(save.settings.soundEffects);
+  }, [save.settings.music, save.settings.soundEffects]);
 
   useEffect(() => {
     const tutorialTimer = window.setTimeout(() => setTutorialVisible(false), 5500);
@@ -204,17 +214,10 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
       </div>
 
       <TwinStickControls disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
-      <AbilityControls
-        abilities={snapshot.abilities}
-        disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)}
-      />
+      <AbilityControls abilities={snapshot.abilities} disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
 
       {upgradeChoices && (
-        <LevelUpOverlay
-          choices={upgradeChoices}
-          playerLevel={snapshot.level}
-          onChoose={chooseUpgrade}
-        />
+        <LevelUpOverlay choices={upgradeChoices} playerLevel={snapshot.level} onChoose={chooseUpgrade} />
       )}
 
       {paused && !upgradeChoices && !gameOver && (
