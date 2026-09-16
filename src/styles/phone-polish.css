@@ -1,0 +1,414 @@
+/*
+ * Phone-landscape readability / hierarchy pass.
+ *
+ * compact-landscape.css handles structural fitting. This layer intentionally
+ * does the opposite of "shrink everything": it hides low-priority copy first,
+ * restores readable type, and gives important actions/touch targets more room.
+ */
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --phone-copy: 10px;
+    --phone-small: 9px;
+    --phone-title: 18px;
+    --phone-control: 44px;
+  }
+
+  /* Shared readability */
+  .eyebrow,
+  .heroes-role-subtitle,
+  .heroes-gender-tag,
+  .talents-forge-kicker,
+  .missions-top-banner__kicker,
+  .missions-section-title,
+  .missions-section-sub,
+  .codex-intel-role,
+  .codex-stat-label,
+  .codex-affinity-tag,
+  .codex-section-label,
+  .codex-counter-label,
+  .stage-metric-box small,
+  .survival-stat-label,
+  .pause-hero-role,
+  .pause-vital-label,
+  .pause-tally-label,
+  .pause-stat-chip__label,
+  .run-over-stat-label,
+  .stat-label {
+    font-size: var(--phone-small);
+    line-height: 1.05;
+  }
+
+  .dark-fantasy-main-title,
+  .heroes-main-title,
+  .talents-main-title,
+  .missions-main-title,
+  .codex-title {
+    font-size: var(--phone-title);
+    letter-spacing: 1.25px;
+  }
+
+  /* HOME: keep the cinematic art, but make the action side feel like a phone UI. */
+  .home-action-panel {
+    justify-content: stretch;
+  }
+
+  .home-action-panel__header {
+    flex: 0 0 auto;
+  }
+
+  .home-campaign-card {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .home-menu-stack {
+    margin-top: auto;
+  }
+
+  .home-menu-row__title {
+    font-size: 12px;
+  }
+
+  .home-menu-row__sub,
+  .home-world-pill__text {
+    font-size: 9px;
+  }
+
+  .home-campaign-card__boss-name {
+    font-size: clamp(20px, 3vw, 25px);
+  }
+
+  /* HEROES: scroll the information column instead of crushing it to 7px text. */
+  .heroes-right-details {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+    scrollbar-width: none;
+  }
+
+  .heroes-stat-box__label,
+  .heroes-slot-card__slot-name,
+  .heroes-roster-card__tag {
+    font-size: 8px;
+  }
+
+  .heroes-stat-box__val {
+    font-size: 13px;
+  }
+
+  .heroes-slot-card__item-name {
+    font-size: 10px;
+  }
+
+  .heroes-slot-card__effect,
+  .heroes-lore,
+  .heroes-trait-desc {
+    font-size: 9px;
+  }
+
+  .heroes-roster-card__name {
+    font-size: 9px;
+  }
+
+  /* TALENTS: landscape is wide; spend width on cards, not explanatory copy. */
+  .talents-forge-panel {
+    width: 168px;
+    flex-basis: 168px;
+  }
+
+  .talents-forge-desc {
+    -webkit-line-clamp: 1;
+    font-size: 9px;
+  }
+
+  .talent-card__title {
+    font-size: 12px;
+  }
+
+  .talent-card__rank-label,
+  .talent-card__desc {
+    font-size: 9px;
+  }
+
+  .talent-price-btn {
+    min-width: 48px;
+    font-size: 11px;
+  }
+
+  /* MISSIONS: allow useful titles to wrap rather than truncating everything. */
+  .missions-cards-list {
+    align-items: stretch;
+  }
+
+  .mission-card-landscape__content {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 44px;
+    align-items: start;
+  }
+
+  .mission-card-landscape__icon-circle {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mission-card-landscape__body {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mission-card-landscape__action {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: end;
+  }
+
+  .mission-reward-gold-btn {
+    width: 100%;
+  }
+
+  .mission-card-landscape__title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.05;
+  }
+
+  .mission-card-landscape__numbers {
+    font-size: 9px;
+  }
+
+  /* CODEX: preserve the 3D model as the visual focus. */
+  .codex-tri-layout {
+    grid-template-columns: clamp(145px, 18vw, 165px) minmax(215px, 1fr) clamp(210px, 25vw, 235px);
+  }
+
+  .codex-roster-name {
+    font-size: 11px;
+  }
+
+  .codex-roster-sub,
+  .codex-pill,
+  .codex-section-desc,
+  .codex-counter-desc {
+    font-size: 9px;
+  }
+
+  .codex-intel-name {
+    font-size: 18px;
+  }
+
+  .codex-stage-name-caps {
+    font-size: 10px;
+  }
+
+  .codex-stage-inner::after {
+    content: '';
+    position: absolute;
+    inset: auto 10% 6% 10%;
+    height: 24%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(56, 189, 248, .11), transparent 68%);
+    pointer-events: none;
+  }
+
+  /* SHOP: cards should read as purchasable objects, not tiny spreadsheet cells. */
+  .shop-card__title-row strong {
+    font-size: 12px;
+  }
+
+  .shop-card__role,
+  .shop-card__desc,
+  .shop-card__trait,
+  .shop-card__effect,
+  .shop-card__drop-source {
+    font-size: 9px;
+  }
+
+  .shop-buy-btn,
+  .shop-owned-tag {
+    font-size: 10px;
+  }
+
+  /* MAP / STAGE DETAIL */
+  .map-node__label,
+  .map-world-card__name,
+  .map-progress-pill {
+    font-size: 9px;
+  }
+
+  .stage-landscape-intel {
+    overscroll-behavior: contain;
+  }
+
+  .stage-metric-box strong {
+    font-size: 12px;
+  }
+
+  .stage-enemy-chip {
+    font-size: 9px;
+  }
+
+  /* SURVIVAL / SETTINGS */
+  .survival-lead,
+  .survival-sub,
+  .survival-eq-chip,
+  .setting-slider-row__header,
+  .settings-links button,
+  .setting-row {
+    font-size: 10px;
+  }
+
+  .survival-change-hero-btn {
+    min-height: var(--phone-control);
+  }
+
+  /* GAMEPLAY: preserve battlefield visibility without making HUD illegible. */
+  .game-health__value,
+  .game-level-text,
+  .game-kills__label {
+    font-size: 9px;
+  }
+
+  .game-kills__num {
+    font-size: 13px;
+  }
+
+  .game-stage-time {
+    font-size: 18px;
+  }
+
+  .game-stage-title {
+    font-size: 8px;
+  }
+
+  .ability-btn__timer,
+  .ability-btn__level,
+  .ability-btn__milestone {
+    font-size: 9px;
+  }
+
+  /* LEVEL UP: three decisions, no decoration fighting for vertical space. */
+  .power-card__title {
+    font-size: 14px;
+  }
+
+  .power-rarity-pill,
+  .power-kind-pill,
+  .power-level-transition,
+  .power-badge-new,
+  .effect-box__label {
+    font-size: 8px;
+  }
+
+  .effect-box__value,
+  .power-card__select-btn {
+    font-size: 10px;
+  }
+
+  /* PAUSE / RESULTS: keep actions readable even if secondary detail scrolls. */
+  .pause-col {
+    overscroll-behavior: contain;
+  }
+
+  .pause-hero-name,
+  .pause-section-title,
+  .pause-item-name,
+  .pause-item-tier,
+  .pause-stat-chip__val {
+    font-size: 10px;
+  }
+
+  .pause-btn-resume,
+  .pause-btn-bestiary,
+  .pause-btn-quit,
+  .pause-audio-btn,
+  .run-over-btn,
+  .stage-clear-btn {
+    font-size: 10px;
+  }
+}
+
+/* Extra-short Android phones: remove secondary copy rather than shrinking critical text. */
+@media (orientation: landscape) and (max-height: 400px) {
+  .home-campaign-card__lore,
+  .heroes-lore,
+  .heroes-slot-card__effect,
+  .talent-card__desc,
+  .missions-top-banner__sub,
+  .codex-roster-sub,
+  .shop-card__desc,
+  .shop-card__trait,
+  .stage-landscape-world-info p,
+  .stage-landscape-boss-details p,
+  .survival-sub,
+  .pause-item-desc {
+    display: none;
+  }
+
+  .heroes-trait-desc,
+  .talents-forge-desc {
+    font-size: 9px;
+  }
+
+  .heroes-stat-box__label,
+  .heroes-slot-card__slot-name,
+  .talent-card__rank-label,
+  .codex-stat-label,
+  .codex-affinity-tag,
+  .codex-section-label,
+  .codex-counter-label,
+  .stage-metric-box small,
+  .pause-stat-chip__label,
+  .run-over-stat-label,
+  .stat-label {
+    font-size: 8px;
+  }
+
+  .missions-top-banner {
+    flex-basis: 52px;
+    min-height: 52px;
+  }
+
+  .missions-top-banner__headline {
+    font-size: 15px;
+  }
+
+  .shop-card {
+    min-height: 142px;
+  }
+
+  .power-card__medallion {
+    width: 44px;
+    height: 44px;
+  }
+
+  .run-over-stat-val,
+  .stat-val {
+    font-size: 19px;
+  }
+}
+
+/* On the narrowest 720–900px class devices, two shop columns are more usable than three tiny cards. */
+@media (orientation: landscape) and (max-height: 410px) and (max-width: 900px) {
+  .shop-grid,
+  .shop-grid--heroes,
+  .shop-grid--equipment {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shop-card {
+    min-height: 150px;
+  }
+
+  .codex-tri-layout {
+    grid-template-columns: 145px minmax(205px, 1fr) 215px;
+    gap: 5px;
+  }
+}
