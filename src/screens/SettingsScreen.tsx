@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import {
   Check,
-  ChevronRight,
   CircleHelp,
   Gauge,
   Headphones,
   RotateCcw,
   Smartphone,
-  Sliders,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -50,132 +48,47 @@ export function SettingsScreen({ save, onBack, onUpdate, onReset }: SettingsScre
       <ScreenHeader title="SETTINGS" onBack={onBack} />
 
       <div className="settings-landscape-grid">
-        {/* Left Column: Audio & Feel */}
         <div className="settings-landscape-col">
           <section className="settings-section">
-            <div className="settings-section__title">
-              <Headphones size={16} /> AUDIO & FEEL
-            </div>
+            <div className="settings-section__title"><Headphones size={16} /> AUDIO & FEEL</div>
 
-            <SettingRow
-              label="Music"
-              icon={save.settings.music ? Volume2 : VolumeX}
-              value={save.settings.music}
-              onToggle={() => toggle('music')}
-            />
-
-            {/* Music Volume Slider */}
+            <SettingRow label="Music" icon={save.settings.music ? Volume2 : VolumeX} value={save.settings.music} onToggle={() => toggle('music')} />
             <div className="setting-slider-row">
               <div className="setting-slider-row__header">
                 <span>Music Volume</span>
-                <span className="setting-slider-row__val">
-                  {Math.round((save.settings.musicVolume ?? 0.65) * 100)}%
-                </span>
+                <span className="setting-slider-row__val">{Math.round((save.settings.musicVolume ?? 0.65) * 100)}%</span>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                disabled={!save.settings.music}
-                value={save.settings.musicVolume ?? 0.65}
-                onChange={(e) => handleVolumeChange('music', parseFloat(e.target.value))}
-                className="setting-slider"
-                aria-label="Music volume"
-              />
+              <input type="range" min="0" max="1" step="0.05" disabled={!save.settings.music} value={save.settings.musicVolume ?? 0.65} onChange={(e) => handleVolumeChange('music', parseFloat(e.target.value))} className="setting-slider" aria-label="Music volume" />
             </div>
 
-            <SettingRow
-              label="Sound Effects"
-              icon={Volume2}
-              value={save.settings.soundEffects}
-              onToggle={() => toggle('soundEffects')}
-            />
-
-            {/* SFX Volume Slider */}
+            <SettingRow label="Sound Effects" icon={Volume2} value={save.settings.soundEffects} onToggle={() => toggle('soundEffects')} />
             <div className="setting-slider-row">
               <div className="setting-slider-row__header">
                 <span>SFX Volume</span>
-                <span className="setting-slider-row__val">
-                  {Math.round((save.settings.sfxVolume ?? 0.8) * 100)}%
-                </span>
+                <span className="setting-slider-row__val">{Math.round((save.settings.sfxVolume ?? 0.8) * 100)}%</span>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                disabled={!save.settings.soundEffects}
-                value={save.settings.sfxVolume ?? 0.8}
-                onChange={(e) => handleVolumeChange('sfx', parseFloat(e.target.value))}
-                className="setting-slider"
-                aria-label="Sound effects volume"
-              />
+              <input type="range" min="0" max="1" step="0.05" disabled={!save.settings.soundEffects} value={save.settings.sfxVolume ?? 0.8} onChange={(e) => handleVolumeChange('sfx', parseFloat(e.target.value))} className="setting-slider" aria-label="Sound effects volume" />
             </div>
 
-            <SettingRow
-              label="Haptics"
-              icon={Smartphone}
-              value={save.settings.haptics}
-              onToggle={() => toggle('haptics')}
-            />
-
-            <SettingRow
-              label="Screen Shake"
-              icon={Gauge}
-              value={save.settings.screenShake}
-              onToggle={() => toggle('screenShake')}
-            />
+            <SettingRow label="Haptics" icon={Smartphone} value={save.settings.haptics} onToggle={() => toggle('haptics')} />
+            <SettingRow label="Screen Shake" icon={Gauge} value={save.settings.screenShake} onToggle={() => toggle('screenShake')} />
           </section>
         </div>
 
-        {/* Right Column: Accessibility, Performance & Legal */}
         <div className="settings-landscape-col">
           <section className="settings-section">
-            <div className="settings-section__title">
-              <CircleHelp size={16} /> ACCESSIBILITY & PERFORMANCE
-            </div>
-            <SettingRow
-              label="Damage Numbers"
-              icon={Check}
-              value={save.settings.damageNumbers}
-              onToggle={() => toggle('damageNumbers')}
-            />
-            <SettingRow
-              label="Reduced Effects"
-              icon={Gauge}
-              value={save.settings.reducedEffects}
-              onToggle={() => toggle('reducedEffects')}
-            />
-            <SettingRow
-              label="Low Performance Mode"
-              icon={Gauge}
-              value={save.settings.lowPerformanceMode}
-              onToggle={() => toggle('lowPerformanceMode')}
-            />
+            <div className="settings-section__title"><CircleHelp size={16} /> ACCESSIBILITY & PERFORMANCE</div>
+            <SettingRow label="Damage Numbers" icon={Check} value={save.settings.damageNumbers} onToggle={() => toggle('damageNumbers')} />
+            <SettingRow label="Reduced Effects" icon={Gauge} value={save.settings.reducedEffects} onToggle={() => toggle('reducedEffects')} />
+            <SettingRow label="Low Performance Mode" icon={Gauge} value={save.settings.lowPerformanceMode} onToggle={() => toggle('lowPerformanceMode')} />
           </section>
 
           <section className="settings-section settings-section--links">
-            <div className="settings-section__title">
-              <CircleHelp size={16} /> SUPPORT & LEGAL
-            </div>
-            <div className="settings-links">
-              <button type="button">
-                <span>Language</span>
-                <span>
-                  English <ChevronRight size={15} />
-                </span>
-              </button>
-              <button type="button">
-                <span>Audio Licenses (CC0)</span>
-                <span>
-                  Verified <ChevronRight size={15} />
-                </span>
-              </button>
-              <button type="button">
-                <span>Terms of Service</span>
-                <ChevronRight size={15} />
-              </button>
+            <div className="settings-section__title"><CircleHelp size={16} /> DEVICE & DATA</div>
+            <div className="settings-info-list">
+              <InfoRow label="Language" value="English" />
+              <InfoRow label="Save Data" value="Stored on this device" />
+              <InfoRow label="Audio" value="Local licensed / CC0 assets" />
             </div>
           </section>
 
@@ -183,7 +96,7 @@ export function SettingsScreen({ save, onBack, onUpdate, onReset }: SettingsScre
             <PrimaryButton variant="danger" wide onClick={() => setResetConfirm(true)}>
               <RotateCcw size={16} /> RESET PROGRESS
             </PrimaryButton>
-            <p className="version-label">TINY SURVIVOR &middot; v0.2.0 &middot; Offline-first</p>
+            <p className="version-label">TINY SURVIVOR &middot; OFFLINE-FIRST &middot; LOCAL SAVE</p>
           </div>
         </div>
       </div>
@@ -191,25 +104,13 @@ export function SettingsScreen({ save, onBack, onUpdate, onReset }: SettingsScre
       {resetConfirm && (
         <div className="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
           <div className="reset-modal__card">
-            <div className="reset-modal__icon">
-              <RotateCcw size={22} />
-            </div>
+            <div className="reset-modal__icon"><RotateCcw size={22} /></div>
             <span className="eyebrow">IRREVERSIBLE ACTION</span>
             <h2 id="reset-modal-title">Reset progress?</h2>
-            <p>All heroes, upgrades, missions, and stage progress will be deleted from this device.</p>
+            <p>All heroes, upgrades, missions, equipment and stage progress will be deleted from this device.</p>
             <div className="reset-modal__actions">
-              <button type="button" className="reset-modal__cancel" onClick={() => setResetConfirm(false)}>
-                CANCEL
-              </button>
-              <PrimaryButton
-                variant="danger"
-                onClick={() => {
-                  setResetConfirm(false);
-                  onReset();
-                }}
-              >
-                RESET DATA
-              </PrimaryButton>
+              <button type="button" className="reset-modal__cancel" onClick={() => setResetConfirm(false)}>CANCEL</button>
+              <PrimaryButton variant="danger" onClick={() => { setResetConfirm(false); onReset(); }}>RESET DATA</PrimaryButton>
             </div>
           </div>
         </div>
@@ -228,18 +129,17 @@ interface SettingRowProps {
 function SettingRow({ label, icon: Icon, value, onToggle }: SettingRowProps) {
   return (
     <div className="setting-row">
-      <span>
-        <Icon size={17} /> {label}
-      </span>
-      <button
-        type="button"
-        className={`toggle ${value ? 'is-on' : ''}`}
-        onClick={onToggle}
-        aria-label={`Toggle ${label}`}
-        aria-pressed={value}
-      >
-        <i />
-      </button>
+      <span><Icon size={17} /> {label}</span>
+      <button type="button" className={`toggle ${value ? 'is-on' : ''}`} onClick={onToggle} aria-label={`Toggle ${label}`} aria-pressed={value}><i /></button>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="settings-info-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

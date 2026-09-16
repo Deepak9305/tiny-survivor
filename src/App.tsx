@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Smartphone } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Sparkles, Smartphone } from 'lucide-react';
 import { AdService } from './services/adService';
 import { audioService } from './services/audioService';
 import { registerAppLifecycle } from './services/nativeService';
@@ -7,23 +7,23 @@ import { DEFAULT_SAVE, loadSave, normalizeSave, resetSave, saveGame } from './se
 import { getPermanentUpgradeCost } from './data/balance';
 import { getCurrentStage, getNextCampaignStageId, getStage, getTotalCampaignStageCount, isStageUnlocked, isWorldCleared, stageNumber } from './data/stages';
 import { getBossFirstClearEquipment } from './data/equipment';
-import { GameScreen } from './screens/GameScreen';
-import { HeroesScreen } from './screens/HeroesScreen';
 import { HomeScreen } from './screens/HomeScreen';
-import { MissionsScreen } from './screens/MissionsScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { ShopScreen } from './screens/ShopScreen';
-import { BestiaryScreen } from './screens/BestiaryScreen';
 import { SplashScreen } from './screens/SplashScreen';
-import { StageClearScreen } from './screens/StageClearScreen';
-import { StageDetailScreen } from './screens/StageDetailScreen';
-import { SurvivalScreen } from './screens/SurvivalScreen';
-import { UpgradesScreen } from './screens/UpgradesScreen';
-import { WorldMapScreen } from './screens/WorldMapScreen';
 import { ScreenTransition } from './components/ScreenTransition';
-import { getActiveThreeGame } from './game3d/ThreeGame';
 import { getAbilitiesUnlockedByStageClear } from './data/abilities';
 import type { AbilityId, BossId, EnemyKind, EquipmentId, EquipmentSlot, HeroId, MissionProgress, RunMode, RunResult, SaveData, Screen, Settings } from './types';
+
+const GameScreen = lazy(() => import('./screens/GameScreen').then((module) => ({ default: module.GameScreen })));
+const HeroesScreen = lazy(() => import('./screens/HeroesScreen').then((module) => ({ default: module.HeroesScreen })));
+const MissionsScreen = lazy(() => import('./screens/MissionsScreen').then((module) => ({ default: module.MissionsScreen })));
+const SettingsScreen = lazy(() => import('./screens/SettingsScreen').then((module) => ({ default: module.SettingsScreen })));
+const ShopScreen = lazy(() => import('./screens/ShopScreen').then((module) => ({ default: module.ShopScreen })));
+const BestiaryScreen = lazy(() => import('./screens/BestiaryScreen').then((module) => ({ default: module.BestiaryScreen })));
+const StageClearScreen = lazy(() => import('./screens/StageClearScreen').then((module) => ({ default: module.StageClearScreen })));
+const StageDetailScreen = lazy(() => import('./screens/StageDetailScreen').then((module) => ({ default: module.StageDetailScreen })));
+const SurvivalScreen = lazy(() => import('./screens/SurvivalScreen').then((module) => ({ default: module.SurvivalScreen })));
+const UpgradesScreen = lazy(() => import('./screens/UpgradesScreen').then((module) => ({ default: module.UpgradesScreen })));
+const WorldMapScreen = lazy(() => import('./screens/WorldMapScreen').then((module) => ({ default: module.WorldMapScreen })));
 
 function localDate(): string {
   const date = new Date();
@@ -66,31 +66,24 @@ export default function App() {
     let mounted = true;
     void loadSave().then((loaded) => {
       if (!mounted) return;
-      const withDaily =
-        loaded.missionDate === localDate()
-          ? loaded
-          : normalizeSave({ ...loaded, missionDate: localDate(), missions: createDailyMissions() });
+      const withDaily = loaded.missionDate === localDate()
+        ? loaded
+        : normalizeSave({ ...loaded, missionDate: localDate(), missions: createDailyMissions() });
       setSave(withDaily);
-      if (INITIAL_STAGE) {
-        setSelectedStageId(INITIAL_STAGE);
-      } else {
-        setSelectedStageId(getCurrentStage(withDaily).id);
-      }
-      if (INITIAL_SCREEN) {
-        setScreen(INITIAL_SCREEN);
-      }
+      setSelectedStageId(INITIAL_STAGE || getCurrentStage(withDaily).id);
+      if (INITIAL_SCREEN) setScreen(INITIAL_SCREEN);
       setReady(true);
       void saveGame(withDaily);
       void AdService.initialize();
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   const handleNativeBack = useCallback(() => {
     if (screen === 'game') {
-      getActiveThreeGame()?.togglePauseRun();
+      void import('./game3d/ThreeGame').then(({ getActiveThreeGame }) => {
+        getActiveThreeGame()?.togglePauseRun();
+      });
       return;
     }
     if (screen === 'stage') setScreen('map');
@@ -104,10 +97,7 @@ export default function App() {
       if (disposed) removeListener();
       else cleanup = removeListener;
     });
-    return () => {
-      disposed = true;
-      cleanup();
-    };
+    return () => { disposed = true; cleanup(); };
   }, [handleNativeBack, save]);
 
   useEffect(() => {
@@ -116,6 +106,17 @@ export default function App() {
     audioService.setSfxEnabled(save.settings.soundEffects);
     if (ready && screen !== 'game') audioService.playMusic('menu');
   }, [ready, save.settings.music, save.settings.soundEffects, screen]);
+
+  // Keep splash/home light, then quietly warm the most likely next screens.
+  useEffect(() => {
+    if (!ready || screen !== 'home') return undefined;
+    const timer = window.setTimeout(() => {
+      void import('./screens/GameScreen');
+      void import('./screens/WorldMapScreen');
+      void import('./screens/HeroesScreen');
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [ready, screen]);
 
   const persist = useCallback((next: SaveData) => {
     const normalized = normalizeSave(next);
@@ -136,7 +137,6 @@ export default function App() {
     if (isWorldCleared(3, save)) candidates.push('3-1');
     if (isWorldCleared(4, save)) candidates.push('4-1');
     const chosenStageId = candidates[Math.floor(Math.random() * candidates.length)] ?? '2-1';
-
     setSelectedStageId(chosenStageId);
     setRunMode('survival');
     setRunKey((key) => key + 1);
@@ -190,22 +190,11 @@ export default function App() {
   const handleGameOver = useCallback((result: RunResult) => {
     const stage = getStage(result.stageId);
     const isSurvival = result.mode === 'survival' || runMode === 'survival';
-    const endlessBestTime = isSurvival
-      ? Math.max(save.endlessBestTime ?? 0, Math.floor(result.time))
-      : (save.endlessBestTime ?? 0);
-    const endlessBestKills = isSurvival
-      ? Math.max(save.endlessBestKills ?? 0, result.kills)
-      : (save.endlessBestKills ?? 0);
-    const isNewBest =
-      isSurvival &&
-      (result.time > (save.endlessBestTime ?? 0) || result.kills > (save.endlessBestKills ?? 0));
+    const endlessBestTime = isSurvival ? Math.max(save.endlessBestTime ?? 0, Math.floor(result.time)) : (save.endlessBestTime ?? 0);
+    const endlessBestKills = isSurvival ? Math.max(save.endlessBestKills ?? 0, result.kills) : (save.endlessBestKills ?? 0);
+    const isNewBest = isSurvival && (result.time > (save.endlessBestTime ?? 0) || result.kills > (save.endlessBestKills ?? 0));
 
-    const finalResult: RunResult = {
-      ...result,
-      mode: isSurvival ? 'survival' : 'campaign',
-      isNewBest,
-    };
-
+    const finalResult: RunResult = { ...result, mode: isSurvival ? 'survival' : 'campaign', isNewBest };
     const nextSave = normalizeSave({
       ...mergeCodexProgress(save, finalResult),
       coins: save.coins + finalResult.coins,
@@ -250,20 +239,12 @@ export default function App() {
 
   const handleBuyHero = useCallback((heroId: HeroId, cost: number) => {
     if (save.coins < cost || save.heroesUnlocked.includes(heroId)) return;
-    persist({
-      ...save,
-      coins: save.coins - cost,
-      heroesUnlocked: [...save.heroesUnlocked, heroId],
-    });
+    persist({ ...save, coins: save.coins - cost, heroesUnlocked: [...save.heroesUnlocked, heroId] });
   }, [persist, save]);
 
   const handleBuyEquipment = useCallback((equipmentId: EquipmentId, cost: number) => {
     if (save.coins < cost || save.ownedEquipment.includes(equipmentId)) return;
-    persist({
-      ...save,
-      coins: save.coins - cost,
-      ownedEquipment: [...save.ownedEquipment, equipmentId],
-    });
+    persist({ ...save, coins: save.coins - cost, ownedEquipment: [...save.ownedEquipment, equipmentId] });
   }, [persist, save]);
 
   const handleMissionClaim = useCallback((id: string) => {
@@ -289,9 +270,7 @@ export default function App() {
     setScreen(next);
   }, [save]);
 
-  const handleSplashDone = useCallback(() => {
-    setScreen('home');
-  }, []);
+  const handleSplashDone = useCallback(() => { setScreen('home'); }, []);
 
   if (screen === 'splash') return <SplashScreen ready={ready} onDone={handleSplashDone} />;
 
@@ -322,28 +301,13 @@ export default function App() {
       view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />;
       break;
     case 'shop':
-      view = (
-        <ShopScreen
-          save={save}
-          onBack={sharedBack}
-          onFreeChest={handleFreeChest}
-          onBuyHero={handleBuyHero}
-          onBuyEquipment={handleBuyEquipment}
-        />
-      );
+      view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={handleFreeChest} onBuyHero={handleBuyHero} onBuyEquipment={handleBuyEquipment} />;
       break;
     case 'settings':
       view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />;
       break;
     case 'survival':
-      view = (
-        <SurvivalScreen
-          save={save}
-          onBack={sharedBack}
-          onStart={startSurvival}
-          onSelectHero={() => setScreen('heroes')}
-        />
-      );
+      view = <SurvivalScreen save={save} onBack={sharedBack} onStart={startSurvival} onSelectHero={() => setScreen('heroes')} />;
       break;
     case 'stageClear':
       view = lastResult ? (
@@ -360,9 +324,7 @@ export default function App() {
           onReplay={() => startStage(lastResult.stageId)}
           onHome={sharedBack}
         />
-      ) : (
-        <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />
-      );
+      ) : <HomeScreen save={save} onNavigate={navigate} onPlay={() => startStage()} />;
       break;
     case 'game':
       view = (
@@ -373,10 +335,7 @@ export default function App() {
           mode={runMode}
           onStageClear={handleStageClear}
           onGameOver={handleGameOver}
-          onRetry={() => {
-            setRunKey((key) => key + 1);
-            setScreen('game');
-          }}
+          onRetry={() => { setRunKey((key) => key + 1); setScreen('game'); }}
           onHome={() => setScreen('home')}
           onBestiary={() => handleBestiarySelect('skeleton')}
           onSettingsChange={handleSettings}
@@ -391,15 +350,24 @@ export default function App() {
     <>
       <div className="rotate-device-overlay" role="dialog" aria-modal="true" aria-label="Rotate device to landscape">
         <div className="rotate-device-card">
-          <div className="rotate-device-icon-box">
-            <Smartphone size={38} className="rotate-device-phone" />
-          </div>
+          <div className="rotate-device-icon-box"><Smartphone size={38} className="rotate-device-phone" /></div>
           <h2>ROTATE TO PLAY</h2>
-          <p>Tiny Survivor is designed for landscape. Please turn your device sideways.</p>
+          <p>Tiny Survivor is designed for landscape combat. Please turn your device sideways.</p>
         </div>
       </div>
-      <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>
+      </Suspense>
     </>
+  );
+}
+
+function RouteLoadingFallback() {
+  return (
+    <div className="route-loading-screen" role="status" aria-live="polite">
+      <div className="route-loading-screen__sigil"><Sparkles size={20} /></div>
+      <span>PREPARING SANCTUARY</span>
+    </div>
   );
 }
 
@@ -423,14 +391,13 @@ function mergeCodexProgress(save: SaveData, result: RunResult): SaveData {
 
 function updateMissionProgress(missions: MissionProgress[], result: RunResult, stage: ReturnType<typeof getStage>): MissionProgress[] {
   return missions.map((mission) => {
-    const increment =
-      mission.id === 'daily-kills'
-        ? result.kills
-        : mission.id === 'daily-survive'
+    const increment = mission.id === 'daily-kills'
+      ? result.kills
+      : mission.id === 'daily-survive'
         ? Math.floor(result.time)
         : mission.id === 'daily-clear'
-        ? (stage.bossStage ? 1 : 0)
-        : 0;
+          ? (stage.bossStage ? 1 : 0)
+          : 0;
     return increment > 0 ? { ...mission, progress: Math.min(mission.target, mission.progress + increment) } : mission;
   });
 }

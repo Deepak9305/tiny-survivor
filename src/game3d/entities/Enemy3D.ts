@@ -17,6 +17,22 @@ function lerpAngle(current: number, target: number, t: number): number {
   return current + diff * t;
 }
 
+function telegraphAccent(kind: EnemyKind): number {
+  if (kind === 'frost-wraith') return 0x67e8f9;
+  if (kind === 'thornling' || kind === 'treant') return 0xa3e635;
+  if (kind === 'ghost' || kind === 'bat') return 0xc084fc;
+  if (kind === 'archer' || kind === 'cursed-wolf') return 0xfbbf24;
+  if (kind === 'slime') return 0x4ade80;
+  if (kind === 'imp' || kind === 'demon') return 0xfb623b;
+  return 0xff6978;
+}
+
+function easeOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
 export type EnemyCombatState =
   | 'approach'
   | 'windup'
@@ -53,8 +69,10 @@ export class Enemy3D implements SpatialEntity {
   private readonly healthBar: THREE.Group;
   private readonly telegraphGroup: THREE.Group;
   private readonly telegraphMesh: THREE.Mesh;
+  private readonly telegraphRing: THREE.Mesh;
   private readonly frostMesh: THREE.Mesh;
   private readonly shadowMesh: THREE.Mesh;
+  private readonly eliteAura?: THREE.Mesh;
   private hp: number;
   private slowMultiplier = 1;
   private slowUntil = 0;
@@ -64,6 +82,8 @@ export class Enemy3D implements SpatialEntity {
   private healthBarLife = 0;
   private readonly baseVisualScale: number;
   private readonly baseModelScale = 0.88;
+  private spawnAge = 0;
+  private readonly spawnDuration: number;
 
   // Combat State Machine
   state: EnemyCombatState = 'approach';
@@ -101,23 +121,40 @@ export class Enemy3D implements SpatialEntity {
     this.baseSpeed = balance.speed * (elite ? 1.08 : 1);
     this.contactDamage = balance.damage * damageMultiplier * (elite ? 1.2 : 1);
     this.xpValue = balance.xp * (elite ? 4 : 1);
+    this.spawnDuration = elite ? 0.42 : 0.26;
     this.group = new THREE.Group();
     this.group.name = this.id;
     this.model = createEnemyModel(kind, balance.color, resources, worldId);
     const visualScale = (this.radius * LOGICAL_SCALE) / 0.38;
     this.baseVisualScale = visualScale;
     this.phaseTime = (enemySequence * 1.618) % 5;
-    this.model.scale.setScalar(visualScale * this.baseModelScale);
+    this.model.scale.setScalar(visualScale * this.baseModelScale * 0.58);
+    this.model.position.y = 0.16;
     this.group.add(this.model);
     if (elite) addEliteAccent(this.model, resources);
 
-    // Ground Contact Shadow (Soft oval grounded to terrain at y=0.006)
     const shadowMesh = resources.createContactShadow('enemy-contact-shadow', 1, 1, 0.62);
     shadowMesh.scale.set(visualScale * 1.18, visualScale * 0.72, 1);
     this.group.add(shadowMesh);
     this.shadowMesh = shadowMesh;
 
-    // Slime Glowing Green Residue / Ground Pool
+    if (elite) {
+      const aura = addMesh(
+        this.group,
+        resources.ring('elite-threat-aura', 0.50, 0.58),
+        resources.basicMaterial('elite-threat-aura-mat', 0xffd166, {
+          transparent: true,
+          opacity: 0.50,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      aura.rotation.x = -Math.PI / 2;
+      aura.position.y = 0.018;
+      aura.scale.setScalar(visualScale * 1.55);
+      this.eliteAura = aura;
+    }
+
     if (kind === 'slime') {
       const slimePoolMat = resources.basicMaterial('slime-ground-pool-mat', 0x22c55e, {
         transparent: true,
@@ -142,22 +179,34 @@ export class Enemy3D implements SpatialEntity {
       this.group.add(spectralPool);
     }
 
-    // Telegraph Visual
     this.telegraphGroup = new THREE.Group();
     this.telegraphGroup.position.set(0, 0.03, 0);
     this.telegraphGroup.visible = false;
+
     this.telegraphMesh = addMesh(
       this.telegraphGroup,
-      resources.circle('enemy-telegraph-geom'),
-      resources.basicMaterial('enemy-telegraph-mat', 0xff3344, {
+      resources.circle('enemy-telegraph-geom-premium'),
+      resources.basicMaterial('enemy-telegraph-fill-premium', 0xff3344, {
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.34,
+        depthWrite: false,
       })
     );
     this.telegraphMesh.rotation.x = -Math.PI / 2;
+
+    this.telegraphRing = addMesh(
+      this.telegraphGroup,
+      resources.ring(`enemy-telegraph-ring-${kind}`, 0.42, 0.50),
+      resources.basicMaterial(`enemy-telegraph-ring-mat-${kind}`, telegraphAccent(kind), {
+        transparent: true,
+        opacity: 0.86,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
+    );
+    this.telegraphRing.rotation.x = -Math.PI / 2;
     this.group.add(this.telegraphGroup);
 
-    // Frost crystal overlay for freeze state
     this.frostMesh = addMesh(
       this.group,
       resources.octa('enemy-frost-crystal'),
@@ -188,13 +237,8 @@ export class Enemy3D implements SpatialEntity {
   x: number;
   y: number;
 
-  get currentHP(): number {
-    return this.hp;
-  }
-
-  getFacingAngle(): number {
-    return this.facingAngle;
-  }
+  get currentHP(): number { return this.hp; }
+  getFacingAngle(): number { return this.facingAngle; }
 
   checkFrontShield(sourceX: number, sourceY: number): boolean {
     if (this.kind !== 'knight') return false;
@@ -205,7 +249,7 @@ export class Enemy3D implements SpatialEntity {
     const facingX = Math.sin(this.facingAngle);
     const facingY = Math.cos(this.facingAngle);
     const dot = (toSourceX / sourceDist) * facingX + (toSourceY / sourceDist) * facingY;
-    return dot > 0.42; // Within frontal ~65 degree arc
+    return dot > 0.42;
   }
 
   update(
@@ -222,11 +266,17 @@ export class Enemy3D implements SpatialEntity {
     const distance = Math.max(1, Math.sqrt(dx * dx + dy * dy));
 
     this.phaseTime += delta;
+    this.spawnAge = Math.min(this.spawnDuration, this.spawnAge + delta);
     this.attackCooldown = Math.max(0, this.attackCooldown - delta);
     this.hitPulse = Math.max(0, this.hitPulse - delta);
     this.healthBarLife = Math.max(0, this.healthBarLife - delta);
 
-    // Freeze check: hold position, pause state execution, display frost overlay
+    if (this.eliteAura) {
+      this.eliteAura.rotation.z += delta * 0.72;
+      const elitePulse = 1 + Math.sin(this.phaseTime * 2.8) * 0.07;
+      this.eliteAura.scale.setScalar(this.baseVisualScale * 1.55 * elitePulse);
+    }
+
     if (now < this.freezeUntil) {
       this.frostMesh.visible = true;
       this.frostMesh.rotation.y += delta * 1.8;
@@ -235,7 +285,6 @@ export class Enemy3D implements SpatialEntity {
     }
     this.frostMesh.visible = false;
 
-    // If enemy is far, use lightweight straight pursuit without expensive attack states
     if (distance > 340 && this.state === 'approach') {
       let dirX = dx / distance;
       let dirY = dy / distance;
@@ -255,32 +304,27 @@ export class Enemy3D implements SpatialEntity {
       return undefined;
     }
 
-    // --- State Machine Execution ---
     switch (this.state) {
       case 'approach': {
         this.telegraphGroup.visible = false;
         let dirX = dx / distance;
         let dirY = dy / distance;
 
-        // Archer and Thornling maintain range band
         const isArcher = this.kind === 'archer';
         const isThornling = this.kind === 'thornling';
         if (isArcher && distance < 170) {
           dirX *= -1;
           dirY *= -1;
         } else if (isArcher && distance >= 170 && distance <= 240) {
-          // Strafe tangentially
           const strafeAngle = Math.sin(this.phaseTime * 2.2) > 0 ? Math.PI / 2 : -Math.PI / 2;
           const rotatedX = dirX * Math.cos(strafeAngle) - dirY * Math.sin(strafeAngle);
           const rotatedY = dirX * Math.sin(strafeAngle) + dirY * Math.cos(strafeAngle);
           dirX = rotatedX * 0.7;
           dirY = rotatedY * 0.7;
         } else if (isThornling && distance < 140) {
-          // Thornling maintains medium distance (140-210)
           dirX *= -1;
           dirY *= -1;
         } else if (isThornling && distance >= 140 && distance <= 210) {
-          // Strafe tangentially
           const strafeAngle = Math.cos(this.phaseTime * 2.0) > 0 ? Math.PI / 2 : -Math.PI / 2;
           const rotatedX = dirX * Math.cos(strafeAngle) - dirY * Math.sin(strafeAngle);
           const rotatedY = dirX * Math.sin(strafeAngle) + dirY * Math.cos(strafeAngle);
@@ -292,8 +336,7 @@ export class Enemy3D implements SpatialEntity {
         dirX = steer.dirX;
         dirY = steer.dirY;
 
-        const currentSpeed =
-          this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1);
+        const currentSpeed = this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1);
 
         if (distance > 34 || isArcher || isThornling) {
           this.x += dirX * currentSpeed * delta;
@@ -305,7 +348,6 @@ export class Enemy3D implements SpatialEntity {
         this.facingAngle = Math.atan2(dx / distance, dy / distance);
         this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, Math.min(1, delta * 12));
 
-        // Check attack initiation criteria per kind
         if (this.attackCooldown <= 0) {
           if (this.kind === 'skeleton' && distance < 52) {
             this.enterState('windup', 0.38, playerX, playerY);
@@ -348,7 +390,6 @@ export class Enemy3D implements SpatialEntity {
         this.showTelegraph();
 
         if (this.kind === 'imp') {
-          // Slow down while fuse ticks down
           this.x += (dx / distance) * (this.baseSpeed * 0.25) * delta;
           this.y += (dy / distance) * (this.baseSpeed * 0.25) * delta;
           if (Math.floor(this.phaseTime * 9) % 2 === 0) {
@@ -357,30 +398,19 @@ export class Enemy3D implements SpatialEntity {
         }
 
         if (this.stateTimer <= 0) {
-          // Windup complete -> enter attack
-          if (this.kind === 'bat') {
-            this.enterState('attack', 0.26, playerX, playerY);
-          } else if (this.kind === 'slime') {
+          if (this.kind === 'bat') this.enterState('attack', 0.26, playerX, playerY);
+          else if (this.kind === 'slime') {
             this.leapStartX = this.x;
             this.leapStartY = this.y;
             this.enterState('attack', 0.36, playerX, playerY);
-          } else if (this.kind === 'ghost') {
-            this.enterState('attack', 0.24, playerX, playerY);
-          } else if (this.kind === 'archer') {
-            this.enterState('attack', 0.15, playerX, playerY);
-          } else if (this.kind === 'cursed-wolf') {
-            this.enterState('attack', 0.24, playerX, playerY);
-          } else if (this.kind === 'thornling') {
-            this.enterState('attack', 0.15, playerX, playerY);
-          } else if (this.kind === 'treant') {
-            this.enterState('attack', 0.30, playerX, playerY);
-          } else if (this.kind === 'frost-wraith') {
-            this.enterState('attack', 0.24, playerX, playerY);
-          } else if (this.kind === 'imp') {
-            this.enterState('attack', 0.1, playerX, playerY);
-          } else {
-            this.enterState('attack', 0.20, playerX, playerY);
-          }
+          } else if (this.kind === 'ghost') this.enterState('attack', 0.24, playerX, playerY);
+          else if (this.kind === 'archer') this.enterState('attack', 0.15, playerX, playerY);
+          else if (this.kind === 'cursed-wolf') this.enterState('attack', 0.24, playerX, playerY);
+          else if (this.kind === 'thornling') this.enterState('attack', 0.15, playerX, playerY);
+          else if (this.kind === 'treant') this.enterState('attack', 0.30, playerX, playerY);
+          else if (this.kind === 'frost-wraith') this.enterState('attack', 0.24, playerX, playerY);
+          else if (this.kind === 'imp') this.enterState('attack', 0.1, playerX, playerY);
+          else this.enterState('attack', 0.20, playerX, playerY);
         }
         break;
       }
@@ -389,156 +419,111 @@ export class Enemy3D implements SpatialEntity {
         this.stateTimer -= delta;
         this.telegraphGroup.visible = false;
 
-        // Perform attack motion and event emission
         if (!this.hasEmittedAttack) {
           this.hasEmittedAttack = true;
 
           if (this.kind === 'skeleton') {
             audioService.playSFX('skeleton-slash', { throttle: 0.2 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * (this.elite ? 1.3 : 1.0),
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 42,
               targetY: this.y + this.attackDirectionY * 42,
-              radius: 46 * (this.elite ? 1.35 : 1.0),
-              color: 0xe0e7ef,
+              radius: 46 * (this.elite ? 1.35 : 1.0), color: 0xe0e7ef,
             };
           } else if (this.kind === 'archer') {
             attackEvent = {
-              type: 'projectile',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'projectile', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 0.95,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 240,
               targetY: this.y + this.attackDirectionY * 240,
-              radius: 14,
-              color: 0x93c5fd,
+              radius: 14, color: 0x93c5fd,
             };
           } else if (this.kind === 'knight') {
             audioService.playSFX('skeleton-slash', { pitch: 0.75 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.35,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 48,
               targetY: this.y + this.attackDirectionY * 48,
-              radius: 56 * (this.elite ? 1.4 : 1.0),
-              color: 0x60a5fa,
+              radius: 56 * (this.elite ? 1.4 : 1.0), color: 0x60a5fa,
             };
           } else if (this.kind === 'demon') {
             audioService.playSFX('demon-slash', { throttle: 0.18 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.15,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 45,
               targetY: this.y + this.attackDirectionY * 45,
-              radius: 50 * (this.elite ? 1.35 : 1.0),
-              color: 0xef4444,
+              radius: 50 * (this.elite ? 1.35 : 1.0), color: 0xef4444,
             };
           } else if (this.kind === 'imp') {
             audioService.playSFX('imp-explode');
             attackEvent = {
-              type: 'explosion',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'explosion', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.45,
-              originX: this.x,
-              originY: this.y,
-              targetX: this.x,
-              targetY: this.y,
-              radius: 76 * (this.elite ? 1.4 : 1.0),
-              color: 0xf97316,
+              originX: this.x, originY: this.y,
+              targetX: this.x, targetY: this.y,
+              radius: 76 * (this.elite ? 1.4 : 1.0), color: 0xf97316,
             };
           } else if (this.kind === 'cursed-wolf') {
             audioService.playSFX('bat-dive', { pitch: 0.65 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.15,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 36,
               targetY: this.y + this.attackDirectionY * 36,
-              radius: 32 * (this.elite ? 1.3 : 1.0),
-              color: 0xd97706,
+              radius: 32 * (this.elite ? 1.3 : 1.0), color: 0xd97706,
             };
           } else if (this.kind === 'thornling') {
             attackEvent = {
-              type: 'projectile',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'projectile', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 0.92,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 220,
               targetY: this.y + this.attackDirectionY * 220,
-              radius: 12,
-              color: 0x84cc16,
+              radius: 12, color: 0x84cc16,
             };
           } else if (this.kind === 'treant') {
             audioService.playSFX('slime-jump', { pitch: 0.5 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.45,
               originX: this.x + this.attackDirectionX * 20,
               originY: this.y + this.attackDirectionY * 20,
               targetX: this.x + this.attackDirectionX * 30,
               targetY: this.y + this.attackDirectionY * 30,
-              radius: 68 * (this.elite ? 1.35 : 1.0),
-              color: 0x4d7c0f,
+              radius: 68 * (this.elite ? 1.35 : 1.0), color: 0x4d7c0f,
             };
           } else if (this.kind === 'frost-wraith') {
             audioService.playSFX('ghost-phase', { pitch: 1.2 });
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.15,
-              originX: this.x,
-              originY: this.y,
+              originX: this.x, originY: this.y,
               targetX: this.x + this.attackDirectionX * 38,
               targetY: this.y + this.attackDirectionY * 38,
-              radius: 36 * (this.elite ? 1.3 : 1.0),
-              color: 0x38bdf8,
-              slow: true,
+              radius: 36 * (this.elite ? 1.3 : 1.0), color: 0x38bdf8, slow: true,
             };
           }
         }
 
-        // Kinetic movement during attack
         if (this.kind === 'bat') {
           this.diveProgress = Math.min(1, this.diveProgress + delta * 3.8);
           this.x += this.attackDirectionX * (this.baseSpeed * 2.8) * delta;
           this.y += this.attackDirectionY * (this.baseSpeed * 2.8) * delta;
-          // check mid-dive collision with player
           if (distance < this.radius + 24) {
             attackEvent = {
-              type: 'dive',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'dive', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.1,
-              originX: this.x,
-              originY: this.y,
-              targetX: playerX,
-              targetY: playerY,
-              radius: 38,
-              color: 0xa855f7,
+              originX: this.x, originY: this.y,
+              targetX: playerX, targetY: playerY,
+              radius: 38, color: 0xa855f7,
             };
           }
         } else if (this.kind === 'cursed-wolf') {
@@ -551,21 +536,14 @@ export class Enemy3D implements SpatialEntity {
           const progress = 1 - Math.max(0, this.stateTimer / 0.36);
           this.x = THREE.MathUtils.lerp(this.leapStartX, this.attackTargetX, progress);
           this.y = THREE.MathUtils.lerp(this.leapStartY, this.attackTargetY, progress);
-          // Parabolic jump height
           this.model.position.y = Math.sin(progress * Math.PI) * 1.8;
           if (this.stateTimer <= 0) {
             attackEvent = {
-              type: 'leap',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'leap', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 1.15,
-              originX: this.x,
-              originY: this.y,
-              targetX: this.x,
-              targetY: this.y,
-              radius: 48 * (this.elite ? 1.4 : 1.0),
-              color: 0x22c55e,
-              slow: true,
+              originX: this.x, originY: this.y,
+              targetX: this.x, targetY: this.y,
+              radius: 48 * (this.elite ? 1.4 : 1.0), color: 0x22c55e, slow: true,
             };
           }
         } else if (this.kind === 'ghost') {
@@ -573,41 +551,28 @@ export class Enemy3D implements SpatialEntity {
           this.y += this.attackDirectionY * (this.baseSpeed * 2.5) * delta;
           if (distance < this.radius + 22) {
             attackEvent = {
-              type: 'melee',
-              enemyId: this.id,
-              kind: this.kind,
+              type: 'melee', enemyId: this.id, kind: this.kind,
               damage: this.contactDamage * 0.95,
-              originX: this.x,
-              originY: this.y,
-              targetX: playerX,
-              targetY: playerY,
-              radius: 40,
-              color: 0x38bdf8,
+              originX: this.x, originY: this.y,
+              targetX: playerX, targetY: playerY,
+              radius: 40, color: 0x38bdf8,
             };
           }
         }
 
-        // Kinetic attack obstacle collision resolution
         const resolvedKinetic = resolveObstacleCollision(this.x, this.y, this.radius * 0.75, this.worldId);
         this.x = resolvedKinetic.x;
         this.y = resolvedKinetic.y;
 
         if (this.stateTimer <= 0) {
           const recoveryDuration =
-            this.kind === 'treant'
-              ? 0.75
-              : this.kind === 'knight'
-              ? 0.75
-              : this.kind === 'skeleton'
-              ? 0.52
-              : this.kind === 'cursed-wolf'
-              ? 0.35
-              : this.kind === 'thornling'
-              ? 0.40
-              : this.kind === 'frost-wraith'
-              ? 0.38
-              : this.kind === 'imp'
-              ? 0.05
+            this.kind === 'treant' ? 0.75
+              : this.kind === 'knight' ? 0.75
+              : this.kind === 'skeleton' ? 0.52
+              : this.kind === 'cursed-wolf' ? 0.35
+              : this.kind === 'thornling' ? 0.40
+              : this.kind === 'frost-wraith' ? 0.38
+              : this.kind === 'imp' ? 0.05
               : 0.45;
           this.enterState('recover', recoveryDuration, playerX, playerY);
         }
@@ -619,7 +584,6 @@ export class Enemy3D implements SpatialEntity {
         this.telegraphGroup.visible = false;
         if (this.kind === 'slime') this.model.position.y = 0;
         if (this.kind === 'thornling') {
-          // Relocate tangentially / backwards during recovery
           const relX = -dy / distance;
           const relY = dx / distance;
           this.x += relX * (this.baseSpeed * 0.6) * delta;
@@ -629,22 +593,14 @@ export class Enemy3D implements SpatialEntity {
         if (this.stateTimer <= 0) {
           this.state = 'approach';
           this.attackCooldown =
-            this.kind === 'treant'
-              ? 3.2
-              : this.kind === 'archer'
-              ? 2.6
-              : this.kind === 'thornling'
-              ? 2.4
-              : this.kind === 'knight'
-              ? 2.4
-              : this.kind === 'cursed-wolf'
-              ? 1.9
-              : this.kind === 'frost-wraith'
-              ? 2.2
-              : this.kind === 'bat'
-              ? 2.1
-              : this.kind === 'slime'
-              ? 2.3
+            this.kind === 'treant' ? 3.2
+              : this.kind === 'archer' ? 2.6
+              : this.kind === 'thornling' ? 2.4
+              : this.kind === 'knight' ? 2.4
+              : this.kind === 'cursed-wolf' ? 1.9
+              : this.kind === 'frost-wraith' ? 2.2
+              : this.kind === 'bat' ? 2.1
+              : this.kind === 'slime' ? 2.3
               : 1.4 + Math.random() * 0.5;
         }
         break;
@@ -686,45 +642,56 @@ export class Enemy3D implements SpatialEntity {
   private showTelegraph(): void {
     this.telegraphGroup.visible = true;
     this.telegraphGroup.rotation.y = this.facingAngle;
+    const urgency = 1 + Math.sin(this.phaseTime * 18) * 0.055;
+    this.telegraphGroup.scale.setScalar(urgency);
 
     if (this.kind === 'skeleton' || this.kind === 'knight' || this.kind === 'demon') {
-      // Forward melee danger zone
       this.telegraphMesh.scale.set(0.65, 0.95, 0.65);
+      this.telegraphRing.scale.set(0.74, 1.05, 0.74);
       this.telegraphMesh.position.set(0, 0, 0.65);
+      this.telegraphRing.position.set(0, 0, 0.65);
     } else if (this.kind === 'archer') {
-      // Long narrow laser aim line
       this.telegraphMesh.scale.set(0.12, 3.2, 0.12);
+      this.telegraphRing.scale.set(0.18, 3.35, 0.18);
       this.telegraphMesh.position.set(0, 0, 2.0);
+      this.telegraphRing.position.set(0, 0, 2.0);
     } else if (this.kind === 'thornling') {
-      // Aimed thorn projectile line
       this.telegraphMesh.scale.set(0.12, 2.8, 0.12);
+      this.telegraphRing.scale.set(0.18, 2.95, 0.18);
       this.telegraphMesh.position.set(0, 0, 1.8);
+      this.telegraphRing.position.set(0, 0, 1.8);
     } else if (this.kind === 'cursed-wolf') {
-      // Fast locked-direction pounce lane
       this.telegraphMesh.scale.set(0.38, 2.6, 0.38);
+      this.telegraphRing.scale.set(0.47, 2.75, 0.47);
       this.telegraphMesh.position.set(0, 0, 1.6);
+      this.telegraphRing.position.set(0, 0, 1.6);
     } else if (this.kind === 'treant') {
-      // Broad ground slam circle
       this.telegraphMesh.scale.set(2.2, 2.2, 2.2);
+      this.telegraphRing.scale.set(2.42, 2.42, 2.42);
       this.telegraphMesh.position.set(0, 0, 0.35);
+      this.telegraphRing.position.set(0, 0, 0.35);
     } else if (this.kind === 'frost-wraith') {
-      // Frost lane strike
       this.telegraphMesh.scale.set(0.46, 2.4, 0.46);
+      this.telegraphRing.scale.set(0.56, 2.55, 0.56);
       this.telegraphMesh.position.set(0, 0, 1.5);
+      this.telegraphRing.position.set(0, 0, 1.5);
     } else if (this.kind === 'bat' || this.kind === 'ghost') {
-      // Dive lane
       this.telegraphMesh.scale.set(0.42, 2.2, 0.42);
+      this.telegraphRing.scale.set(0.52, 2.36, 0.52);
       this.telegraphMesh.position.set(0, 0, 1.4);
+      this.telegraphRing.position.set(0, 0, 1.4);
     } else if (this.kind === 'slime') {
-      // Landing circle
       this.telegraphMesh.scale.set(1.2, 1.2, 1.2);
+      this.telegraphRing.scale.set(1.36, 1.36, 1.36);
       this.telegraphMesh.position.set(0, 0, 0);
+      this.telegraphRing.position.set(0, 0, 0);
     } else if (this.kind === 'imp') {
-      // Expanding fuse radius
       const progress = 1 - Math.max(0, this.stateTimer / 0.85);
       const scale = 1.0 + progress * 0.8;
       this.telegraphMesh.scale.set(scale, scale, scale);
+      this.telegraphRing.scale.set(scale + 0.16, scale + 0.16, scale + 0.16);
       this.telegraphMesh.position.set(0, 0, 0);
+      this.telegraphRing.position.set(0, 0, 0);
     }
   }
 
@@ -738,7 +705,6 @@ export class Enemy3D implements SpatialEntity {
       | Record<string, THREE.Object3D | THREE.Object3D[]>
       | undefined;
 
-    // Movement bobbing & procedural animation per enemy archetype
     const isFlying = this.kind === 'bat' || this.kind === 'ghost' || this.kind === 'frost-wraith';
     if (isFlying) {
       this.model.position.y = 0.45 + Math.sin(this.phaseTime * 3.4) * 0.12;
@@ -772,26 +738,28 @@ export class Enemy3D implements SpatialEntity {
     this.shadowMesh.position.y = 0.006;
 
     const elitePulse = this.elite ? 1 + Math.sin(this.phaseTime * 4) * 0.035 : 1;
-    const hitScale =
-      this.hitPulse > 0
-        ? 1 + Math.sin((1 - this.hitPulse / 0.16) * Math.PI) * 0.13
-        : 1;
+    const hitScale = this.hitPulse > 0 ? 1 + Math.sin((1 - this.hitPulse / 0.16) * Math.PI) * 0.13 : 1;
     const windupPulse = isWindingUp ? 1 + Math.sin(this.phaseTime * 14) * 0.07 : 1;
+    const spawnProgress = Math.min(1, this.spawnAge / Math.max(0.001, this.spawnDuration));
+    const spawnScale = THREE.MathUtils.clamp(easeOutBack(spawnProgress), 0.58, 1.06);
 
     this.model.scale.setScalar(
       this.baseVisualScale *
         this.baseModelScale *
         elitePulse *
         hitScale *
-        windupPulse
+        windupPulse *
+        spawnScale
     );
 
-    // Orientation tracking during active combat states
+    if (spawnProgress < 1 && this.kind !== 'slime' && !isFlying) {
+      this.model.position.y += (1 - spawnProgress) * 0.16;
+    }
+
     if (this.state === 'windup' || this.state === 'attack') {
       this.model.rotation.y = lerpAngle(this.model.rotation.y, this.facingAngle, Math.min(1, delta * 14));
     }
 
-    // Dynamic Leg Strides for Grounded Enemies
     const isMoving = this.state === 'approach';
     if (parts?.legs instanceof Array) {
       if (this.kind === 'cursed-wolf' && parts.legs.length === 4) {
@@ -810,17 +778,12 @@ export class Enemy3D implements SpatialEntity {
         parts.legs[0].position.y = hipBase + Math.max(0, stride) * 0.08;
         parts.legs[1].position.y = hipBase + Math.max(0, -stride) * 0.08;
 
-        if (this.state === 'approach') {
-          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.15, delta * 10);
-        } else if (this.state === 'attack') {
-          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.22, delta * 14);
-        } else {
-          this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 10);
-        }
+        if (this.state === 'approach') this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.15, delta * 10);
+        else if (this.state === 'attack') this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.22, delta * 14);
+        else this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 10);
       }
     }
 
-    // Natural Arm Swing for Bipedal Enemies (archer, treant, thornling, demon)
     if (parts?.arms instanceof Array && parts.arms.length === 2 && this.kind !== 'skeleton') {
       const arms = parts.arms;
       if (isWindingUp) {
@@ -846,20 +809,13 @@ export class Enemy3D implements SpatialEntity {
         parts.wings[0].rotation.z = -0.22 - Math.sin(this.phaseTime * flapRate) * 0.52;
         parts.wings[1].rotation.z = 0.22 + Math.sin(this.phaseTime * flapRate) * 0.52;
       }
-      if (this.state === 'attack') {
-        this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0.42, delta * 12);
-      } else {
-        this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, 0, delta * 8);
-      }
+      this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, this.state === 'attack' ? 0.42 : 0, delta * (this.state === 'attack' ? 12 : 8));
     }
 
-    if (this.kind === 'slime' && parts?.body instanceof THREE.Object3D) {
-      if (isWindingUp) {
-        // Squish flat anticipation
-        parts.body.scale.y = 0.30;
-        parts.body.scale.x = 1.28;
-        parts.body.scale.z = 1.18;
-      }
+    if (this.kind === 'slime' && parts?.body instanceof THREE.Object3D && isWindingUp) {
+      parts.body.scale.y = 0.30;
+      parts.body.scale.x = 1.28;
+      parts.body.scale.z = 1.18;
     }
 
     if (this.kind === 'ghost' || this.kind === 'frost-wraith') {
@@ -870,8 +826,7 @@ export class Enemy3D implements SpatialEntity {
       }
       if (parts?.tails instanceof Array) {
         for (let i = 0; i < parts.tails.length; i += 1) {
-          parts.tails[i].rotation.z +=
-            Math.sin(this.phaseTime * 3.2 + i) * delta * 0.65;
+          parts.tails[i].rotation.z += Math.sin(this.phaseTime * 3.2 + i) * delta * 0.65;
         }
       }
     }
@@ -880,11 +835,9 @@ export class Enemy3D implements SpatialEntity {
       const arms = parts.arms;
       if (arms.length === 2) {
         if (isWindingUp) {
-          // Raise sword arm high for attack
           arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, -1.35, delta * 14);
           arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, 0.35, delta * 14);
         } else if (this.state === 'attack') {
-          // Slash downward forward
           arms[1].rotation.x = THREE.MathUtils.lerp(arms[1].rotation.x, 0.85, delta * 18);
           arms[0].rotation.x = THREE.MathUtils.lerp(arms[0].rotation.x, -0.45, delta * 18);
         } else if (isMoving) {
@@ -912,9 +865,7 @@ export class Enemy3D implements SpatialEntity {
           sword.rotation.x = isMoving ? Math.cos(this.phaseTime * 6) * 0.14 : 0;
         }
       }
-      if (shield) {
-        shield.rotation.y = isMoving ? Math.sin(this.phaseTime * 6) * 0.12 : 0;
-      }
+      if (shield) shield.rotation.y = isMoving ? Math.sin(this.phaseTime * 6) * 0.12 : 0;
     }
   }
 
@@ -944,13 +895,8 @@ export class Enemy3D implements SpatialEntity {
     this.healthBar.visible = this.healthBarLife > 0 && this.hp < this.maxHP;
   }
 
-  private syncPosition(): void {
-    setLogicalPosition(this.group, this.x, this.y);
-  }
-
-  destroy(): void {
-    this.group.removeFromParent();
-  }
+  private syncPosition(): void { setLogicalPosition(this.group, this.x, this.y); }
+  destroy(): void { this.group.removeFromParent(); }
 }
 
 function createHealthBar(resources: SharedResources, elite: boolean): THREE.Group {

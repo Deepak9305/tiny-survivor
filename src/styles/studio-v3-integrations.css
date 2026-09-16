@@ -1,0 +1,131 @@
+/* Small integration layer for studio-v3 markup introduced after studio-final.css. */
+
+.player-chip .avatar-dot {
+  overflow: hidden;
+}
+
+.player-chip .avatar-dot img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 24%;
+  filter: saturate(.96) contrast(1.06);
+}
+
+.stage-landscape-boss-feature {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.stage-landscape-boss-feature:focus-visible {
+  outline: 2px solid rgba(112, 228, 255, .78);
+  outline-offset: -2px;
+}
+
+.stage-landscape-world-info__kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #7edff8;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.settings-info-list {
+  display: grid;
+  min-width: 0;
+}
+
+.settings-info-row {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(111, 193, 223, .10);
+}
+
+.settings-info-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-info-row span {
+  color: #8fa9b9;
+  font-size: 11px;
+}
+
+.settings-info-row strong {
+  min-width: 0;
+  color: #e7f5fb;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.route-loading-screen {
+  position: fixed;
+  z-index: 9500;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(48, 171, 216, .13), transparent 24%),
+    linear-gradient(180deg, #07121d, #02070d 72%);
+  color: #91acbc;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-align: center;
+}
+
+.route-loading-screen__sigil {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  place-items: center;
+  border: 1px solid rgba(111, 216, 249, .26);
+  border-radius: 50%;
+  color: #78e4ff;
+  background: radial-gradient(circle, rgba(65, 190, 231, .18), rgba(4, 14, 23, .76));
+  box-shadow: 0 0 26px rgba(66, 205, 244, .10), inset 0 1px rgba(255,255,255,.05);
+  animation: studioRoutePulse 1.1s ease-in-out infinite;
+}
+
+@keyframes studioRoutePulse {
+  0%, 100% { transform: scale(.96); opacity: .72; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .settings-info-row {
+    min-height: 38px;
+  }
+
+  .settings-info-row span,
+  .settings-info-row strong {
+    font-size: 9px;
+  }
+
+  .stage-landscape-world-info__kicker {
+    margin-bottom: 2px;
+    font-size: 7px;
+  }
+
+  .route-loading-screen__sigil {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading-screen__sigil {
+    animation: none;
+  }
+}

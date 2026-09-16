@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { SharedResources, addMesh } from '../game3d/core/SharedResources';
 import { createHeroVisual, createPetModel, createRelicAccent } from '../game3d/visuals/CharacterFactory';
+import { createPremiumHeroDetailRig } from '../game3d/visuals/HeroDetailRig';
 import { biomeThemeForWorld } from '../game3d/scene/BiomeTheme';
 import { addPreviewStage, disposePreviewScene, fitPreviewCamera } from '../game3d/visuals/PreviewStage';
 import type { EquipmentId, HeroId } from '../types';
@@ -12,6 +13,11 @@ interface HeroPreview3DProps {
   equippedRelic?: EquipmentId | string;
   worldId?: number;
   className?: string;
+}
+
+function normalizeHeroId(heroId: HeroId | string): HeroId {
+  if (heroId === 'warrior' || heroId === 'monk' || heroId === 'gunslinger') return heroId;
+  return 'shadow';
 }
 
 export function HeroPreview3D({
@@ -44,23 +50,25 @@ export function HeroPreview3D({
 
     const stageRig = addPreviewStage(scene, resources, theme, { radius: 1.95, worldId });
 
-    // Hero Model — keep aura + contact shadow attached to the preview model.
-    // Earlier previews only added the root, which made the same hero look flatter here than in gameplay.
-    const heroVisual = createHeroVisual(heroId, resources);
+    const resolvedHeroId = normalizeHeroId(heroId);
+    const heroVisual = createHeroVisual(resolvedHeroId, resources);
     const hero = heroVisual.root;
     hero.scale.setScalar(1.4);
     hero.position.set(0, 0.18, 0);
     hero.add(heroVisual.aura, heroVisual.shadow);
+
+    // Use the same identity detail rig as gameplay so the roster/loadout screen
+    // represents the actual in-run hero silhouette rather than a flatter preview.
+    const premiumDetail = createPremiumHeroDetailRig(resolvedHeroId, resources);
+    hero.add(premiumDetail.root);
     scene.add(hero);
 
-    // Optional Equipped Relic accent
     if (equippedRelic) {
       const relicMesh = createRelicAccent(equippedRelic, resources);
       relicMesh.scale.setScalar(0.85);
       hero.add(relicMesh);
     }
 
-    // Optional Equipped Pet
     let petMesh: THREE.Group | undefined;
     if (equippedPet) {
       petMesh = createPetModel(equippedPet, resources);
@@ -68,7 +76,8 @@ export function HeroPreview3D({
       scene.add(petMesh);
     }
 
-    // Ambient floating magic motes. Kept intentionally low-count for mobile previews.
+    // Low-count orbiting motes add depth while remaining cheap enough for a
+    // continuously animating menu preview on mobile hardware.
     const moteCount = 10;
     const motes: { mesh: THREE.Mesh; baseAngle: number; speed: number; height: number; radius: number }[] = [];
     for (let i = 0; i < moteCount; i += 1) {
@@ -116,6 +125,7 @@ export function HeroPreview3D({
 
       hero.position.y = 0.18 + Math.sin(timeSec * 3.0) * 0.018;
       hero.rotation.y = Math.sin(timeSec * 0.55) * 0.11;
+      premiumDetail.update(timeSec, 0.10 + Math.max(0, Math.sin(timeSec * 1.35)) * 0.08, 0.28, false);
 
       if (petMesh) {
         petMesh.position.y = 0.28 + Math.sin(timeSec * 3.6) * 0.035;

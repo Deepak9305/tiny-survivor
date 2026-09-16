@@ -1,0 +1,1216 @@
+/*
+ * Tiny Survivor — studio mobile master pass
+ * Loaded last. This is the authoritative presentation/ergonomics layer for
+ * landscape phones while preserving the larger 1280×720 composition.
+ */
+
+:root {
+  --sm-bg: #03070d;
+  --sm-panel: rgba(7, 16, 27, .94);
+  --sm-panel-2: rgba(10, 25, 40, .94);
+  --sm-line: rgba(120, 207, 241, .20);
+  --sm-line-strong: rgba(126, 222, 255, .38);
+  --sm-cyan: #76e6ff;
+  --sm-cyan-deep: #27b8e8;
+  --sm-gold: #ffd46f;
+  --sm-gold-2: #d9932c;
+  --sm-red: #ff6f78;
+  --sm-green: #67e5a4;
+  --sm-muted: #94aebf;
+  --sm-radius: 12px;
+  --sm-shadow: 0 16px 38px rgba(0, 0, 0, .42);
+  --sm-inset: inset 0 1px rgba(255,255,255,.06), inset 0 -1px rgba(0,0,0,.35);
+}
+
+html,
+body,
+#root {
+  background: var(--sm-bg);
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+button,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+button:active,
+[role='button']:active {
+  filter: brightness(1.06);
+}
+
+.meta-screen,
+.map-screen,
+.stage-clear-landscape-screen,
+.game-screen {
+  background:
+    radial-gradient(circle at 50% -20%, rgba(32, 112, 153, .14), transparent 45%),
+    linear-gradient(180deg, #07111c, #030810 62%, #02060c);
+}
+
+/* Shared premium shell --------------------------------------------------- */
+.dark-fantasy-header,
+.heroes-header,
+.talents-header,
+.missions-header,
+.codex-header {
+  min-height: 54px;
+  background:
+    linear-gradient(180deg, rgba(12, 29, 46, .97), rgba(4, 12, 21, .94));
+  border-bottom: 1px solid rgba(104, 204, 241, .20);
+  box-shadow: 0 10px 28px rgba(0,0,0,.30), inset 0 1px rgba(255,255,255,.055);
+}
+
+.dark-fantasy-main-title,
+.heroes-main-title,
+.talents-main-title,
+.missions-main-title,
+.codex-title {
+  color: #f5fbff;
+  text-shadow: 0 2px 14px rgba(0,0,0,.72), 0 0 16px rgba(75, 203, 255, .10);
+}
+
+.dark-fantasy-back-btn,
+.heroes-back-btn,
+.talents-back-btn,
+.missions-back-btn,
+.codex-back-btn,
+.icon-button {
+  border: 1px solid rgba(113, 209, 244, .22);
+  background: linear-gradient(180deg, rgba(15, 38, 57, .93), rgba(5, 15, 26, .95));
+  box-shadow: 0 8px 18px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.06);
+}
+
+.primary-button {
+  min-height: 46px;
+  border-radius: 11px;
+  font-weight: 900;
+  letter-spacing: .8px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.32), inset 0 1px rgba(255,255,255,.11);
+}
+
+.primary-button--gold {
+  border: 1px solid rgba(255, 226, 142, .62);
+  background: linear-gradient(180deg, #f4cf72, #d89531 53%, #8a4a15);
+  color: #160c03;
+  box-shadow: 0 12px 30px rgba(211, 129, 31, .28), inset 0 1px rgba(255,255,255,.48), inset 0 -2px rgba(77,32,7,.32);
+}
+
+/* HOME ----------------------------------------------------------------- */
+.home-landscape-screen {
+  isolation: isolate;
+  background-position: center 42%;
+  background-size: cover;
+}
+
+.home-screen-backdrop-overlay {
+  background:
+    linear-gradient(90deg, rgba(1,5,10,.12), rgba(1,5,10,.02) 34%, rgba(1,5,10,.42) 67%, rgba(1,4,8,.78)),
+    linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.02) 48%, rgba(0,0,0,.42));
+}
+
+.nav-rail {
+  border: 1px solid rgba(108, 209, 245, .19);
+  background: linear-gradient(180deg, rgba(9, 25, 40, .91), rgba(3, 11, 20, .94));
+  box-shadow: 0 18px 44px rgba(0,0,0,.36), inset 0 1px rgba(255,255,255,.05);
+  backdrop-filter: blur(16px) saturate(1.1);
+}
+
+.nav-rail__btn.is-active,
+.nav-rail__btn[aria-current='page'] {
+  background: linear-gradient(180deg, rgba(38, 129, 169, .36), rgba(8, 37, 57, .44));
+  color: #dffaff;
+  box-shadow: inset 2px 0 #65dcff, inset 0 0 20px rgba(69,197,239,.08);
+}
+
+.home-brand-panel {
+  position: relative;
+}
+
+.home-brand-panel::after {
+  content: '';
+  position: absolute;
+  width: min(26vw, 320px);
+  height: min(26vw, 320px);
+  left: 18%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79,203,246,.10), transparent 66%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.home-brand-panel__content {
+  position: relative;
+  z-index: 1;
+}
+
+.home-brand-panel__subtag {
+  color: rgba(216,239,249,.74);
+  text-shadow: 0 2px 12px rgba(0,0,0,.8);
+}
+
+.home-world-pill {
+  border: 1px solid rgba(111, 210, 245, .24);
+  background: linear-gradient(180deg, rgba(10,32,50,.84), rgba(4,15,25,.82));
+  box-shadow: 0 10px 24px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.055);
+  backdrop-filter: blur(12px);
+}
+
+.home-action-panel {
+  border-left: 1px solid rgba(104, 203, 239, .16);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(46,156,199,.08), transparent 34%),
+    linear-gradient(180deg, rgba(7,18,30,.84), rgba(2,8,15,.96));
+  box-shadow: -18px 0 48px rgba(0,0,0,.22);
+  backdrop-filter: blur(18px) saturate(1.1);
+}
+
+.home-campaign-card {
+  border: 1px solid rgba(126, 211, 242, .23);
+  background:
+    linear-gradient(145deg, rgba(15,37,55,.96), rgba(5,14,24,.97) 58%, rgba(9,20,31,.96));
+  box-shadow: 0 22px 48px rgba(0,0,0,.42), var(--sm-inset);
+}
+
+.home-campaign-card__portrait-box {
+  border: 1px solid rgba(255,214,112,.26);
+  box-shadow: 0 14px 30px rgba(0,0,0,.52), 0 0 22px rgba(79,199,242,.08);
+}
+
+.home-menu-row {
+  border: 1px solid rgba(105,195,230,.18);
+  background: linear-gradient(180deg, rgba(14,35,52,.78), rgba(5,16,27,.85));
+  box-shadow: 0 8px 18px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.04);
+}
+
+.home-menu-row__icon-wrap {
+  border: 1px solid rgba(103,207,244,.20);
+  background: radial-gradient(circle, rgba(51,152,193,.20), rgba(5,18,31,.74));
+}
+
+.battle-now-gold-btn {
+  border: 1px solid rgba(255, 228, 151, .72);
+  background: linear-gradient(180deg, #f6d579, #dc9832 52%, #8d4c15);
+  box-shadow: 0 14px 34px rgba(211,129,28,.30), 0 4px 8px rgba(0,0,0,.42), inset 0 1px rgba(255,248,215,.72), inset 0 -3px rgba(74,31,6,.34);
+}
+
+/* HEROES --------------------------------------------------------------- */
+.heroes-left-stage,
+.heroes-right-details {
+  border-color: rgba(109, 204, 239, .18);
+}
+
+.heroes-left-stage {
+  background:
+    radial-gradient(circle at 50% 72%, rgba(46, 182, 227, .12), transparent 40%),
+    linear-gradient(180deg, rgba(10,27,42,.90), rgba(3,10,18,.97));
+  box-shadow: var(--sm-shadow), var(--sm-inset);
+}
+
+.heroes-header-info,
+.heroes-loadout-section {
+  border: 1px solid rgba(105,195,231,.14);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(10,28,44,.76), rgba(5,16,27,.72));
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+  padding: 10px 12px;
+}
+
+.heroes-stat-box,
+.heroes-slot-card,
+.heroes-roster-card,
+.heroes-equip-option {
+  border: 1px solid rgba(105,196,231,.17);
+  background: linear-gradient(155deg, rgba(15,36,53,.92), rgba(5,15,26,.95));
+  box-shadow: 0 8px 20px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.045);
+}
+
+.heroes-stat-box__val,
+.heroes-name,
+.heroes-slot-card__item-name {
+  color: #f3fbff;
+}
+
+.heroes-roster-card.is-selected {
+  border-color: rgba(104, 222, 255, .55);
+  box-shadow: 0 10px 24px rgba(0,0,0,.28), 0 0 22px rgba(67,198,240,.12), inset 0 1px rgba(255,255,255,.06);
+}
+
+.heroes-active-pill,
+.heroes-select-btn {
+  border: 1px solid rgba(255,214,112,.40);
+  background: linear-gradient(180deg, rgba(213,153,46,.95), rgba(122,71,18,.96));
+  color: #fff7d1;
+  box-shadow: 0 9px 22px rgba(0,0,0,.30), inset 0 1px rgba(255,255,255,.13);
+}
+
+.heroes-equip-modal {
+  border: 1px solid rgba(105, 211, 247, .25);
+  background: linear-gradient(180deg, rgba(11,27,42,.99), rgba(3,10,18,.99));
+  box-shadow: 0 28px 72px rgba(0,0,0,.64), inset 0 1px rgba(255,255,255,.06);
+}
+
+/* TALENTS --------------------------------------------------------------- */
+.talents-forge-panel,
+.talent-card {
+  border: 1px solid rgba(104,195,229,.18);
+  box-shadow: 0 12px 28px rgba(0,0,0,.30), var(--sm-inset);
+}
+
+.talents-forge-panel {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,191,76,.09), transparent 28%),
+    linear-gradient(180deg, rgba(12,30,45,.93), rgba(4,13,22,.96));
+}
+
+.talents-forge-power-score {
+  color: var(--sm-gold);
+  text-shadow: 0 0 22px rgba(255,194,70,.28);
+}
+
+.talent-card {
+  background-position: center;
+  background-size: cover;
+  overflow: hidden;
+}
+
+.talent-card__art-overlay {
+  background: linear-gradient(90deg, rgba(3,9,16,.93), rgba(4,12,21,.80) 64%, rgba(4,12,21,.94));
+}
+
+.talent-price-btn {
+  min-width: 58px;
+  min-height: 42px;
+  border-radius: 9px;
+}
+
+.talent-price-btn.is-affordable {
+  border: 1px solid rgba(255,216,111,.48);
+  background: linear-gradient(180deg, #e9b853, #9b5c1d);
+  color: #1a0e03;
+}
+
+/* MISSIONS -------------------------------------------------------------- */
+.missions-top-banner,
+.mission-card-landscape {
+  border: 1px solid rgba(108,200,234,.18);
+  box-shadow: 0 12px 28px rgba(0,0,0,.30), var(--sm-inset);
+}
+
+.missions-top-banner {
+  background:
+    radial-gradient(circle at 12% 50%, rgba(56,189,248,.12), transparent 35%),
+    linear-gradient(90deg, rgba(9,28,44,.96), rgba(5,15,25,.95));
+}
+
+.mission-card-landscape {
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+}
+
+.mission-card-landscape__art-overlay {
+  background: linear-gradient(90deg, rgba(3,9,16,.95), rgba(4,13,22,.79) 65%, rgba(4,12,20,.92));
+}
+
+.mission-reward-gold-btn {
+  min-width: 68px;
+  min-height: 44px;
+  border-radius: 10px;
+}
+
+.mission-reward-gold-btn.is-ready {
+  border: 1px solid rgba(255,224,135,.56);
+  background: linear-gradient(180deg, #f1c967, #b67222);
+  color: #170d03;
+  box-shadow: 0 8px 20px rgba(204,130,33,.22), inset 0 1px rgba(255,255,255,.35);
+}
+
+/* CODEX ----------------------------------------------------------------- */
+.codex-tri-layout {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(57,168,210,.07), transparent 34%),
+    linear-gradient(180deg, rgba(4,11,19,.95), rgba(2,7,13,.98));
+}
+
+.codex-roster-col,
+.codex-intel-col,
+.codex-stage-container {
+  border-color: rgba(109,202,237,.16);
+  background: linear-gradient(180deg, rgba(10,27,42,.89), rgba(4,13,22,.94));
+  box-shadow: var(--sm-shadow), var(--sm-inset);
+}
+
+.codex-tab-btn {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.codex-tab-btn.is-active {
+  border-color: rgba(105,215,250,.28);
+  background: linear-gradient(180deg, rgba(40,132,169,.34), rgba(8,37,57,.45));
+  color: #dffaff;
+}
+
+.codex-roster-item {
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+.codex-roster-item.is-selected {
+  border-color: rgba(104,216,255,.30);
+  background: linear-gradient(90deg, rgba(35,119,153,.28), rgba(8,29,44,.40));
+  box-shadow: inset 2px 0 #66dcff;
+}
+
+.codex-stage-container {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 78%, rgba(72,194,236,.11), transparent 30%),
+    linear-gradient(180deg, rgba(7,21,34,.62), rgba(3,10,18,.88));
+}
+
+.codex-stepper-btn,
+.codex-mobile-intel-btn,
+.codex-mobile-intel-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.codex-intel-card,
+.codex-counter-box {
+  border-color: rgba(104,195,229,.17);
+  background: linear-gradient(180deg, rgba(12,31,47,.84), rgba(5,15,25,.89));
+  box-shadow: inset 0 1px rgba(255,255,255,.04);
+}
+
+/* SHOP ------------------------------------------------------------------ */
+.shop-landscape-container {
+  min-width: 0;
+  min-height: 0;
+}
+
+.shop-tabs-bar {
+  border: 1px solid rgba(105,200,236,.15);
+  background: linear-gradient(180deg, rgba(10,27,42,.84), rgba(4,13,22,.90));
+  box-shadow: 0 10px 24px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.04);
+}
+
+.shop-tab-btn {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+.shop-tab-btn.is-active {
+  border-color: rgba(105,216,251,.28);
+  background: linear-gradient(180deg, rgba(37,127,164,.34), rgba(8,36,56,.46));
+  color: #e6fbff;
+}
+
+.shop-card,
+.free-chest-card {
+  border: 1px solid rgba(105,196,231,.17);
+  background: linear-gradient(155deg, rgba(15,36,53,.94), rgba(5,15,26,.96));
+  box-shadow: 0 12px 28px rgba(0,0,0,.30), var(--sm-inset);
+}
+
+.shop-card__art {
+  border: 1px solid rgba(110,209,244,.17);
+  background: radial-gradient(circle, rgba(52,157,197,.18), rgba(4,15,25,.52));
+}
+
+.shop-buy-btn,
+.shop-owned-tag {
+  min-height: 42px;
+  border-radius: 9px;
+}
+
+.shop-buy-btn:not(:disabled) {
+  border: 1px solid rgba(255,217,113,.40);
+  background: linear-gradient(180deg, #e8b956, #985a1d);
+  color: #160c03;
+}
+
+/* WORLD MAP ------------------------------------------------------------- */
+.map-screen {
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.map-world-view {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-world-view__backdrop {
+  filter: saturate(.94) contrast(1.06) brightness(.72);
+}
+
+.map-world-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 42%, transparent 16%, rgba(0,0,0,.16) 67%, rgba(0,0,0,.48)),
+    linear-gradient(180deg, rgba(3,8,14,.15), rgba(3,8,14,.03) 50%, rgba(3,8,14,.44));
+}
+
+.map-stage-trail,
+.map-progress-pill,
+.map-world-carousel,
+.map-arrow {
+  z-index: 2;
+}
+
+.map-node__circle {
+  border: 1px solid rgba(150,221,246,.30);
+  background: linear-gradient(180deg, rgba(17,46,68,.96), rgba(5,17,29,.97));
+  box-shadow: 0 8px 20px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.06);
+}
+
+.map-node.is-current .map-node__circle {
+  border-color: rgba(255,219,116,.72);
+  box-shadow: 0 0 0 3px rgba(255,203,70,.12), 0 10px 26px rgba(0,0,0,.38), 0 0 24px rgba(255,190,53,.18);
+}
+
+.map-world-card {
+  border: 1px solid rgba(108,199,234,.16);
+  background: linear-gradient(180deg, rgba(10,29,45,.88), rgba(4,13,22,.91));
+  box-shadow: 0 8px 18px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.04);
+}
+
+.map-world-card.is-selected {
+  border-color: rgba(255,214,103,.48);
+  box-shadow: 0 9px 24px rgba(0,0,0,.28), 0 0 20px rgba(255,190,56,.09);
+}
+
+/* STAGE DETAIL ---------------------------------------------------------- */
+.stage-detail-landscape-grid {
+  min-width: 0;
+  min-height: 0;
+}
+
+.stage-landscape-art,
+.stage-landscape-intel {
+  border: 1px solid rgba(105,197,232,.17);
+  box-shadow: var(--sm-shadow), var(--sm-inset);
+}
+
+.stage-landscape-art {
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+
+.stage-landscape-art__overlay {
+  background:
+    linear-gradient(90deg, rgba(2,7,13,.20), rgba(2,7,13,.02) 54%, rgba(2,7,13,.25)),
+    linear-gradient(180deg, rgba(2,7,13,.15), rgba(2,7,13,.06) 48%, rgba(2,7,13,.68));
+}
+
+.stage-landscape-intel {
+  background: linear-gradient(180deg, rgba(10,28,44,.94), rgba(4,13,22,.97));
+}
+
+.stage-metric-box,
+.stage-enemy-chip,
+.stage-reward-item {
+  border: 1px solid rgba(105,198,232,.15);
+  background: linear-gradient(180deg, rgba(14,35,52,.83), rgba(5,16,27,.87));
+  box-shadow: inset 0 1px rgba(255,255,255,.04);
+}
+
+.stage-start-btn {
+  box-shadow: 0 12px 30px rgba(210,128,28,.28), inset 0 1px rgba(255,255,255,.38);
+}
+
+/* SURVIVAL -------------------------------------------------------------- */
+.survival-records-panel,
+.survival-loadout-panel,
+.survival-stat-card,
+.survival-hero-card,
+.survival-desc-box,
+.survival-eq-chip {
+  border-color: rgba(108,199,233,.17);
+}
+
+.survival-records-panel,
+.survival-loadout-panel {
+  background: linear-gradient(180deg, rgba(10,27,42,.93), rgba(4,13,22,.96));
+  box-shadow: var(--sm-shadow), var(--sm-inset);
+}
+
+.survival-stat-card,
+.survival-hero-card,
+.survival-desc-box,
+.survival-eq-chip {
+  background: linear-gradient(155deg, rgba(15,36,53,.88), rgba(5,15,26,.91));
+  box-shadow: inset 0 1px rgba(255,255,255,.04);
+}
+
+.survival-actions .primary-button--danger {
+  border: 1px solid rgba(255,125,114,.46);
+  background: linear-gradient(180deg, #c8453f, #7e211f);
+  box-shadow: 0 12px 30px rgba(173,43,38,.24), inset 0 1px rgba(255,255,255,.12);
+}
+
+/* SETTINGS -------------------------------------------------------------- */
+.settings-landscape-grid {
+  min-width: 0;
+  min-height: 0;
+}
+
+.settings-section {
+  border: 1px solid rgba(105,197,232,.17);
+  background: linear-gradient(180deg, rgba(10,28,44,.93), rgba(4,13,22,.96));
+  box-shadow: var(--sm-shadow), var(--sm-inset);
+}
+
+.setting-row,
+.setting-slider-row,
+.settings-links button {
+  border-bottom-color: rgba(111,193,223,.10);
+}
+
+.toggle {
+  min-width: 48px;
+  min-height: 28px;
+  border: 1px solid rgba(111,192,222,.20);
+  background: rgba(5,15,25,.82);
+}
+
+.toggle.is-on {
+  border-color: rgba(91,220,255,.42);
+  background: linear-gradient(90deg, #177aa3, #2eb7dd);
+  box-shadow: 0 0 14px rgba(53,197,235,.16);
+}
+
+.setting-slider {
+  accent-color: #51d7fb;
+}
+
+.reset-modal__card {
+  border: 1px solid rgba(255,104,116,.28);
+  background: linear-gradient(180deg, rgba(29,17,23,.99), rgba(9,9,14,.99));
+  box-shadow: 0 28px 70px rgba(0,0,0,.64), inset 0 1px rgba(255,255,255,.05);
+}
+
+/* SPLASH ---------------------------------------------------------------- */
+.splash-screen {
+  background-position: center 42%;
+  background-size: cover;
+}
+
+.splash-screen__shade {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(24,123,166,.08), transparent 30%),
+    linear-gradient(180deg, rgba(2,7,13,.15), rgba(2,7,13,.44) 60%, rgba(2,7,13,.82));
+}
+
+.splash-screen__content {
+  filter: drop-shadow(0 20px 38px rgba(0,0,0,.52));
+}
+
+.splash-screen__loading > div {
+  border-color: rgba(103,221,255,.46);
+  background: rgba(4,14,24,.80);
+  box-shadow: 0 0 22px rgba(62,211,255,.18), inset 0 1px rgba(255,255,255,.04);
+}
+
+/* GAME HUD -------------------------------------------------------------- */
+.game-topbar,
+.boss-hud,
+.game-flow-hud {
+  backdrop-filter: blur(10px) saturate(1.08);
+}
+
+.game-topbar {
+  border: 1px solid rgba(104,196,230,.14);
+  background: linear-gradient(180deg, rgba(8,24,38,.86), rgba(3,12,21,.75));
+  box-shadow: 0 10px 28px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.045);
+}
+
+.game-health__track,
+.game-progress__track,
+.boss-hud__track {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.54);
+}
+
+.game-pause,
+.primary-fire-btn,
+.ability-btn {
+  border-color: rgba(111,206,241,.25);
+}
+
+.primary-fire-btn {
+  box-shadow: 0 8px 26px rgba(0,0,0,.48), inset 0 0 0 4px rgba(3,12,22,.72), inset 0 0 22px rgba(56,189,248,.14), 0 0 0 3px rgba(79,183,225,.11);
+}
+
+.ability-btn {
+  box-shadow: 0 8px 20px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.06);
+}
+
+/* LEVEL UP -------------------------------------------------------------- */
+.level-up-overlay__backdrop {
+  background:
+    radial-gradient(circle at 50% 43%, rgba(44,160,205,.18), transparent 34%),
+    radial-gradient(circle at 50% 72%, rgba(255,188,60,.08), transparent 32%),
+    rgba(1,5,10,.84);
+  backdrop-filter: blur(9px) saturate(.92);
+}
+
+.power-card {
+  border: 1px solid rgba(111,201,235,.20);
+  background: linear-gradient(155deg, rgba(18,41,60,.97), rgba(5,15,25,.98) 58%, rgba(10,22,34,.98));
+  box-shadow: 0 20px 44px rgba(0,0,0,.44), inset 0 1px rgba(255,255,255,.065), inset 0 -1px rgba(0,0,0,.44);
+}
+
+.power-card__select-btn {
+  min-height: 42px;
+  border-radius: 9px;
+}
+
+/* PAUSE ----------------------------------------------------------------- */
+.pause-overlay {
+  backdrop-filter: blur(8px) saturate(.86);
+  background: rgba(1,5,10,.72);
+}
+
+.pause-modal-landscape {
+  border: 1px solid rgba(108,201,236,.20);
+  background: linear-gradient(180deg, rgba(9,24,38,.985), rgba(3,10,18,.99));
+  box-shadow: 0 30px 80px rgba(0,0,0,.62), var(--sm-inset);
+}
+
+.pause-col,
+.pause-hero-card,
+.pause-item-card,
+.pause-stat-chip,
+.pause-tally-box {
+  border-color: rgba(105,195,229,.15);
+  background: linear-gradient(155deg, rgba(14,34,51,.84), rgba(5,15,25,.89));
+}
+
+.pause-btn-resume {
+  border: 1px solid rgba(255,220,126,.52);
+  background: linear-gradient(180deg, #e6b956, #9a5d1c);
+  color: #160c03;
+}
+
+/* RESULTS --------------------------------------------------------------- */
+.result-overlay-landscape,
+.stage-clear-landscape-screen {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(39,137,177,.12), transparent 36%),
+    rgba(1,5,10,.91);
+  backdrop-filter: blur(8px) saturate(.86);
+}
+
+.run-over-container-landscape,
+.stage-clear-landscape-container {
+  border: 1px solid rgba(109,199,233,.20);
+  background: linear-gradient(180deg, rgba(9,24,38,.985), rgba(3,10,18,.99));
+  box-shadow: 0 30px 80px rgba(0,0,0,.62), var(--sm-inset);
+}
+
+.run-over-stat-card,
+.stage-clear-stat-box,
+.stage-clear-ability-reward,
+.stage-clear-survival-reward,
+.stage-clear-equipment-reward {
+  border-color: rgba(106,194,228,.16);
+  background: linear-gradient(155deg, rgba(14,34,51,.85), rgba(5,15,25,.90));
+  box-shadow: inset 0 1px rgba(255,255,255,.04);
+}
+
+.run-over-btn,
+.stage-clear-btn {
+  min-height: 46px;
+  border-radius: 10px;
+}
+
+.run-over-btn--revive,
+.stage-clear-btn--primary {
+  border: 1px solid rgba(255,220,126,.52);
+  background: linear-gradient(180deg, #e8bc59, #995c1c);
+  color: #160c03;
+}
+
+/* ---------------------------------------------------------------------- */
+/* LANDSCAPE PHONES: 520px high and below                                 */
+/* ---------------------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --sm-phone-header: 44px;
+    --sm-phone-gap: 7px;
+    --sm-phone-pad: 8px;
+    --sm-touch: 44px;
+  }
+
+  .meta-screen,
+  .map-screen,
+  .stage-clear-landscape-screen {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .dark-fantasy-header,
+  .heroes-header,
+  .talents-header,
+  .missions-header,
+  .codex-header {
+    height: var(--sm-phone-header);
+    min-height: var(--sm-phone-header);
+    flex: 0 0 var(--sm-phone-header);
+    padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+  }
+
+  .dark-fantasy-main-title,
+  .heroes-main-title,
+  .talents-main-title,
+  .missions-main-title,
+  .codex-title {
+    font-size: 17px;
+    letter-spacing: 1.35px;
+  }
+
+  .dark-fantasy-back-btn,
+  .heroes-back-btn,
+  .talents-back-btn,
+  .missions-back-btn,
+  .codex-back-btn,
+  .icon-button {
+    width: var(--sm-touch);
+    height: var(--sm-touch);
+    min-width: var(--sm-touch);
+    min-height: var(--sm-touch);
+  }
+
+  /* Home */
+  .nav-rail {
+    width: 50px;
+    min-width: 50px;
+    height: calc(100dvh - 8px);
+    margin: 4px 0 4px max(4px, env(safe-area-inset-left));
+    border-radius: 11px;
+  }
+
+  .nav-rail__btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .nav-rail__label { display: none; }
+
+  .home-landscape-body {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .home-brand-panel {
+    flex: 1 1 40%;
+    min-width: 0;
+    padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom)) 9px;
+  }
+
+  .home-brand-panel .game-logo__tiny { font-size: clamp(24px, 4.1vw, 34px); }
+  .home-brand-panel .game-logo__survivor { font-size: clamp(29px, 4.8vw, 39px); }
+  .home-brand-panel__subtag { font-size: 8px; letter-spacing: .8px; max-width: 280px; }
+
+  .home-world-pill { min-height: 32px; padding: 5px 8px; }
+  .home-world-pill__text { font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .home-action-panel {
+    flex: 1 1 60%;
+    min-width: 0;
+    max-width: none;
+    padding: max(5px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) 7px;
+    gap: 4px;
+  }
+
+  .home-action-panel__header { min-height: 32px; }
+  .currency-pill { min-height: 32px; padding: 4px 8px; font-size: 10px; }
+  .currency-bar, .currency-bar__currencies, .currency-bar__actions { gap: 5px; }
+
+  .home-campaign-card {
+    min-height: 0;
+    padding: 7px 9px;
+    border-radius: 11px;
+  }
+
+  .home-campaign-card__header { gap: 7px; }
+  .home-campaign-card__boss-name { font-size: clamp(17px, 2.6vw, 22px); margin: 1px 0; }
+  .home-campaign-card__kicker,
+  .home-campaign-card__stage-tag { font-size: 7px; letter-spacing: .7px; }
+  .home-campaign-card__lore { font-size: 8px; line-height: 1.15; -webkit-line-clamp: 1; }
+  .home-campaign-card__portrait-box { width: 54px; height: 54px; flex-basis: 54px; }
+
+  .home-menu-stack { gap: 3px; margin-top: 4px; }
+  .home-menu-row { min-height: 40px; padding: 3px 7px; border-radius: 8px; }
+  .home-menu-row__icon-wrap { width: 29px; height: 29px; flex-basis: 29px; }
+  .home-menu-row__title { font-size: 10px; }
+  .home-menu-row__sub { font-size: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .battle-now-gold-btn { min-height: 46px; height: 46px; border-radius: 10px; }
+  .battle-now-gold-btn__text { font-size: 16px; }
+
+  /* Heroes */
+  .heroes-landscape-container {
+    flex: 1;
+    min-height: 0;
+    gap: 7px;
+    padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+
+  .heroes-left-stage { flex: 0 0 38%; min-height: 0; border-radius: 11px; }
+  .heroes-right-details { min-width: 0; min-height: 0; gap: 4px; overflow-y: auto; padding-right: 2px; }
+  .heroes-header-info { padding: 6px 8px; border-radius: 9px; }
+  .heroes-name { font-size: 19px; margin: 1px 0; }
+  .heroes-role-subtitle, .heroes-gender-tag { font-size: 7px; }
+  .heroes-lore, .heroes-trait-desc { font-size: 8px; line-height: 1.1; -webkit-line-clamp: 1; }
+  .heroes-stats-row { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4px; }
+  .heroes-stat-box { min-height: 34px; padding: 3px 5px; border-radius: 8px; }
+  .heroes-stat-box__label { font-size: 7px; }
+  .heroes-stat-box__val { font-size: 11px; }
+  .heroes-loadout-section { padding: 5px 7px; border-radius: 9px; }
+  .heroes-slots-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px; }
+  .heroes-slot-card { min-height: 40px; padding: 3px 5px; border-radius: 8px; }
+  .heroes-slot-card__icon-box { width: 27px; height: 27px; flex-basis: 27px; }
+  .heroes-slot-card__slot-name { font-size: 6px; }
+  .heroes-slot-card__item-name { font-size: 9px; }
+  .heroes-slot-card__effect { font-size: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heroes-roster-row { flex: 0 0 56px; min-height: 56px; gap: 4px; overflow-x: auto; }
+  .heroes-roster-card { min-width: 72px; min-height: 54px; padding: 2px 4px; }
+  .heroes-roster-card__avatar { width: 26px; height: 26px; }
+  .heroes-roster-card__name { font-size: 7px; }
+  .heroes-roster-card__tag { font-size: 6px; }
+  .heroes-stage-footer { min-height: 36px; }
+  .heroes-active-pill, .heroes-select-btn, .heroes-unowned-tag { min-height: 34px; }
+
+  /* Talents */
+  .talents-body-container {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    gap: 7px;
+    padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+  .talents-forge-panel { flex: 0 0 178px; min-width: 160px; border-radius: 10px; }
+  .talents-forge-art-box { max-height: 72px; }
+  .talents-forge-kicker { font-size: 9px; }
+  .talents-forge-power-score { font-size: 25px; }
+  .talents-forge-desc { display: none; }
+  .talents-forge-invested-row { padding: 5px 6px; }
+  .talents-grid-section { grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: repeat(2,minmax(0,1fr)); gap: 5px; min-width: 0; min-height: 0; }
+  .talent-card { min-height: 0; border-radius: 9px; }
+  .talent-card__content { padding: 6px; gap: 5px; }
+  .talent-card__icon-box { width: 34px; height: 34px; flex-basis: 34px; }
+  .talent-card__title { font-size: 10px; }
+  .talent-card__rank-label, .talent-card__desc { font-size: 7px; }
+  .talent-card__dots-row { gap: 2px; }
+  .talent-price-btn { min-width: 50px; min-height: 40px; padding-inline: 6px; }
+
+  /* Missions */
+  .missions-body-container {
+    flex: 1;
+    min-height: 0;
+    padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+    gap: 6px;
+  }
+  .missions-top-banner { min-height: 58px; padding: 6px 9px; border-radius: 10px; }
+  .missions-top-banner__icon-circle { width: 36px; height: 36px; }
+  .missions-top-banner__headline { font-size: 15px; margin: 1px 0; }
+  .missions-top-banner__sub, .missions-top-banner__quote { font-size: 7px; }
+  .missions-active-section { min-height: 0; flex: 1; }
+  .missions-section-bar { min-height: 24px; }
+  .missions-cards-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; min-height: 0; }
+  .mission-card-landscape { min-height: 0; border-radius: 10px; }
+  .mission-card-landscape__content { height: 100%; padding: 6px; gap: 5px; align-items: center; }
+  .mission-card-landscape__icon-circle { width: 34px; height: 34px; flex: 0 0 34px; }
+  .mission-card-landscape__title-row { gap: 4px; }
+  .mission-card-landscape__title { font-size: 9px; }
+  .mission-card-landscape__numbers { font-size: 7px; }
+  .mission-card-landscape__subtitle { font-size: 7px; -webkit-line-clamp: 1; }
+  .mission-reward-gold-btn { min-width: 54px; min-height: 40px; }
+
+  /* Codex */
+  .codex-tri-layout {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    grid-template-columns: clamp(150px, 19vw, 175px) minmax(210px, 1fr) clamp(210px, 26vw, 242px);
+    gap: 7px;
+    padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+  .codex-roster-col, .codex-stage-col, .codex-intel-col { min-width: 0; min-height: 0; }
+  .codex-tabs-row { overflow-x: auto; flex-wrap: nowrap; gap: 3px; }
+  .codex-tab-btn { min-height: 36px; flex: 0 0 auto; padding-inline: 8px; font-size: 8px; }
+  .codex-roster-list { min-height: 0; overflow-y: auto; }
+  .codex-roster-item { min-height: 44px; padding: 4px; }
+  .codex-roster-thumb { width: 34px; height: 34px; flex-basis: 34px; }
+  .codex-roster-name { font-size: 9px; }
+  .codex-roster-sub { font-size: 7px; }
+  .codex-stage-container { min-height: 0; flex: 1; border-radius: 10px; }
+  .codex-stage-pagination { min-height: 34px; }
+  .codex-stage-name-caps { font-size: 9px; }
+  .codex-intel-col { overflow-y: auto; border-radius: 10px; }
+  .codex-intel-card { padding: 7px; }
+  .codex-intel-portrait-box { display: none; }
+  .codex-intel-name { font-size: 17px; }
+  .codex-section-desc, .codex-counter-desc { font-size: 8px; line-height: 1.2; }
+
+  /* Shop */
+  .shop-landscape-container { flex: 1; min-height: 0; gap: 6px; padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)); }
+  .shop-tabs-bar { flex: 0 0 44px; min-height: 44px; overflow-x: auto; flex-wrap: nowrap; gap: 4px; padding: 3px; border-radius: 9px; }
+  .shop-tab-btn { min-width: max-content; min-height: 38px; padding: 0 9px; font-size: 8px; }
+  .shop-tab-content { flex: 1; min-height: 0; overflow-y: auto; }
+  .shop-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+  .shop-card { min-width: 0; min-height: 0; border-radius: 10px; padding: 6px; }
+  .shop-card__art { min-height: 48px; }
+  .shop-card__title-row strong { font-size: 10px; }
+  .shop-card__role, .shop-card__trait, .shop-card__desc, .shop-card__effect, .shop-card__drop-source { font-size: 7px; line-height: 1.15; }
+  .shop-card__trait, .shop-card__desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .shop-buy-btn, .shop-owned-tag { min-height: 40px; font-size: 8px; }
+  .free-chest-card { min-height: 120px; padding: 10px; }
+
+  /* Map */
+  .map-world-view { min-height: 0; }
+  .map-stage-trail { top: 46%; width: min(74vw, 680px); }
+  .map-node__circle { width: 42px; height: 42px; }
+  .map-node__label { font-size: 7px; }
+  .map-arrow { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  .map-progress-pill { top: 8px; right: max(8px, env(safe-area-inset-right)); min-height: 30px; padding: 4px 8px; font-size: 8px; }
+  .map-world-carousel { height: 58px; gap: 5px; padding: 5px max(8px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .map-world-card { min-height: 46px; border-radius: 9px; }
+  .map-world-card__name { font-size: 8px; }
+
+  /* Stage detail */
+  .stage-detail-landscape-grid { flex: 1; min-height: 0; grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr); gap: 7px; padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)); }
+  .stage-landscape-art, .stage-landscape-intel { min-width: 0; min-height: 0; border-radius: 10px; }
+  .stage-landscape-art { padding: 7px; }
+  .stage-landscape-boss-feature { gap: 7px; }
+  .stage-landscape-boss-img-box { width: 86px; min-width: 86px; }
+  .stage-landscape-boss-details h2 { font-size: 18px; margin: 2px 0; }
+  .stage-landscape-boss-details p { font-size: 8px; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .stage-landscape-intel { overflow-y: auto; padding: 7px; gap: 6px; }
+  .stage-landscape-metrics { gap: 4px; }
+  .stage-metric-box { min-height: 43px; padding: 4px; }
+  .stage-metric-box small { font-size: 6px; }
+  .stage-metric-box strong { font-size: 10px; }
+  .stage-enemies-row { overflow-x: auto; flex-wrap: nowrap; gap: 4px; }
+  .stage-enemy-chip { flex: 0 0 auto; min-height: 40px; padding: 3px 5px; }
+  .stage-enemy-chip__thumb { width: 28px; height: 28px; }
+  .stage-reward-item { min-height: 39px; padding: 4px 6px; }
+  .stage-landscape-cta { position: sticky; bottom: 0; padding-top: 3px; background: linear-gradient(180deg, transparent, rgba(4,13,22,.96) 28%); }
+  .stage-start-btn { min-height: 46px; }
+
+  /* Survival */
+  .survival-landscape-container { flex: 1; min-height: 0; gap: 7px; padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)); }
+  .survival-records-panel { flex: 0 0 40%; min-width: 0; padding: 8px; border-radius: 10px; }
+  .survival-loadout-panel { flex: 1; min-width: 0; min-height: 0; padding: 8px; border-radius: 10px; }
+  .survival-badge { min-height: 30px; font-size: 8px; }
+  .survival-records-grid { gap: 5px; }
+  .survival-stat-card { min-height: 58px; padding: 6px; }
+  .survival-stat-value { font-size: 21px; }
+  .survival-desc-box { padding: 7px; }
+  .survival-lead { font-size: 10px; margin: 0 0 2px; }
+  .survival-sub { font-size: 8px; line-height: 1.15; margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .survival-hero-card { padding: 7px; }
+  .survival-hero-name { font-size: 17px; }
+  .survival-equipment-strip { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px; }
+  .survival-eq-chip { min-height: 36px; padding: 4px 6px; font-size: 8px; }
+  .survival-actions .primary-button { min-height: 46px; }
+
+  /* Settings */
+  .settings-landscape-grid { flex: 1; min-height: 0; gap: 7px; padding: 0 max(7px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)); }
+  .settings-landscape-col { min-width: 0; min-height: 0; overflow-y: auto; gap: 6px; }
+  .settings-section { padding: 6px 8px; border-radius: 10px; }
+  .settings-section__title { min-height: 28px; font-size: 8px; }
+  .setting-row { min-height: 42px; font-size: 9px; }
+  .setting-slider-row { padding: 5px 0 7px; }
+  .setting-slider-row__header { font-size: 8px; }
+  .settings-links button { min-height: 42px; font-size: 8px; }
+  .settings-danger-zone { gap: 4px; }
+  .version-label { font-size: 7px; }
+  .reset-modal__card { max-height: 86dvh; overflow-y: auto; }
+
+  /* Gameplay */
+  .game-topbar { min-height: 44px; height: 44px; padding: 3px max(7px, env(safe-area-inset-right)) 3px max(7px, env(safe-area-inset-left)); }
+  .game-health__value { font-size: 8px; }
+  .game-stage-title { font-size: 7px; }
+  .game-stage-time { font-size: 15px; }
+  .game-kills__label { font-size: 6px; }
+  .game-kills__num { font-size: 11px; }
+  .game-pause { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .boss-hud { top: 47px; min-height: 28px; }
+
+  /* Level-up */
+  .level-up-modal { width: min(96vw, 900px); max-height: 94dvh; padding: 6px; }
+  .level-up-modal__header { min-height: 40px; margin-bottom: 5px; }
+  .level-up-crest { display: none; }
+  .level-up-eyebrow { display: none; }
+  .level-up-heading { font-size: 18px; margin: 0; }
+  .level-up-instruction { font-size: 8px; margin: 1px 0 0; }
+  .level-up-choices-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+  .power-card { min-height: 0; max-height: calc(94dvh - 54px); padding: 6px; border-radius: 10px; }
+  .power-card__topbar { min-height: 20px; }
+  .power-rarity-pill, .power-kind-pill { font-size: 6px; }
+  .power-card__medallion { width: 48px; height: 48px; margin: 2px auto; }
+  .power-card__title { font-size: 13px; }
+  .power-card__description { display: none; }
+  .power-card__effect-box { padding: 5px; margin-top: 3px; }
+  .effect-box__label { font-size: 6px; }
+  .effect-box__value { font-size: 9px; }
+  .power-card__select-btn { min-height: 40px; font-size: 8px; }
+  .power-card__key-hint { display: none; }
+
+  /* Pause */
+  .pause-modal-landscape { width: min(96vw, 980px); height: min(92dvh, 430px); max-height: 92dvh; border-radius: 12px; }
+  .pause-header { min-height: 44px; padding: 5px 7px; }
+  .pause-header__badge { display: none; }
+  .pause-header__title { font-size: 15px; }
+  .pause-stage-name { font-size: 9px; }
+  .pause-close-btn { width: 40px; height: 40px; }
+  .pause-compact-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; padding: 4px 7px; }
+  .pause-compact-tabs button { min-height: 38px; }
+  .pause-body-grid { flex: 1; min-height: 0; display: block; padding: 0 7px 7px; }
+  .pause-col { display: none; height: 100%; min-height: 0; overflow-y: auto; padding: 7px; border-radius: 9px; }
+  .pause-col.is-compact-active { display: block; }
+  .pause-items-list { gap: 4px; }
+  .pause-item-card { min-height: 40px; padding: 4px 6px; }
+  .pause-stats-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+  .pause-stat-chip { min-height: 42px; }
+  .pause-actions-group { position: sticky; bottom: 0; padding-top: 5px; background: linear-gradient(180deg, transparent, rgba(5,15,25,.98) 28%); }
+  .pause-btn-resume, .pause-btn-bestiary, .pause-btn-quit { min-height: 42px; }
+
+  /* Results */
+  .run-over-container-landscape,
+  .stage-clear-landscape-container { width: min(96vw, 980px); height: min(92dvh, 430px); max-height: 92dvh; border-radius: 12px; }
+  .run-over-left-diorama { flex: 0 0 38%; padding: 8px; }
+  .run-over-right-stats { flex: 1; padding: 8px; gap: 6px; }
+  .run-over-skull-glow svg { width: 38px; height: 38px; }
+  .run-over-title { font-size: 28px; }
+  .run-over-tagline { font-size: 8px; }
+  .run-over-stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+  .run-over-stat-card { min-height: 55px; padding: 6px; }
+  .run-over-stat-label { font-size: 7px; }
+  .run-over-stat-val { font-size: 18px; }
+  .run-over-actions-landscape { gap: 5px; }
+  .run-over-btn { min-height: 42px; }
+
+  .stage-clear-left-victory { flex: 0 0 42%; padding: 8px; overflow-y: auto; }
+  .stage-clear-right-stats { flex: 1; padding: 8px; gap: 6px; }
+  .stage-clear-stars-row svg { width: 26px; height: 26px; }
+  .stage-clear-stars-row .stage-clear-star--center { width: 34px; height: 34px; }
+  .stage-clear-title { font-size: 25px; }
+  .stage-clear-sub { font-size: 8px; }
+  .stage-clear-unlocks-container { max-height: 150px; overflow-y: auto; gap: 4px; }
+  .stage-clear-stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+  .stage-clear-stat-box { min-height: 53px; padding: 6px; }
+  .stage-clear-actions-landscape { gap: 5px; }
+  .stage-clear-btn { min-height: 42px; }
+}
+
+/* 390px and shorter: aggressively reclaim space, never shrink touch targets */
+@media (orientation: landscape) and (max-height: 390px) {
+  .home-brand-panel__subtag,
+  .home-campaign-card__lore,
+  .missions-top-banner__quote,
+  .missions-section-sub,
+  .stage-boss-inspect-link,
+  .survival-sub,
+  .heroes-lore {
+    display: none;
+  }
+
+  .home-campaign-card__portrait-box { width: 48px; height: 48px; flex-basis: 48px; }
+  .home-menu-row { min-height: 38px; }
+  .battle-now-gold-btn { height: 44px; min-height: 44px; }
+
+  .talents-forge-art-box { display: none; }
+  .talents-forge-panel { flex-basis: 150px; min-width: 145px; }
+  .talents-forge-panel__inner { justify-content: center; }
+
+  .missions-top-banner { min-height: 50px; }
+  .missions-top-banner__icon-circle { width: 32px; height: 32px; }
+
+  .shop-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .shop-card__art { min-height: 42px; }
+
+  .stage-landscape-boss-img-box { width: 74px; min-width: 74px; }
+  .stage-landscape-boss-details p { -webkit-line-clamp: 1; }
+
+  .survival-stat-card { min-height: 50px; }
+  .survival-stat-value { font-size: 18px; }
+  .survival-desc-box { padding: 5px; }
+
+  .power-card__medallion { width: 42px; height: 42px; }
+  .power-card__progress { min-height: 24px; }
+
+  .pause-modal-landscape,
+  .run-over-container-landscape,
+  .stage-clear-landscape-container { height: 94dvh; max-height: 94dvh; }
+}
+
+/* Narrow landscape fallback (older/smaller phones) */
+@media (orientation: landscape) and (max-width: 760px) and (max-height: 520px) {
+  .home-brand-panel { flex-basis: 36%; }
+  .home-action-panel { flex-basis: 64%; }
+  .home-brand-panel__subtag { display: none; }
+
+  .codex-tri-layout {
+    grid-template-columns: 155px minmax(0, 1fr);
+  }
+  .codex-intel-col {
+    position: absolute;
+    z-index: 80;
+    top: var(--sm-phone-header);
+    right: 0;
+    bottom: 0;
+    width: min(54vw, 290px);
+    transform: translateX(105%);
+    transition: transform .18s ease;
+    box-shadow: -20px 0 45px rgba(0,0,0,.48);
+  }
+  .codex-intel-col.is-mobile-open { transform: translateX(0); }
+  .codex-mobile-intel-btn,
+  .codex-mobile-intel-close { display: inline-flex; }
+  .codex-mobile-intel-backdrop.is-open { display: block; }
+
+  .missions-cards-list { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .mission-card-landscape__icon-circle { display: none; }
+
+  .shop-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+
+  .heroes-left-stage { flex-basis: 36%; }
+  .heroes-roster-card { min-width: 68px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-menu-row,
+  .talent-card,
+  .shop-card,
+  .heroes-roster-card,
+  .map-node,
+  .power-card,
+  .run-over-btn,
+  .stage-clear-btn,
+  .primary-button {
+    transition: none !important;
+  }
+}

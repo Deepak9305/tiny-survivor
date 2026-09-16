@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Check, Lock, Moon, Skull, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Lock, MapPinned, Skull, Star } from 'lucide-react';
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -17,30 +17,14 @@ function getWorldBg(worldId: number): string {
 function getWorldTrail(worldId: number) {
   switch (worldId) {
     case 1:
-      return {
-        path: 'M 25 72 Q 85 36 145 74 T 265 52 L 315 54',
-        stroke: 'rgba(148, 163, 184, 0.75)',
-        dash: '6,6',
-      };
+      return { path: 'M 25 72 Q 85 36 145 74 T 265 52 L 315 54', stroke: 'rgba(176, 200, 216, 0.88)', dash: '5,7' };
     case 2:
-      return {
-        path: 'M 25 80 C 75 35 110 95 170 55 S 255 85 315 50',
-        stroke: 'rgba(52, 211, 153, 0.8)',
-        dash: '4,8',
-      };
+      return { path: 'M 25 80 C 75 35 110 95 170 55 S 255 85 315 50', stroke: 'rgba(74, 222, 128, 0.92)', dash: '4,8' };
     case 3:
-      return {
-        path: 'M 25 65 L 85 45 L 155 75 L 235 48 L 315 62',
-        stroke: 'rgba(56, 189, 248, 0.85)',
-        dash: '8,4',
-      };
+      return { path: 'M 25 65 L 85 45 L 155 75 L 235 48 L 315 62', stroke: 'rgba(103, 232, 249, 0.92)', dash: '7,5' };
     case 4:
     default:
-      return {
-        path: 'M 25 85 Q 95 65 140 45 T 255 60 L 315 38',
-        stroke: 'rgba(249, 115, 22, 0.85)',
-        dash: '6,4',
-      };
+      return { path: 'M 25 85 Q 95 65 140 45 T 255 60 L 315 38', stroke: 'rgba(251, 146, 60, 0.94)', dash: '6,5' };
   }
 }
 
@@ -58,9 +42,9 @@ export function WorldMapScreen({ save, onBack, onSelect }: WorldMapScreenProps) 
   return (
     <main className="map-screen">
       <ScreenHeader
-        title={`World ${world.id} ${world.name.toUpperCase()}`}
+        title="WORLD MAP"
         onBack={onBack}
-        right={<span className="map-header-badge"><Moon size={16} /></span>}
+        right={<span className="map-header-badge"><MapPinned size={15} /><strong>{completed}</strong>/5</span>}
       />
 
       <div
@@ -68,38 +52,29 @@ export function WorldMapScreen({ save, onBack, onSelect }: WorldMapScreenProps) 
         style={{ '--world-accent': world.color } as CSSProperties}
       >
         <div className="map-world-view__backdrop" style={{ backgroundImage: `url(${worldBg})` }} />
+        <div className="map-world-view__cinematic-shade" />
 
-        {/* Left / Right World Switchers */}
-        <button
-          type="button"
-          className="map-arrow map-arrow--left"
-          onClick={() => shiftWorld(-1)}
-          disabled={world.id === 1}
-          aria-label="Previous world"
-        >
+        <section className="map-world-intro" aria-label={`World ${world.id} ${world.name}`}>
+          <span className="map-world-intro__kicker">WORLD {String(world.id).padStart(2, '0')}</span>
+          <h2>{world.name}</h2>
+          <p>{world.subtitle}</p>
+          <div className="map-world-intro__progress">
+            <span><Star size={12} fill="currentColor" /> {completed}/5 CLEARED</span>
+            <div className="map-world-intro__track"><i style={{ width: `${completed * 20}%` }} /></div>
+          </div>
+        </section>
+
+        <button type="button" className="map-arrow map-arrow--left" onClick={() => shiftWorld(-1)} disabled={world.id === 1} aria-label="Previous world">
           <ChevronLeft size={28} />
         </button>
-
-        <button
-          type="button"
-          className="map-arrow map-arrow--right"
-          onClick={() => shiftWorld(1)}
-          disabled={world.id === 4}
-          aria-label="Next world"
-        >
+        <button type="button" className="map-arrow map-arrow--right" onClick={() => shiftWorld(1)} disabled={world.id === 4} aria-label="Next world">
           <ChevronRight size={28} />
         </button>
 
-        {/* Center World-Specific Stage Path (1 - 2 - 3 - 4 - BOSS) */}
         <div className="map-stage-trail">
-          <svg className="map-trail-svg" viewBox="0 0 340 120" preserveAspectRatio="none">
-            <path
-              d={trail.path}
-              fill="none"
-              stroke={trail.stroke}
-              strokeWidth="4"
-              strokeDasharray={trail.dash}
-            />
+          <svg className="map-trail-svg" viewBox="0 0 340 120" preserveAspectRatio="none" aria-hidden="true">
+            <path className="map-trail-svg__shadow" d={trail.path} fill="none" stroke="rgba(0,0,0,.55)" strokeWidth="8" />
+            <path d={trail.path} fill="none" stroke={trail.stroke} strokeWidth="3" strokeDasharray={trail.dash} />
           </svg>
 
           <div className="map-nodes-container">
@@ -118,47 +93,46 @@ export function WorldMapScreen({ save, onBack, onSelect }: WorldMapScreenProps) 
                   disabled={!unlocked}
                   aria-label={`${stage.name}, ${unlocked ? 'available' : 'locked'}`}
                 >
+                  <div className="map-node__halo" />
                   <div className="map-node__circle">
-                    {isBoss ? (
-                      <Skull size={20} className="map-node__skull" />
-                    ) : completedStage ? (
-                      <Check size={18} />
-                    ) : unlocked ? (
-                      <span>{stage.stageNumber}</span>
-                    ) : (
-                      <Lock size={14} />
-                    )}
+                    {isBoss ? <Skull size={20} className="map-node__skull" /> : completedStage ? <Check size={18} /> : unlocked ? <span>{stage.stageNumber}</span> : <Lock size={14} />}
                   </div>
-                  <span className="map-node__label">{isBoss ? 'BOSS' : stage.stageNumber}</span>
+                  <span className="map-node__label">{isBoss ? 'BOSS' : `STAGE ${stage.stageNumber}`}</span>
+                  <span className="map-node__name">{stage.name}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Progress Indicator */}
-        <div className="map-progress-pill">
-          <Star size={13} fill="currentColor" />
-          <span>{completed}/5 Completed</span>
-        </div>
+        {!worldUnlocked && (
+          <div className="map-world-locked-message"><Lock size={16} /><span>Clear the previous world to enter this realm.</span></div>
+        )}
 
-        {/* Bottom World Selection Cards */}
-        <div className="map-world-carousel">
+        <div className="map-world-carousel" role="tablist" aria-label="World selection">
           {WORLD_META.map((meta) => {
             const isMetaUnlocked = isWorldUnlocked(meta.id, save);
             const isSelected = meta.id === world.id;
+            const metaStages = getWorldStages(meta.id);
+            const metaCompleted = metaStages.filter((stage) => save.completedStages.includes(stage.id)).length;
 
             return (
               <button
                 type="button"
+                role="tab"
+                aria-selected={isSelected}
                 key={meta.id}
                 className={`map-world-card map-world-card--world-${meta.id} ${isSelected ? 'is-selected' : ''} ${isMetaUnlocked ? 'is-unlocked' : 'is-locked'}`}
                 onClick={() => setWorldId(meta.id)}
                 aria-label={`World ${meta.id} ${meta.name}${isMetaUnlocked ? '' : ', locked'}`}
               >
                 <div className="map-world-card__inner">
-                  <span className="map-world-card__name">World {meta.id}</span>
-                  {!isMetaUnlocked && <Lock size={18} className="map-world-card__lock" />}
+                  <span className="map-world-card__number">W{meta.id}</span>
+                  <span className="map-world-card__copy">
+                    <strong className="map-world-card__name">{meta.name}</strong>
+                    <small>{isMetaUnlocked ? `${metaCompleted}/5 CLEARED` : 'LOCKED'}</small>
+                  </span>
+                  {!isMetaUnlocked && <Lock size={15} className="map-world-card__lock" />}
                 </div>
               </button>
             );
