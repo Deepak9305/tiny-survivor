@@ -60,9 +60,7 @@ export function EquipmentIcon({ id, slot, size = 24, className = '' }: Equipment
       style={{ '--equipment-accent': accentHex } as CSSProperties}
       aria-hidden="true"
     >
-      <span className="equipment-icon__halo" />
-      <Icon size={size} strokeWidth={1.8} className="equipment-icon__glyph" />
-      <span className="equipment-icon__spark" />
+      <Icon size={size} strokeWidth={1.75} className="equipment-icon__glyph" />
     </span>
   );
 }
