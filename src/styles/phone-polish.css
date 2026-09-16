@@ -6,6 +6,12 @@
  * restores readable type, and gives important actions/touch targets more room.
  */
 
+.codex-mobile-intel-btn,
+.codex-mobile-intel-close,
+.codex-mobile-intel-backdrop {
+  display: none;
+}
+
 @media (orientation: landscape) and (max-height: 520px) {
   :root {
     --phone-copy: 10px;
@@ -14,7 +20,6 @@
     --phone-control: 44px;
   }
 
-  /* Shared readability */
   .eyebrow,
   .heroes-role-subtitle,
   .heroes-gender-tag,
@@ -48,128 +53,75 @@
     letter-spacing: 1.25px;
   }
 
-  /* HOME: keep the cinematic art, but make the action side feel like a phone UI. */
-  .home-action-panel {
-    justify-content: stretch;
-  }
-
-  .home-action-panel__header {
-    flex: 0 0 auto;
-  }
-
+  .home-action-panel { justify-content: stretch; }
+  .home-action-panel__header { flex: 0 0 auto; }
   .home-campaign-card {
     flex: 1 1 auto;
     display: flex;
     min-height: 0;
     flex-direction: column;
   }
-
-  .home-menu-stack {
-    margin-top: auto;
-  }
-
-  .home-menu-row__title {
-    font-size: 12px;
-  }
-
+  .home-menu-stack { margin-top: auto; }
+  .home-menu-row__title { font-size: 12px; }
   .home-menu-row__sub,
-  .home-world-pill__text {
-    font-size: 9px;
-  }
+  .home-world-pill__text { font-size: 9px; }
+  .home-campaign-card__boss-name { font-size: clamp(20px, 3vw, 25px); }
 
-  .home-campaign-card__boss-name {
-    font-size: clamp(20px, 3vw, 25px);
-  }
-
-  /* HEROES: scroll the information column instead of crushing it to 7px text. */
+  /* Scroll rich information instead of crushing it into unreadably tiny type. */
   .heroes-right-details {
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 2px;
     scrollbar-width: none;
   }
-
   .heroes-stat-box__label,
   .heroes-slot-card__slot-name,
-  .heroes-roster-card__tag {
-    font-size: 8px;
-  }
-
-  .heroes-stat-box__val {
-    font-size: 13px;
-  }
-
-  .heroes-slot-card__item-name {
-    font-size: 10px;
-  }
-
+  .heroes-roster-card__tag { font-size: 8px; }
+  .heroes-stat-box__val { font-size: 13px; }
+  .heroes-slot-card__item-name { font-size: 10px; }
   .heroes-slot-card__effect,
   .heroes-lore,
-  .heroes-trait-desc {
-    font-size: 9px;
-  }
+  .heroes-trait-desc { font-size: 9px; }
+  .heroes-roster-card__name { font-size: 9px; }
 
-  .heroes-roster-card__name {
-    font-size: 9px;
-  }
-
-  /* TALENTS: landscape is wide; spend width on cards, not explanatory copy. */
   .talents-forge-panel {
     width: 168px;
     flex-basis: 168px;
   }
-
   .talents-forge-desc {
     -webkit-line-clamp: 1;
     font-size: 9px;
   }
-
-  .talent-card__title {
-    font-size: 12px;
-  }
-
+  .talent-card__title { font-size: 12px; }
   .talent-card__rank-label,
-  .talent-card__desc {
-    font-size: 9px;
-  }
-
+  .talent-card__desc { font-size: 9px; }
   .talent-price-btn {
     min-width: 48px;
     font-size: 11px;
   }
 
-  /* MISSIONS: allow useful titles to wrap rather than truncating everything. */
-  .missions-cards-list {
-    align-items: stretch;
-  }
-
+  /* Missions use the width of landscape rather than three squeezed desktop rows. */
+  .missions-cards-list { align-items: stretch; }
   .mission-card-landscape__content {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) 44px;
     align-items: start;
   }
-
   .mission-card-landscape__icon-circle {
     grid-column: 1;
     grid-row: 1;
   }
-
   .mission-card-landscape__body {
     grid-column: 2;
     grid-row: 1;
   }
-
   .mission-card-landscape__action {
     grid-column: 1 / -1;
     grid-row: 2;
     align-self: end;
   }
-
-  .mission-reward-gold-btn {
-    width: 100%;
-  }
-
+  .mission-reward-gold-btn { width: 100%; }
   .mission-card-landscape__title {
     display: -webkit-box;
     overflow: hidden;
@@ -179,35 +131,19 @@
     font-size: 11px;
     line-height: 1.05;
   }
+  .mission-card-landscape__numbers { font-size: 9px; }
 
-  .mission-card-landscape__numbers {
-    font-size: 9px;
-  }
-
-  /* CODEX: preserve the 3D model as the visual focus. */
   .codex-tri-layout {
     grid-template-columns: clamp(145px, 18vw, 165px) minmax(215px, 1fr) clamp(210px, 25vw, 235px);
   }
-
-  .codex-roster-name {
-    font-size: 11px;
-  }
-
+  .codex-roster-name { font-size: 11px; }
   .codex-roster-sub,
   .codex-pill,
   .codex-section-desc,
-  .codex-counter-desc {
-    font-size: 9px;
-  }
-
-  .codex-intel-name {
-    font-size: 18px;
-  }
-
-  .codex-stage-name-caps {
-    font-size: 10px;
-  }
-
+  .codex-counter-desc { font-size: 9px; }
+  .codex-intel-name { font-size: 18px; }
+  .codex-stage-name-caps { font-size: 10px; }
+  .codex-stage-inner { position: relative; }
   .codex-stage-inner::after {
     content: '';
     position: absolute;
@@ -218,11 +154,7 @@
     pointer-events: none;
   }
 
-  /* SHOP: cards should read as purchasable objects, not tiny spreadsheet cells. */
-  .shop-card__title-row strong {
-    font-size: 12px;
-  }
-
+  .shop-card__title-row strong { font-size: 12px; }
   .shop-card__role,
   .shop-card__desc,
   .shop-card__trait,
@@ -230,108 +162,152 @@
   .shop-card__drop-source {
     font-size: 9px;
   }
-
   .shop-buy-btn,
-  .shop-owned-tag {
-    font-size: 10px;
-  }
+  .shop-owned-tag { font-size: 10px; }
 
-  /* MAP / STAGE DETAIL */
   .map-node__label,
   .map-world-card__name,
-  .map-progress-pill {
-    font-size: 9px;
-  }
+  .map-progress-pill { font-size: 9px; }
+  .stage-landscape-intel { overscroll-behavior: contain; }
+  .stage-metric-box strong { font-size: 12px; }
+  .stage-enemy-chip { font-size: 9px; }
 
-  .stage-landscape-intel {
-    overscroll-behavior: contain;
-  }
-
-  .stage-metric-box strong {
-    font-size: 12px;
-  }
-
-  .stage-enemy-chip {
-    font-size: 9px;
-  }
-
-  /* SURVIVAL / SETTINGS */
   .survival-lead,
   .survival-sub,
   .survival-eq-chip,
   .setting-slider-row__header,
   .settings-links button,
-  .setting-row {
-    font-size: 10px;
-  }
+  .setting-row { font-size: 10px; }
+  .survival-change-hero-btn { min-height: var(--phone-control); }
 
-  .survival-change-hero-btn {
-    min-height: var(--phone-control);
-  }
-
-  /* GAMEPLAY: preserve battlefield visibility without making HUD illegible. */
   .game-health__value,
   .game-level-text,
-  .game-kills__label {
-    font-size: 9px;
-  }
-
-  .game-kills__num {
-    font-size: 13px;
-  }
-
-  .game-stage-time {
-    font-size: 18px;
-  }
-
-  .game-stage-title {
-    font-size: 8px;
-  }
-
+  .game-kills__label { font-size: 9px; }
+  .game-kills__num { font-size: 13px; }
+  .game-stage-time { font-size: 18px; }
+  .game-stage-title { font-size: 8px; }
   .ability-btn__timer,
   .ability-btn__level,
-  .ability-btn__milestone {
-    font-size: 9px;
-  }
+  .ability-btn__milestone { font-size: 9px; }
 
-  /* LEVEL UP: three decisions, no decoration fighting for vertical space. */
-  .power-card__title {
-    font-size: 14px;
-  }
-
+  .power-card__title { font-size: 14px; }
   .power-rarity-pill,
   .power-kind-pill,
   .power-level-transition,
   .power-badge-new,
-  .effect-box__label {
-    font-size: 8px;
-  }
-
+  .effect-box__label { font-size: 8px; }
   .effect-box__value,
-  .power-card__select-btn {
-    font-size: 10px;
-  }
+  .power-card__select-btn { font-size: 10px; }
 
-  /* PAUSE / RESULTS: keep actions readable even if secondary detail scrolls. */
   .pause-col {
     overscroll-behavior: contain;
+    scrollbar-width: none;
   }
-
   .pause-hero-name,
   .pause-section-title,
   .pause-item-name,
   .pause-item-tier,
-  .pause-stat-chip__val {
-    font-size: 10px;
-  }
-
+  .pause-stat-chip__val { font-size: 10px; }
   .pause-btn-resume,
   .pause-btn-bestiary,
   .pause-btn-quit,
   .pause-audio-btn,
   .run-over-btn,
-  .stage-clear-btn {
-    font-size: 10px;
+  .stage-clear-btn { font-size: 10px; }
+}
+
+/* Compact phones get a 2-pane Codex. Intel opens as a proper side sheet instead
+   of stealing a third of the width from the 3D preview. */
+@media (orientation: landscape) and (max-height: 440px) and (max-width: 980px) {
+  .codex-tri-layout {
+    grid-template-columns: clamp(145px, 20vw, 175px) minmax(0, 1fr);
+    position: relative;
+  }
+
+  .codex-stage-pagination {
+    gap: 6px;
+  }
+
+  .codex-mobile-intel-btn {
+    display: inline-flex;
+    min-width: 64px;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-left: auto;
+    padding: 0 8px;
+    border: 1px solid rgba(96, 210, 255, .38);
+    border-radius: 8px;
+    background: rgba(8, 36, 58, .92);
+    color: #a8ecff;
+    font: 800 9px/1 'Barlow Condensed', sans-serif;
+    letter-spacing: .7px;
+    pointer-events: auto;
+  }
+
+  .codex-intel-col {
+    position: fixed;
+    z-index: 130;
+    top: max(6px, env(safe-area-inset-top));
+    right: max(6px, env(safe-area-inset-right));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    width: min(360px, 46vw);
+    min-width: 280px;
+    padding: 42px 8px 8px;
+    overflow-y: auto;
+    transform: translateX(calc(100% + 18px));
+    transition: transform .18s ease;
+    border: 1px solid rgba(80, 203, 246, .32);
+    border-radius: 14px;
+    background: rgba(5, 17, 29, .98);
+    box-shadow: -18px 0 44px rgba(0, 0, 0, .52);
+    backdrop-filter: blur(14px);
+  }
+
+  .codex-intel-col.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .codex-mobile-intel-close {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    position: absolute;
+    z-index: 2;
+    top: 5px;
+    right: 5px;
+    border: 1px solid rgba(122, 201, 230, .3);
+    border-radius: 9px;
+    background: rgba(10, 34, 51, .92);
+    color: #dff7ff;
+  }
+
+  .codex-mobile-intel-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 120;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(2, 7, 13, .58);
+    transition: opacity .18s ease;
+  }
+
+  .codex-mobile-intel-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .codex-intel-card {
+    padding: 8px;
+  }
+
+  .codex-intel-portrait-box {
+    display: block;
+    width: 54px;
+    height: 54px;
   }
 }
 
@@ -353,9 +329,7 @@
   }
 
   .heroes-trait-desc,
-  .talents-forge-desc {
-    font-size: 9px;
-  }
+  .talents-forge-desc { font-size: 9px; }
 
   .heroes-stat-box__label,
   .heroes-slot-card__slot-name,
@@ -367,48 +341,28 @@
   .stage-metric-box small,
   .pause-stat-chip__label,
   .run-over-stat-label,
-  .stat-label {
-    font-size: 8px;
-  }
+  .stat-label { font-size: 8px; }
 
   .missions-top-banner {
     flex-basis: 52px;
     min-height: 52px;
   }
-
-  .missions-top-banner__headline {
-    font-size: 15px;
-  }
-
-  .shop-card {
-    min-height: 142px;
-  }
-
+  .missions-top-banner__headline { font-size: 15px; }
+  .shop-card { min-height: 142px; }
   .power-card__medallion {
     width: 44px;
     height: 44px;
   }
-
   .run-over-stat-val,
-  .stat-val {
-    font-size: 19px;
-  }
+  .stat-val { font-size: 19px; }
 }
 
-/* On the narrowest 720–900px class devices, two shop columns are more usable than three tiny cards. */
+/* 720–900px devices need wider shop cards, not three mini cards. */
 @media (orientation: landscape) and (max-height: 410px) and (max-width: 900px) {
   .shop-grid,
   .shop-grid--heroes,
   .shop-grid--equipment {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .shop-card {
-    min-height: 150px;
-  }
-
-  .codex-tri-layout {
-    grid-template-columns: 145px minmax(205px, 1fr) 215px;
-    gap: 5px;
-  }
+  .shop-card { min-height: 150px; }
 }
