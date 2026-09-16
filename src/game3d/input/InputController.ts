@@ -6,6 +6,7 @@ export class InputController {
   private readonly aimJoystick = new THREE.Vector2();
   private readonly lastAimVector = new THREE.Vector2(1, 0);
   private aimActive = false;
+  private primaryFireActive = false;
   private readonly onBackground: () => void;
   private readonly onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void;
 
@@ -25,6 +26,10 @@ export class InputController {
     this.moveJoystick.set(x, y).clampLength(0, 1);
   }
 
+  /**
+   * Legacy/manual aim channel retained for desktop/debug compatibility.
+   * Mobile combat now uses hold-to-fire + automatic target selection.
+   */
   setAimVector(x: number, y: number): void {
     const len = Math.sqrt(x * x + y * y);
     if (len > 0.12) {
@@ -37,6 +42,14 @@ export class InputController {
     }
   }
 
+  setPrimaryFire(active: boolean): void {
+    this.primaryFireActive = active;
+  }
+
+  isPrimaryFireActive(): boolean {
+    return this.primaryFireActive || this.keys.has('f') || this.keys.has('space');
+  }
+
   getMovementVector(): THREE.Vector2 {
     const keyX = Number(this.keys.has('d')) - Number(this.keys.has('a'));
     const keyY = Number(this.keys.has('s')) - Number(this.keys.has('w'));
@@ -47,7 +60,6 @@ export class InputController {
   }
 
   getAimVector(): THREE.Vector2 {
-    // Check arrow keys or IJKL for keyboard aiming
     const aimKeyX =
       Number(this.keys.has('arrowright') || this.keys.has('l')) -
       Number(this.keys.has('arrowleft') || this.keys.has('j'));
@@ -87,6 +99,7 @@ export class InputController {
     this.moveJoystick.set(0, 0);
     this.aimJoystick.set(0, 0);
     this.aimActive = false;
+    this.primaryFireActive = false;
   }
 
   dispose(): void {
@@ -99,6 +112,8 @@ export class InputController {
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
+    const inputKey = event.code === 'Space' ? 'space' : key;
+
     if (key === '1') {
       this.onAbilityKey?.(1);
       event.preventDefault();
@@ -116,6 +131,13 @@ export class InputController {
     }
     if (key === '4') {
       this.onAbilityKey?.(4);
+      event.preventDefault();
+      return;
+    }
+
+    if (inputKey === 'space' || key === 'f') {
+      this.keys.add(inputKey === 'space' ? 'space' : 'f');
+      this.primaryFireActive = true;
       event.preventDefault();
       return;
     }
@@ -142,7 +164,12 @@ export class InputController {
   };
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
-    this.keys.delete(event.key.toLowerCase());
+    const key = event.key.toLowerCase();
+    if (event.code === 'Space') this.keys.delete('space');
+    else this.keys.delete(key);
+    if (event.code === 'Space' || key === 'f') {
+      this.primaryFireActive = false;
+    }
   };
 
   private readonly handleBlur = (): void => {
