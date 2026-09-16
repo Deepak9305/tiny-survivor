@@ -77,6 +77,11 @@ export class SharedResources {
       side: options.side,
       depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
+    // The primary and specials are auto-aimed now. Keep legacy geometry allocation
+    // harmless for compatibility, but never render the old manual aim cone/line/dot.
+    if (key.startsWith('aim-cone-mat-') || key.startsWith('aim-core-mat-') || key.startsWith('aim-dot-mat-')) {
+      material.visible = false;
+    }
     this.materials.set(materialKey, material);
     return material;
   }
@@ -86,14 +91,8 @@ export class SharedResources {
     const existing = this.materials.get(materialKey);
     if (existing) return existing as THREE.MeshBasicMaterial;
     const material = new THREE.MeshBasicMaterial({
-      map: getSoftShadowTexture(),
-      color: 0x000206,
-      transparent: true,
-      opacity,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
+      map: getSoftShadowTexture(), color: 0x000206, transparent: true, opacity, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });
     this.materials.set(materialKey, material);
     return material;
@@ -115,18 +114,10 @@ export class SharedResources {
   octa(key = 'octa'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.OctahedronGeometry(0.5, 0)); }
   cone(key = 'cone'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.ConeGeometry(0.5, 1, 6)); }
   cylinder(key = 'cylinder'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.CylinderGeometry(0.5, 0.5, 1, 8)); }
-  ring(key = 'ring', inner = 0.5, outer = 0.6): THREE.BufferGeometry {
-    return this.geometry(`${key}:${inner}:${outer}`, () => new THREE.RingGeometry(inner, outer, 24));
-  }
-  plane(key = 'plane', width = 1, height = 1): THREE.BufferGeometry {
-    return this.geometry(`${key}:${width}:${height}`, () => new THREE.PlaneGeometry(width, height));
-  }
-  torus(key = 'torus'): THREE.BufferGeometry {
-    return this.geometry(key, () => new THREE.TorusGeometry(0.5, 0.06, 6, 16));
-  }
-  circle(key = 'circle', radius = 0.5): THREE.BufferGeometry {
-    return this.geometry(`${key}:${radius}`, () => new THREE.CircleGeometry(radius, 20));
-  }
+  ring(key = 'ring', inner = 0.5, outer = 0.6): THREE.BufferGeometry { return this.geometry(`${key}:${inner}:${outer}`, () => new THREE.RingGeometry(inner, outer, 24)); }
+  plane(key = 'plane', width = 1, height = 1): THREE.BufferGeometry { return this.geometry(`${key}:${width}:${height}`, () => new THREE.PlaneGeometry(width, height)); }
+  torus(key = 'torus'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.TorusGeometry(0.5, 0.06, 6, 16)); }
+  circle(key = 'circle', radius = 0.5): THREE.BufferGeometry { return this.geometry(`${key}:${radius}`, () => new THREE.CircleGeometry(radius, 20)); }
 
   dispose(): void {
     for (const geometry of this.geometries.values()) geometry.dispose();
