@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { SharedResources, addMesh } from '../game3d/core/SharedResources';
 import { createHeroVisual, createPetModel, createRelicAccent } from '../game3d/visuals/CharacterFactory';
 import { biomeThemeForWorld } from '../game3d/scene/BiomeTheme';
+import { addPreviewStage, disposePreviewScene, fitPreviewCamera } from '../game3d/visuals/PreviewStage';
 import type { EquipmentId, HeroId } from '../types';
 
 interface HeroPreview3DProps {
@@ -32,56 +33,24 @@ export function HeroPreview3D({
     scene.fog = new THREE.Fog(theme.fog, 6, 16);
 
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 30);
-    camera.position.set(0, 1.6, 5.2);
-    camera.lookAt(0, 0.95, 0);
-
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+    renderer.toneMappingExposure = 1.12;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.3));
     renderer.domElement.className = 'hero-preview-canvas';
     renderer.domElement.setAttribute('aria-hidden', 'true');
     parent.appendChild(renderer.domElement);
 
-    // Lighting
-    scene.add(new THREE.HemisphereLight(theme.keyLight, theme.fillLight, 1.4));
-    const mainLight = new THREE.DirectionalLight(theme.keyLight, 1.9);
-    mainLight.position.set(-3, 6, 4);
-    scene.add(mainLight);
+    const stageRig = addPreviewStage(scene, resources, theme, { radius: 1.95, worldId });
 
-    const rimLight = new THREE.PointLight(0x5de7ff, 1.2, 8, 2);
-    rimLight.position.set(2, 2.2, 2);
-    scene.add(rimLight);
-
-    // Stone Pedestal
-    const pedestal = addMesh(scene, resources.cylinder('hero-preview-pedestal'), resources.standardMaterial('hero-preview-pedestal', 0x222a38, { roughness: 0.85, metalness: 0.15 }));
-    pedestal.scale.set(1.9, 0.16, 1.9);
-    pedestal.position.y = 0.08;
-
-    // Glowing cyan rune ring
-    const runeRing = addMesh(scene, resources.ring('hero-rune-ring', 0.82, 0.94), resources.basicMaterial('hero-rune-ring-mat', 0x4dd8ff, { transparent: true, opacity: 0.72, side: THREE.DoubleSide }));
-    runeRing.rotation.x = -Math.PI / 2;
-    runeRing.position.y = 0.17;
-
-    // Ambient floating magic motes
-    const moteCount = 14;
-    const motes: { mesh: THREE.Mesh; baseAngle: number; speed: number; height: number; radius: number }[] = [];
-    for (let i = 0; i < moteCount; i++) {
-      const mote = addMesh(scene, resources.octa(`mote-${i}`), resources.basicMaterial(`mote-mat-${i}`, 0x6ee7ff, { transparent: true, opacity: 0.65 }));
-      const baseAngle = (i / moteCount) * Math.PI * 2;
-      const radius = 0.8 + Math.random() * 0.7;
-      const height = 0.3 + Math.random() * 1.4;
-      mote.scale.setScalar(0.045 + Math.random() * 0.035);
-      mote.position.set(Math.cos(baseAngle) * radius, height, Math.sin(baseAngle) * radius);
-      motes.push({ mesh: mote, baseAngle, speed: 0.4 + Math.random() * 0.5, height, radius });
-    }
-
-    // Hero Model
+    // Hero Model — keep aura + contact shadow attached to the preview model.
+    // Earlier previews only added the root, which made the same hero look flatter here than in gameplay.
     const heroVisual = createHeroVisual(heroId, resources);
     const hero = heroVisual.root;
-    hero.scale.setScalar(1.35);
+    hero.scale.setScalar(1.4);
     hero.position.set(0, 0.18, 0);
+    hero.add(heroVisual.aura, heroVisual.shadow);
     scene.add(hero);
 
     // Optional Equipped Relic accent
@@ -95,12 +64,28 @@ export function HeroPreview3D({
     let petMesh: THREE.Group | undefined;
     if (equippedPet) {
       petMesh = createPetModel(equippedPet, resources);
-      petMesh.position.set(-0.75, 0.28, 0.35);
+      petMesh.position.set(-0.78, 0.28, 0.34);
       scene.add(petMesh);
     }
 
-    const parts = hero.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
+    // Ambient floating magic motes. Kept intentionally low-count for mobile previews.
+    const moteCount = 10;
+    const motes: { mesh: THREE.Mesh; baseAngle: number; speed: number; height: number; radius: number }[] = [];
+    for (let i = 0; i < moteCount; i += 1) {
+      const mote = addMesh(
+        scene,
+        resources.octa(`hero-preview-mote-${i}`),
+        resources.basicMaterial(`hero-preview-mote-mat-${i}`, theme.accent, { transparent: true, opacity: 0.58 }),
+      );
+      const baseAngle = (i / moteCount) * Math.PI * 2;
+      const radius = 0.9 + Math.random() * 0.55;
+      const height = 0.35 + Math.random() * 1.25;
+      mote.scale.setScalar(0.035 + Math.random() * 0.03);
+      mote.position.set(Math.cos(baseAngle) * radius, height, Math.sin(baseAngle) * radius);
+      motes.push({ mesh: mote, baseAngle, speed: 0.32 + Math.random() * 0.38, height, radius });
+    }
 
+    const parts = hero.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
     let disposed = false;
     let frame = 0;
     let last = performance.now();
@@ -110,8 +95,7 @@ export function HeroPreview3D({
       const width = Math.max(1, parent.clientWidth || 300);
       const height = Math.max(1, parent.clientHeight || 280);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      fitPreviewCamera(camera, width, height, { targetY: 1.03, distance: 5.05, verticalBias: 0.58 });
     };
 
     const resizeObserver = new ResizeObserver(resize);
@@ -120,46 +104,40 @@ export function HeroPreview3D({
 
     const render = (now: number) => {
       if (disposed) return;
-      // Cap around ~30fps for high mobile efficiency
       if (now - lastRender < 1000 / 30) {
         frame = requestAnimationFrame(render);
         return;
       }
+
       const delta = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
       lastRender = now;
-
       const timeSec = now * 0.001;
 
-      // Gentle breathing idle
-      hero.position.y = 0.18 + Math.sin(timeSec * 3.2) * 0.022;
+      hero.position.y = 0.18 + Math.sin(timeSec * 3.0) * 0.018;
+      hero.rotation.y = Math.sin(timeSec * 0.55) * 0.11;
 
-      // Pet idle float/bob
       if (petMesh) {
-        petMesh.position.y = 0.28 + Math.sin(timeSec * 3.8) * 0.035;
+        petMesh.position.y = 0.28 + Math.sin(timeSec * 3.6) * 0.035;
+        petMesh.rotation.y = Math.sin(timeSec * 0.8) * 0.12;
       }
 
-      // Staff crystal and halo rotation
-      if (parts?.crystal instanceof THREE.Object3D) {
-        parts.crystal.rotation.y += delta * 2.8;
-      }
-      if (parts?.crystalHalo instanceof THREE.Object3D) {
-        parts.crystalHalo.rotation.z += delta * 2.1;
-      }
+      if (parts?.crystal instanceof THREE.Object3D) parts.crystal.rotation.y += delta * 2.8;
+      if (parts?.crystalHalo instanceof THREE.Object3D) parts.crystalHalo.rotation.z += delta * 2.1;
       if (parts?.scarfTail instanceof THREE.Object3D) {
         parts.scarfTail.rotation.x = -0.22 + Math.sin(timeSec * 4.0) * 0.12;
       }
 
-      // Pedestal rune ring pulse
-      runeRing.scale.setScalar(1 + Math.sin(timeSec * 2.5) * 0.04);
+      stageRig.runeRing.scale.setScalar(1 + Math.sin(timeSec * 2.35) * 0.035);
+      stageRig.accentLight.intensity = 1.35 + Math.sin(timeSec * 1.7) * 0.12;
+      stageRig.warmLight.intensity = 0.62 + Math.sin(timeSec * 1.2 + 1.5) * 0.06;
 
-      // Orbit ambient motes
       for (const mote of motes) {
         mote.baseAngle += delta * mote.speed;
         mote.mesh.position.x = Math.cos(mote.baseAngle) * mote.radius;
         mote.mesh.position.z = Math.sin(mote.baseAngle) * mote.radius;
-        mote.mesh.position.y = mote.height + Math.sin(timeSec * 2 + mote.baseAngle) * 0.12;
-        mote.mesh.rotation.y += delta * 1.5;
+        mote.mesh.position.y = mote.height + Math.sin(timeSec * 2 + mote.baseAngle) * 0.1;
+        mote.mesh.rotation.y += delta * 1.3;
       }
 
       renderer.render(scene, camera);
@@ -184,11 +162,10 @@ export function HeroPreview3D({
       cancelAnimationFrame(frame);
       document.removeEventListener('visibilitychange', handleVisibility);
       resizeObserver.disconnect();
-      renderer.dispose();
+      disposePreviewScene(scene);
       resources.dispose();
-      if (renderer.domElement.parentElement === parent) {
-        parent.removeChild(renderer.domElement);
-      }
+      renderer.dispose();
+      if (renderer.domElement.parentElement === parent) parent.removeChild(renderer.domElement);
     };
   }, [heroId, equippedPet, equippedRelic, worldId]);
 
