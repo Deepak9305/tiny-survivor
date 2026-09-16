@@ -10,7 +10,7 @@ import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
 import { audioService } from '../services/audioService';
 import { GameOverScreen } from './GameOverScreen';
-import type { GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
+import type { GameSnapshot, RunMode, RunResult, SaveData, Settings, StageDefinition, UpgradeChoice } from '../types';
 
 interface GameScreenProps {
   stage: StageDefinition;
@@ -21,11 +21,12 @@ interface GameScreenProps {
   onRetry: () => void;
   onHome: () => void;
   onBestiary: () => void;
+  onSettingsChange?: (settings: Settings) => void;
 }
 
 const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteKills: 0, level: 1, xp: 0, xpRequired: 82, hp: 100, maxHp: 100, coins: 0, aliveEnemies: 0, weaponLevels: { 'magic-bolt': 1 }, passiveLevels: {} };
 
-export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary }: GameScreenProps) {
+export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary, onSettingsChange }: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
@@ -47,7 +48,6 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
     let cleanupGame: (() => void) | undefined;
 
     void (async () => {
-      // Preload assets for this stage
       await modelRegistry.preloadStage(stage, save.selectedHero, (loaded, total) => {
         if (!mounted) return;
         const pct = Math.max(15, Math.min(95, Math.round((loaded / Math.max(1, total)) * 100)));
@@ -57,7 +57,6 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
       if (!mounted) return;
       setPreloadProgress(100);
 
-      // Brief polish pause before entering arena
       await new Promise((resolve) => setTimeout(resolve, 280));
       if (!mounted) return;
       setIsLoading(false);
@@ -227,6 +226,7 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
           onResume={() => getActiveThreeGame()?.resumeRun()}
           onHome={onHome}
           onBestiary={onBestiary}
+          onSettingsChange={onSettingsChange}
         />
       )}
       {gameOver && (
