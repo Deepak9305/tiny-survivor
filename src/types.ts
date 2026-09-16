@@ -63,17 +63,23 @@ export type RunMode = 'campaign' | 'survival';
 
 export type EnemyKind =
   | 'skeleton'
+  | 'zombie'
+  | 'bone-mage'
   | 'bat'
   | 'slime'
   | 'ghost'
   | 'archer'
   | 'knight'
   | 'demon'
+  | 'demon-warrior'
   | 'imp'
   | 'cursed-wolf'
   | 'thornling'
+  | 'forest-mage'
+  | 'forest-guardian'
   | 'treant'
-  | 'frost-wraith';
+  | 'frost-wraith'
+  | 'ice-mage';
 
 export type AbilityId = 'fireball' | 'freeze' | 'heal' | 'arcane-beam';
 export type WeaponId = 'magic-bolt' | 'orbiting-blades' | 'chain-lightning' | 'fire-orb';
