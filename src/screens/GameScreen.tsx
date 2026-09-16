@@ -28,9 +28,15 @@ const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteK
 
 export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary, onSettingsChange }: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
-  // GameScreen is keyed per run. Keep the run-start save snapshot stable so changing
-  // settings while paused cannot tear down/recreate the live Three.js game.
+
+  // GameScreen is keyed per run. Capture the run-start inputs once so normal parent
+  // state updates (for example an audio setting toggled while paused) never rebuild
+  // the Three.js arena or reset the run.
   const runSave = useRef(save);
+  const runStage = useRef(stage);
+  const runMode = useRef(mode);
+  const callbacks = useRef({ onStageClear, onGameOver });
+
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
   const [paused, setPaused] = useState(false);
@@ -47,12 +53,18 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
   const hitTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
+    callbacks.current = { onStageClear, onGameOver };
+  }, [onStageClear, onGameOver]);
+
+  useEffect(() => {
     let mounted = true;
     let cleanupGame: (() => void) | undefined;
     const initialSave = runSave.current;
+    const initialStage = runStage.current;
+    const initialMode = runMode.current;
 
     void (async () => {
-      await modelRegistry.preloadStage(stage, initialSave.selectedHero, (loaded, total) => {
+      await modelRegistry.preloadStage(initialStage, initialSave.selectedHero, (loaded, total) => {
         if (!mounted) return;
         const pct = Math.max(15, Math.min(95, Math.round((loaded / Math.max(1, total)) * 100)));
         setPreloadProgress(pct);
@@ -73,19 +85,29 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
 
       mountThreeGame(
         gameRoot.current,
-        stage,
+        initialStage,
         initialSave,
         {
           onSnapshot: setSnapshot,
           onLevelUp: setUpgradeChoices,
-          onGameOver: (result) => { setGameOver(result); onGameOver(result); },
-          onStageClear,
+          onGameOver: (result) => {
+            setGameOver(result);
+            callbacks.current.onGameOver(result);
+          },
+          onStageClear: (result) => callbacks.current.onStageClear(result),
           onPaused: setPaused,
-          onBossWarning: () => { setWarning(true); warningTimer.current = window.setTimeout(() => setWarning(false), 2300); },
-          onPlayerHit: () => { setHitVignette(true); if (hitTimer.current) window.clearTimeout(hitTimer.current); hitTimer.current = window.setTimeout(() => setHitVignette(false), 220); },
+          onBossWarning: () => {
+            setWarning(true);
+            warningTimer.current = window.setTimeout(() => setWarning(false), 2300);
+          },
+          onPlayerHit: () => {
+            setHitVignette(true);
+            if (hitTimer.current) window.clearTimeout(hitTimer.current);
+            hitTimer.current = window.setTimeout(() => setHitVignette(false), 220);
+          },
           onRendererError: setRendererError,
         },
-        mode,
+        initialMode,
       );
 
       cleanupGame = () => {
@@ -100,7 +122,7 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
       mounted = false;
       cleanupGame?.();
     };
-  }, [mode, onGameOver, onStageClear, stage]);
+  }, []);
 
   // Audio preferences can update live without remounting or resetting the run.
   useEffect(() => {
