@@ -8,6 +8,7 @@ import './styles/combat-controls.css';
 import './styles/fun-overhaul.css';
 import './styles/premium-studio.css';
 import './styles/studio-mobile-master.css';
+import './styles/studio-final.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
