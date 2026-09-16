@@ -132,10 +132,6 @@ export default function App() {
   }, [save, selectedStageId]);
 
   const startSurvival = useCallback(() => {
-    // Pick arena from worlds the player has cleared/unlocked
-    // At initial unlock (World 2 cleared), candidates are Graveyard ('1-1') and Forest ('2-1').
-    // Frozen Ruins ('3-1') is added only after World 3 is cleared.
-    // Demon Castle ('4-1') is added only after World 4 is cleared.
     const candidates = ['1-1', '2-1'];
     if (isWorldCleared(3, save)) candidates.push('3-1');
     if (isWorldCleared(4, save)) candidates.push('4-1');
@@ -155,14 +151,12 @@ export default function App() {
     setNewlyUnlockedAbilities(newlyUnlocked);
     const unlockedAbilities = [...new Set([...(save.unlockedAbilities || []), ...newlyUnlocked])];
 
-    // Check for World 2 clear moment -> unlocks Survival Mode
     const w2WasCleared = isWorldCleared(2, save);
     const tempSave = { ...save, completedStages };
     const w2NowCleared = isWorldCleared(2, tempSave);
     const survivalUnlockedNow = !w2WasCleared && w2NowCleared;
     setNewlyUnlockedSurvival(survivalUnlockedNow);
 
-    // Deterministic boss first-clear equipment drop
     const bossDrop = firstClear ? getBossFirstClearEquipment(result.stageId, stage.worldId, stage.bossStage) : undefined;
     setNewlyUnlockedEquipment(bossDrop);
     const ownedEquipment = bossDrop && !save.ownedEquipment.includes(bossDrop)
@@ -385,6 +379,7 @@ export default function App() {
           }}
           onHome={() => setScreen('home')}
           onBestiary={() => handleBestiarySelect('skeleton')}
+          onSettingsChange={handleSettings}
         />
       );
       break;
