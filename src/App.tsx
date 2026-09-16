@@ -389,13 +389,13 @@ export default function App() {
 
   return (
     <>
-      <div className="rotate-device-overlay" aria-hidden="true">
+      <div className="rotate-device-overlay" role="dialog" aria-modal="true" aria-label="Rotate device to landscape">
         <div className="rotate-device-card">
           <div className="rotate-device-icon-box">
             <Smartphone size={38} className="rotate-device-phone" />
           </div>
-          <h2>ROTATE YOUR DEVICE</h2>
-          <p>Tiny Survivor is built for landscape twin-stick combat. Please turn your device sideways.</p>
+          <h2>ROTATE TO PLAY</h2>
+          <p>Tiny Survivor is designed for landscape. Please turn your device sideways.</p>
         </div>
       </div>
       <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>

@@ -40,15 +40,16 @@ export function VirtualStick({
     const base = baseRef.current;
     if (!base) return;
     const bounds = base.getBoundingClientRect();
+    const effectiveRadius = bounds.width > 0 ? Math.min(bounds.width, bounds.height) * 0.35 : RADIUS;
     let x = clientX - (bounds.left + bounds.width / 2);
     let y = clientY - (bounds.top + bounds.height / 2);
     const distance = Math.sqrt(x * x + y * y);
-    if (distance > RADIUS) {
-      x = (x / distance) * RADIUS;
-      y = (y / distance) * RADIUS;
+    if (distance > effectiveRadius) {
+      x = (x / distance) * effectiveRadius;
+      y = (y / distance) * effectiveRadius;
     }
-    const vectorX = x / RADIUS;
-    const vectorY = y / RADIUS;
+    const vectorX = x / effectiveRadius;
+    const vectorY = y / effectiveRadius;
     const magnitude = Math.sqrt(vectorX * vectorX + vectorY * vectorY);
     if (magnitude < DEAD_ZONE) {
       if (knobRef.current) knobRef.current.style.transform = 'translate3d(0, 0, 0)';
