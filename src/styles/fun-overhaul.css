@@ -1,0 +1,306 @@
+/*
+ * Gameplay fun / readability layer.
+ * Loaded last so combat feedback can be tuned independently from the large
+ * meta-screen and compact-landscape systems.
+ */
+
+.game-player-hud {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.game-player-bars {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.game-hero-sigil {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(115, 215, 255, .34);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(38, 131, 173, .30), rgba(4, 15, 26, .92) 68%);
+  color: #8cecff;
+  font: 900 17px/1 'Cinzel', serif;
+  text-shadow: 0 0 10px currentColor;
+  box-shadow: inset 0 0 13px rgba(60, 210, 255, .10), 0 3px 10px rgba(0, 0, 0, .34);
+}
+
+.game-hero-sigil--warrior {
+  border-color: rgba(255, 190, 75, .42);
+  background: radial-gradient(circle, rgba(180, 111, 23, .32), rgba(25, 14, 5, .92) 68%);
+  color: #ffc85e;
+}
+
+.game-hero-sigil--monk {
+  border-color: rgba(72, 224, 169, .42);
+  background: radial-gradient(circle, rgba(20, 145, 105, .30), rgba(4, 24, 19, .92) 68%);
+  color: #59e6b2;
+}
+
+.game-hero-sigil--gunslinger {
+  border-color: rgba(232, 121, 249, .44);
+  background: radial-gradient(circle, rgba(160, 60, 192, .30), rgba(24, 7, 31, .92) 68%);
+  color: #ee8cff;
+}
+
+/* FLOW is intentionally a small secondary HUD. It gives the player a reason to
+ * keep landing shots without stealing the center of the battlefield. */
+.game-flow-hud {
+  position: absolute;
+  z-index: 36;
+  top: max(58px, calc(env(safe-area-inset-top) + 52px));
+  left: max(14px, env(safe-area-inset-left));
+  width: clamp(160px, 20vw, 230px);
+  height: 25px;
+  display: grid;
+  grid-template-columns: auto minmax(54px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 7px;
+  border: 1px solid rgba(84, 205, 247, .23);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(8, 27, 42, .91), rgba(3, 12, 21, .86));
+  box-shadow: 0 5px 17px rgba(0, 0, 0, .32), inset 0 0 12px rgba(51, 198, 255, .05);
+  pointer-events: none;
+  transition: opacity .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.game-flow-hud--empty {
+  opacity: .55;
+}
+
+.game-flow-hud__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #8ddff8;
+  font: 900 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
+}
+
+.game-flow-hud__track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(69, 116, 137, .22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .65);
+}
+
+.game-flow-hud__track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2bbde9, #78efff 68%, #fff0a8);
+  box-shadow: 0 0 9px rgba(87, 225, 255, .56);
+  transition: width .1s linear;
+}
+
+.game-flow-hud__value {
+  min-width: 27px;
+  color: #dff9ff;
+  font: 900 10px/1 'Barlow Condensed', sans-serif;
+  text-align: right;
+}
+
+.game-flow-hud--overdrive {
+  border-color: rgba(255, 196, 77, .66);
+  background: linear-gradient(180deg, rgba(64, 37, 8, .94), rgba(20, 10, 2, .91));
+  box-shadow: 0 0 20px rgba(255, 169, 45, .18), inset 0 0 16px rgba(255, 194, 74, .10);
+}
+
+.game-flow-hud--overdrive .game-flow-hud__label,
+.game-flow-hud--overdrive .game-flow-hud__value {
+  color: #ffd877;
+  text-shadow: 0 0 8px rgba(255, 185, 61, .52);
+}
+
+.game-flow-hud--overdrive .game-flow-hud__track i {
+  background: linear-gradient(90deg, #ff9d32, #ffd166, #fff5bf);
+  box-shadow: 0 0 12px rgba(255, 183, 61, .85);
+}
+
+.game-screen--overdrive::after {
+  content: '';
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  border: 2px solid rgba(255, 193, 73, .20);
+  box-shadow: inset 0 0 52px rgba(255, 145, 29, .08);
+  pointer-events: none;
+  animation: overdrive-edge-pulse .8s ease-in-out infinite alternate;
+}
+
+/* Major waves are announced briefly so the player understands that the combat
+ * rhythm changed instead of reading the extra spawn density as randomness. */
+.game-wave-callout {
+  position: absolute;
+  z-index: 45;
+  top: 27%;
+  left: 50%;
+  min-width: 210px;
+  max-width: min(72vw, 390px);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px 7px;
+  border-top: 1px solid rgba(255, 102, 102, .52);
+  border-bottom: 1px solid rgba(255, 102, 102, .52);
+  background: linear-gradient(90deg, transparent, rgba(48, 8, 13, .82) 16%, rgba(48, 8, 13, .90) 84%, transparent);
+  color: #ffe7e7;
+  text-align: center;
+  pointer-events: none;
+  animation: combat-callout-in 1.7s ease both;
+}
+
+.game-wave-callout strong {
+  color: #ff8b78;
+  font: 900 18px/1 'Cinzel', serif;
+  letter-spacing: 2.6px;
+  text-shadow: 0 0 15px rgba(255, 72, 70, .55);
+}
+
+.game-wave-callout span {
+  color: rgba(239, 245, 249, .78);
+  font: 800 9px/1.1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.game-wave-callout--elite {
+  border-color: rgba(255, 196, 72, .65);
+  background: linear-gradient(90deg, transparent, rgba(55, 31, 4, .84) 16%, rgba(55, 31, 4, .92) 84%, transparent);
+}
+
+.game-wave-callout--elite strong {
+  color: #ffd166;
+  text-shadow: 0 0 15px rgba(255, 182, 56, .55);
+}
+
+.game-kill-callout {
+  position: absolute;
+  z-index: 42;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f4fbff;
+  font: 900 13px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .8), 0 0 14px rgba(71, 205, 255, .42);
+  pointer-events: none;
+  animation: kill-callout 1.35s ease both;
+}
+
+.game-tip--twin-stick {
+  border-color: rgba(93, 214, 255, .25);
+  background: rgba(4, 18, 29, .76);
+  color: rgba(220, 245, 255, .76);
+  backdrop-filter: blur(6px);
+}
+
+/* Fire button communicates the same power cycle as the world/avatar. */
+.game-screen--overdrive .primary-fire-btn {
+  border-color: #ffd166;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 219, 112, .36) 0 24%, transparent 25%),
+    radial-gradient(circle, #50320d 0 42%, #261607 43% 64%, #090704 65% 100%);
+  box-shadow:
+    0 5px 22px rgba(0, 0, 0, .48),
+    inset 0 0 0 4px rgba(24, 11, 2, .70),
+    inset 0 0 25px rgba(255, 194, 73, .30),
+    0 0 24px rgba(255, 172, 48, .34),
+    0 0 0 4px rgba(255, 220, 117, .12);
+}
+
+.game-screen--overdrive .primary-fire-btn__text {
+  color: #fff1b5;
+  text-shadow: 0 0 10px rgba(255, 173, 50, .68);
+}
+
+@keyframes overdrive-edge-pulse {
+  from { opacity: .5; }
+  to { opacity: 1; }
+}
+
+@keyframes combat-callout-in {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.94); }
+  12%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(1.02); }
+}
+
+@keyframes kill-callout {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.92); }
+  16%, 65% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -10px) scale(1.04); }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-hero-sigil {
+    width: 29px;
+    height: 29px;
+    flex-basis: 29px;
+    font-size: 14px;
+  }
+
+  .game-player-hud { gap: 5px; }
+
+  .game-flow-hud {
+    top: max(49px, calc(env(safe-area-inset-top) + 44px));
+    left: max(8px, env(safe-area-inset-left));
+    width: clamp(145px, 21vw, 190px);
+    height: 21px;
+    gap: 4px;
+    padding: 2px 5px;
+  }
+
+  .game-flow-hud__label,
+  .game-flow-hud__value { font-size: 8px; }
+
+  .game-flow-hud__label svg {
+    width: 9px;
+    height: 9px;
+  }
+
+  .game-flow-hud__track { height: 4px; }
+
+  .game-wave-callout {
+    top: 24%;
+    min-width: 180px;
+    padding: 6px 14px 5px;
+  }
+
+  .game-wave-callout strong { font-size: 14px; }
+  .game-wave-callout span { font-size: 8px; }
+  .game-kill-callout { top: 30%; font-size: 11px; }
+}
+
+@media (orientation: landscape) and (max-height: 380px) {
+  .game-flow-hud {
+    top: max(44px, calc(env(safe-area-inset-top) + 40px));
+    width: 140px;
+    height: 19px;
+  }
+
+  .game-flow-hud__value { min-width: 22px; }
+  .game-wave-callout { top: 23%; }
+  .game-kill-callout { top: 28%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-screen--overdrive::after,
+  .game-wave-callout,
+  .game-kill-callout {
+    animation: none !important;
+  }
+}

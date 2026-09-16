@@ -38,7 +38,12 @@ function createStage(worldId: number, stageNumber: number): StageDefinition {
   const bossStage = stageNumber === 5;
   const boss = bossStage ? getBossDefinition(world.bossId) : undefined;
   const difficulty = DIFFICULTY_CURVE[stageNumber - 1];
-  const duration = 180 + (worldId - 1) * 22 + (stageNumber - 1) * 12;
+
+  // Mobile runs should peak before repetition sets in. Encounter density/surges now
+  // create the difficulty curve, so stage length no longer has to do that job.
+  // Campaign range: 2:30 at W1-1 to ~4:04 at W4-5.
+  const duration = 150 + (worldId - 1) * 18 + (stageNumber - 1) * 10;
+
   return {
     id: `${worldId}-${stageNumber}`,
     worldId,
@@ -55,22 +60,32 @@ function createStage(worldId: number, stageNumber: number): StageDefinition {
     coinReward: 120 + (worldId - 1) * 170 + (stageNumber - 1) * 28,
     firstClearReward: 50 + (worldId - 1) * 35 + (stageNumber - 1) * 10,
     enemies: world.enemyPool.slice(0, firstStageEnemyCount(stageNumber)) as EnemyKind[],
-    description: bossStage ? `${STAGE_DESCRIPTIONS[worldId]} Defeat the ${boss?.name ?? 'world boss'} to claim the crown.` : STAGE_DESCRIPTIONS[worldId],
+    description: bossStage
+      ? `${STAGE_DESCRIPTIONS[worldId]} Defeat the ${boss?.name ?? 'world boss'} to claim the crown.`
+      : STAGE_DESCRIPTIONS[worldId],
   };
 }
 
-export const STAGES: StageDefinition[] = WORLD_DEFINITIONS.flatMap((world) => Array.from({ length: 5 }, (_, index) => createStage(world.id, index + 1)));
+export const STAGES: StageDefinition[] = WORLD_DEFINITIONS.flatMap((world) =>
+  Array.from({ length: 5 }, (_, index) => createStage(world.id, index + 1))
+);
 
-export function getStage(stageId: string): StageDefinition { return STAGES.find((stage) => stage.id === stageId) ?? STAGES[0]; }
+export function getStage(stageId: string): StageDefinition {
+  return STAGES.find((stage) => stage.id === stageId) ?? STAGES[0];
+}
 
 export function stageNumber(stageId: string): number {
   const [world, stage] = stageId.split('-').map(Number);
   return (world - 1) * 5 + stage;
 }
 
-export function isStageUnlocked(stageId: string, save: SaveData): boolean { return stageNumber(stageId) <= save.highestUnlockedStage; }
+export function isStageUnlocked(stageId: string, save: SaveData): boolean {
+  return stageNumber(stageId) <= save.highestUnlockedStage;
+}
 
-export function isWorldUnlocked(worldId: number, save: SaveData): boolean { return save.highestUnlockedStage >= (worldId - 1) * 5 + 1; }
+export function isWorldUnlocked(worldId: number, save: SaveData): boolean {
+  return save.highestUnlockedStage >= (worldId - 1) * 5 + 1;
+}
 
 export function getCurrentStage(save: SaveData): StageDefinition {
   const current = STAGES.find((stage) => stageNumber(stage.id) === save.highestUnlockedStage);
@@ -100,7 +115,7 @@ export function getTotalCampaignStageCount(): number {
 }
 
 export function getNextCampaignStageId(stageId: string): string | null {
-  const currentIndex = STAGES.findIndex((s) => s.id === stageId);
+  const currentIndex = STAGES.findIndex((stage) => stage.id === stageId);
   if (currentIndex === -1 || currentIndex >= STAGES.length - 1) return null;
   return STAGES[currentIndex + 1].id;
 }
@@ -111,14 +126,16 @@ export function isLastCampaignStage(stageId: string): boolean {
 
 export function getSurvivalEnemyPool(save: SaveData): EnemyKind[] {
   const pool: EnemyKind[] = [
-    'skeleton', 'bat', 'ghost', 'archer', 'slime',
-    'cursed-wolf', 'thornling', 'treant'
+    'skeleton',
+    'bat',
+    'ghost',
+    'archer',
+    'slime',
+    'cursed-wolf',
+    'thornling',
+    'treant',
   ];
-  if (isWorldUnlocked(3, save)) {
-    pool.push('knight', 'frost-wraith');
-  }
-  if (isWorldUnlocked(4, save)) {
-    pool.push('demon', 'imp');
-  }
+  if (isWorldUnlocked(3, save)) pool.push('knight', 'frost-wraith');
+  if (isWorldUnlocked(4, save)) pool.push('demon', 'imp');
   return pool;
 }

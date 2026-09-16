@@ -27,7 +27,6 @@ export function makeUpgradeChoice(
   passiveLevels: Record<string, number>,
   abilityLevels: Record<string, number> = {}
 ): UpgradeChoice {
-  // Check if it is a manual ability
   if (ALL_ABILITY_IDS.includes(id as AbilityId)) {
     const currentLvl = abilityLevels[id] ?? 1;
     return makeAbilityUpgradeChoice(id as AbilityId, currentLvl);
@@ -38,21 +37,51 @@ export function makeUpgradeChoice(
 
   if (isWeapon) {
     const weapon = WEAPON_BALANCE[id as WeaponId];
+
+    // Magic Bolt starts at level 1, so its copy is keyed to the CURRENT level
+    // rather than sharing the level-0 auto-weapon acquisition table.
+    if (id === 'magic-bolt') {
+      const boltEffects: Record<number, string> = {
+        1: '+10% fire rate · empowered shot every 4th volley',
+        2: '+1 projectile · stronger empowered volleys',
+        3: '+1 pierce · faster fire · empowered every 3rd volley',
+        4: '+1 pierce · OVERDRIVE unlocks triple volleys',
+      };
+      return {
+        id,
+        title: weapon.name,
+        description: 'Turn your primary attack into a relentless arcane barrage.',
+        nextEffect: boltEffects[level] ?? '+25% bolt effectiveness',
+        icon: '✦',
+        kind: 'weapon',
+        rarity: rarityFor(level),
+        level,
+      };
+    }
+
     const effects: Record<string, string[]> = {
-      'magic-bolt': ['+25% bolt damage', '+1 projectile', '-18% cooldown', '+1 pierce', '+35% bolt damage'],
-      'orbiting-blades': ['+1 blade', '+25% blade damage', '+15% orbit speed', '+1 blade', '+40% damage'],
-      'chain-lightning': ['+1 chain', '+25% damage', '-1 hit proc requirement', '+1 chain', 'shocks leave lingering sparks'],
+      'orbiting-blades': [
+        '+1 orbiting blade',
+        '+25% blade damage',
+        '+15% orbit pressure',
+        '+1 orbiting blade',
+        '+40% blade damage',
+      ],
+      'chain-lightning': [
+        'Unlock lightning chains',
+        '+1 chain · faster proc',
+        '+25% lightning damage',
+        '+1 chain · faster proc',
+        'Massive five-target storm',
+      ],
     };
 
-    const isPrimary = id === 'magic-bolt';
     return {
       id,
       title: weapon.name,
-      description: level === 0
-        ? (isPrimary ? 'Enhance your primary attack.' : 'Add a new automatic weapon.')
-        : (isPrimary ? 'Improve your primary bolt.' : 'Improve this auto weapon.'),
+      description: level === 0 ? 'Add a new automatic weapon.' : 'Evolve this weapon into a stronger crowd-control tool.',
       nextEffect: effects[id]?.[Math.min(level, 4)] ?? '+20% effectiveness',
-      icon: id === 'magic-bolt' ? '✦' : id === 'orbiting-blades' ? '◈' : 'ϟ',
+      icon: id === 'orbiting-blades' ? '◈' : 'ϟ',
       kind: 'weapon',
       rarity: rarityFor(level),
       level,
@@ -74,7 +103,7 @@ export function makeUpgradeChoice(
   return {
     id,
     title: passive.name,
-    description: 'A permanent run bonus.',
+    description: 'Strengthen the build without adding another active control.',
     nextEffect: effects[id as PassiveId][Math.min(level, 4)],
     icon: passive.icon,
     kind: 'passive',
@@ -92,19 +121,16 @@ export function generateUpgradeChoices(
 ): UpgradeChoice[] {
   const eligibleIds: string[] = [];
 
-  // 1. Auto Weapons & Primary
   for (const weaponId of BASE_WEAPON_ORDER) {
     const lvl = weaponLevels[weaponId] ?? 0;
     if (lvl < 5) eligibleIds.push(weaponId);
   }
 
-  // 2. Unlocked Campaign Abilities (locked abilities NEVER appear)
   for (const abilityId of unlockedAbilities) {
     const lvl = abilityLevels[abilityId] ?? 1;
     if (lvl < 5) eligibleIds.push(abilityId);
   }
 
-  // 3. Stat Passives
   for (const passiveId of PASSIVE_ORDER) {
     const lvl = passiveLevels[passiveId] ?? 0;
     if (lvl < 5) eligibleIds.push(passiveId);
@@ -116,14 +142,15 @@ export function generateUpgradeChoices(
     return passiveLevels[id] ?? 0;
   };
 
-  // Sort lowest level first with subtle shuffle
+  // Keep early choices varied while still helping under-leveled parts of the build
+  // catch up. A small random window avoids deterministic, solved runs.
   const shifted = [...eligibleIds].sort((a, b) => getItemLevel(a) - getItemLevel(b));
   const chosen: string[] = [];
 
   while (chosen.length < count && shifted.length) {
-    const index = Math.floor(Math.random() * Math.min(shifted.length, 5));
+    const index = Math.floor(Math.random() * Math.min(shifted.length, 6));
     chosen.push(shifted.splice(index, 1)[0]);
   }
 
-  return chosen.map((id) => makeUpgradeChoice(id, weaponLevels, passiveLevels, abilityLevels));
+  return chosen.map((choiceId) => makeUpgradeChoice(choiceId, weaponLevels, passiveLevels, abilityLevels));
 }
