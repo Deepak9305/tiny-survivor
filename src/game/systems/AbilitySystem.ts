@@ -1,5 +1,6 @@
 import { ABILITY_DEFINITIONS } from '../../data/abilities';
 import type { AbilityId, AbilityStateSnapshot } from '../../types';
+import { getCombatAutoAim } from './CombatTargeting';
 
 export interface AbilityActivationHooks {
   onFireball: (dirX: number, dirY: number, level: number) => void;
@@ -16,7 +17,6 @@ export class AbilitySystem {
   private readonly cooldownRemaining = new Map<AbilityId, number>();
   private readonly cooldownTotal = new Map<AbilityId, number>();
 
-  // Heal gradual state
   private healActive = false;
   private healTimer = 0;
   private healDuration = 4.0;
@@ -66,7 +66,7 @@ export class AbilitySystem {
   getCooldownDuration(id: AbilityId): number {
     const def = ABILITY_DEFINITIONS[id];
     const level = this.getLevel(id);
-    const cdrReduction = (level - 1) * 0.05; // 5% per upgrade
+    const cdrReduction = (level - 1) * 0.05;
     const mult = Math.max(0.4, this.hooks.getCooldownMultiplier(id) - cdrReduction);
     return Math.max(1.0, def.baseCooldown * mult);
   }
@@ -77,7 +77,7 @@ export class AbilitySystem {
     if (id === 'heal') {
       if (this.healActive) return false;
       const { current, max } = this.hooks.getPlayerHP();
-      if (current >= max - 0.1) return false; // Cannot activate at full HP
+      if (current >= max - 0.1) return false;
     }
     return true;
   }
@@ -91,16 +91,21 @@ export class AbilitySystem {
     const level = this.getLevel(id);
     const cooldown = this.getCooldownDuration(id);
 
-    // Direction normalization
-    let dirX = aimDir.x;
-    let dirY = aimDir.y;
+    // Fireball and Beam always snap to the current combat target. Do not spend
+    // their cooldown when there is nothing valid to shoot at.
+    const directional = id === 'fireball' || id === 'arcane-beam';
+    const autoAim = directional ? getCombatAutoAim(650) : undefined;
+    if (directional && !autoAim) return false;
+
+    let dirX = autoAim?.x ?? aimDir.x;
+    let dirY = autoAim?.y ?? aimDir.y;
     const len = Math.hypot(dirX, dirY);
     if (len > 0.05) {
       dirX /= len;
       dirY /= len;
     } else {
       dirX = 0;
-      dirY = -1; // Default upward
+      dirY = -1;
     }
 
     if (id === 'fireball') {
@@ -126,17 +131,15 @@ export class AbilitySystem {
 
     if (id === 'heal') {
       const { max } = this.hooks.getPlayerHP();
-      // Level 1: 20% max HP, Level 2: 26%, Level 3: 26% faster, Level 4: 34%, Level 5: 34%
       const healPct = level >= 4 ? 0.34 : level >= 2 ? 0.26 : 0.20;
       this.healTotalAmount = max * healPct;
       this.healDuration = level === 3 || level >= 5 ? 3.2 : 4.0;
       this.healTimer = this.healDuration;
       this.healTickInterval = 0.4;
-      this.healTickTimer = 0.1; // First tick arrives quickly
+      this.healTickTimer = 0.1;
       const totalTicks = Math.max(1, Math.floor(this.healDuration / this.healTickInterval));
       this.healTickAmount = this.healTotalAmount / totalTicks;
       this.healActive = true;
-      // Cooldown will start after healing completes!
       this.cooldownTotal.set('heal', cooldown);
       return true;
     }
@@ -147,19 +150,14 @@ export class AbilitySystem {
   update(delta: number, isPaused: boolean): void {
     if (isPaused) return;
 
-    // 1. Update cooldown timers
     for (const [id, remaining] of this.cooldownRemaining.entries()) {
-      if (id === 'heal' && this.healActive) {
-        // Heal cooldown does not tick down while actively healing
-        continue;
-      }
+      if (id === 'heal' && this.healActive) continue;
       if (remaining > 0) {
         const next = Math.max(0, remaining - delta);
         this.cooldownRemaining.set(id, next);
       }
     }
 
-    // 2. Update gradual healing ticks
     if (this.healActive) {
       this.healTimer -= delta;
       this.healTickTimer -= delta;
@@ -172,7 +170,6 @@ export class AbilitySystem {
 
       if (this.healTimer <= 0) {
         this.healActive = false;
-        // Cooldown begins after healing finishes
         const cooldown = this.getCooldownDuration('heal');
         this.cooldownRemaining.set('heal', cooldown);
         this.cooldownTotal.set('heal', cooldown);
