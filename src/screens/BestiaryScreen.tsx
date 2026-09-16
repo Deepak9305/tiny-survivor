@@ -1,22 +1,19 @@
 import {
   ChevronLeft,
   ChevronRight,
-  Flame,
-  Ghost,
+  Info,
   Lightbulb,
   Lock,
   Shield,
   Skull,
-  Sparkles,
   Swords,
-  Zap,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { CreaturePreview3D } from '../components/CreaturePreview3D';
 import { ENEMY_BALANCE } from '../data/balance';
 import { BOSS_DEFINITIONS, type BossDefinition } from '../data/bosses';
-import { ALL_MONSTER_KINDS, getMonsterDefinition, type MonsterDefinition } from '../data/monsters';
-import { WORLD_META } from '../data/stages';
+import { ALL_MONSTER_KINDS, getMonsterDefinition } from '../data/monsters';
 import type { DamageType, EnemyKind, SaveData } from '../types';
 
 type Filter = 'all' | 'graveyard' | 'forest' | 'frozen' | 'castle' | 'bosses';
@@ -67,28 +64,30 @@ function getEntryImage(id: string): string | undefined {
 export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect }: BestiaryScreenProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState(initialId);
+  const [mobileIntelOpen, setMobileIntelOpen] = useState(false);
+
   const allEntries = createEntries(save);
   const visibleEntries = allEntries.filter((entry) => matchesFilter(entry, filter));
   const selected = allEntries.find((entry) => entry.id === selectedId) ?? visibleEntries[0] ?? allEntries[0];
-
-  const currentIndex = visibleEntries.findIndex((e) => e.id === selected?.id);
-  const discoveredCount = allEntries.filter((e) => e.discovered).length;
+  const currentIndex = visibleEntries.findIndex((entry) => entry.id === selected?.id);
+  const discoveredCount = allEntries.filter((entry) => entry.discovered).length;
 
   const selectEntry = (id: string) => {
     setSelectedId(id);
+    setMobileIntelOpen(false);
     onSelect(id);
   };
 
   const handlePrev = () => {
     if (visibleEntries.length <= 1) return;
-    const newIdx = (currentIndex - 1 + visibleEntries.length) % visibleEntries.length;
-    selectEntry(visibleEntries[newIdx].id);
+    const newIndex = (currentIndex - 1 + visibleEntries.length) % visibleEntries.length;
+    selectEntry(visibleEntries[newIndex].id);
   };
 
   const handleNext = () => {
     if (visibleEntries.length <= 1) return;
-    const newIdx = (currentIndex + 1) % visibleEntries.length;
-    selectEntry(visibleEntries[newIdx].id);
+    const newIndex = (currentIndex + 1) % visibleEntries.length;
+    selectEntry(visibleEntries[newIndex].id);
   };
 
   const monster = selected?.kind ? getMonsterDefinition(selected.kind) : undefined;
@@ -102,14 +101,12 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
     : save.bossKillCounts[selected?.id ?? ''] ?? 0;
   const imgUrl = selected ? getEntryImage(selected.id) : undefined;
 
-  // Segmented Stat Calculations (1 to 5)
   const hpSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.hp / (selected?.kind ? 55 : 550)))) : 3;
   const dmgSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.damage / 6))) : 2;
   const spdSegments = balance ? Math.min(5, Math.max(1, Math.ceil(balance.speed / (selected?.kind ? 18 : 8)))) : 4;
 
   return (
     <main className="meta-screen codex-screen-landscape">
-      {/* Header Bar */}
       <header className="codex-header">
         <button type="button" className="codex-back-btn" onClick={onBack} aria-label="Back">
           <ChevronLeft size={20} />
@@ -128,9 +125,7 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
         </span>
       </header>
 
-      {/* 3-Column Landscape Body */}
       <div className="codex-tri-layout">
-        {/* Left Column: Category Tabs + Scrollable Roster */}
         <aside className="codex-roster-col">
           <nav className="codex-tabs-row" role="tablist" aria-label="Codex category tabs">
             {filters.map((item) => (
@@ -140,7 +135,10 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 role="tab"
                 aria-selected={filter === item.id}
                 className={`codex-tab-btn ${filter === item.id ? 'is-active' : ''}`}
-                onClick={() => setFilter(item.id)}
+                onClick={() => {
+                  setFilter(item.id);
+                  setMobileIntelOpen(false);
+                }}
               >
                 {item.label}
               </button>
@@ -184,7 +182,6 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
           </div>
         </aside>
 
-        {/* Center Column: 3D Stage + Runic Pedestal + Stepper */}
         <section className="codex-stage-col">
           <div className="codex-stage-container">
             <button
@@ -227,14 +224,38 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 {Math.max(1, currentIndex + 1)} / {Math.max(1, visibleEntries.length)}
               </span>
             </div>
+            <button
+              type="button"
+              className="codex-mobile-intel-btn"
+              onClick={() => setMobileIntelOpen(true)}
+              aria-label="Open monster intel"
+            >
+              <Info size={14} />
+              INTEL
+            </button>
           </div>
         </section>
 
-        {/* Right Column: Intel Card */}
-        <section className="codex-intel-col">
+        <button
+          type="button"
+          className={`codex-mobile-intel-backdrop ${mobileIntelOpen ? 'is-open' : ''}`}
+          onClick={() => setMobileIntelOpen(false)}
+          aria-label="Close monster intel"
+          tabIndex={mobileIntelOpen ? 0 : -1}
+        />
+
+        <section className={`codex-intel-col ${mobileIntelOpen ? 'is-mobile-open' : ''}`}>
+          <button
+            type="button"
+            className="codex-mobile-intel-close"
+            onClick={() => setMobileIntelOpen(false)}
+            aria-label="Close monster intel"
+          >
+            <X size={18} />
+          </button>
+
           {selected?.discovered ? (
             <div className="codex-intel-card">
-              {/* Top Header with Monster Portrait */}
               <div className="codex-intel-header">
                 <div className="codex-intel-title-group">
                   <span className="codex-intel-role">{selected.role.toUpperCase()}</span>
@@ -253,46 +274,12 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 <span className="codex-intel-diamond" />
               </div>
 
-              {/* Segmented Stat Bars */}
               <div className="codex-segmented-stats">
-                <div className="codex-stat-row">
-                  <span className="codex-stat-label">Health</span>
-                  <div className="codex-stat-segments">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`codex-stat-seg ${i < hpSegments ? 'is-filled' : ''}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="codex-stat-row">
-                  <span className="codex-stat-label">Damage</span>
-                  <div className="codex-stat-segments">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`codex-stat-seg ${i < dmgSegments ? 'is-filled' : ''}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="codex-stat-row">
-                  <span className="codex-stat-label">Speed</span>
-                  <div className="codex-stat-segments">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`codex-stat-seg ${i < spdSegments ? 'is-filled' : ''}`}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <CodexStat label="Health" value={hpSegments} />
+                <CodexStat label="Damage" value={dmgSegments} />
+                <CodexStat label="Speed" value={spdSegments} />
               </div>
 
-              {/* Elemental Affinities */}
               <div className="codex-affinities-row">
                 <div className="codex-affinity-box">
                   <span className="codex-affinity-tag">WEAK TO</span>
@@ -311,7 +298,6 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 </div>
               </div>
 
-              {/* Attack Behavior */}
               <div className="codex-intel-section">
                 <div className="codex-section-label">
                   <Swords size={14} className="text-cyan" />
@@ -324,7 +310,6 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 </p>
               </div>
 
-              {/* Tactical Counter Box */}
               <div className="codex-counter-box">
                 <div className="codex-counter-header">
                   <Lightbulb size={15} className="codex-counter-icon" />
@@ -336,7 +321,6 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
                 </p>
               </div>
 
-              {/* Enemies Defeated Footer */}
               <div className="codex-intel-footer">
                 <Skull size={15} className="codex-kills-icon" />
                 <span className="codex-kills-text">
@@ -357,6 +341,19 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
         </section>
       </div>
     </main>
+  );
+}
+
+function CodexStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="codex-stat-row">
+      <span className="codex-stat-label">{label}</span>
+      <div className="codex-stat-segments">
+        {Array.from({ length: 5 }, (_, index) => (
+          <span key={index} className={`codex-stat-seg ${index < value ? 'is-filled' : ''}`} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -388,20 +385,16 @@ function createEntries(save: SaveData): CodexEntry[] {
 function matchesFilter(entry: CodexEntry, filter: Filter): boolean {
   if (filter === 'all') return true;
   if (filter === 'bosses') return Boolean(entry.boss);
-  const worldId = filters.find((f) => f.id === filter)?.worldId;
+  const worldId = filters.find((item) => item.id === filter)?.worldId;
   return worldId !== undefined && entry.worldIds.includes(worldId);
 }
 
 function formatWeakness(weakness: DamageType[]): string {
   if (weakness.length === 0) return 'None';
-  return weakness
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(', ');
+  return weakness.map((value) => value.charAt(0).toUpperCase() + value.slice(1)).join(', ');
 }
 
 function formatResistance(resists: DamageType[]): string {
   if (resists.length === 0) return 'None';
-  return resists
-    .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
-    .join(', ');
+  return resists.map((value) => value.charAt(0).toUpperCase() + value.slice(1)).join(', ');
 }
