@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getCharacterSurfaceSpec } from '../visuals/CharacterSurface';
 
 type MaterialOptions = {
   transparent?: boolean;
@@ -52,10 +53,13 @@ export class SharedResources {
     const materialKey = `standard:${key}:${color}:${JSON.stringify(options)}`;
     const existing = this.materials.get(materialKey);
     if (existing) return existing as THREE.MeshStandardMaterial;
+
+    const surface = getCharacterSurfaceSpec(key);
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: options.roughness ?? 0.78,
-      metalness: options.metalness ?? 0.08,
+      map: surface && !options.transparent ? surface.texture : undefined,
+      roughness: options.roughness ?? surface?.roughness ?? 0.78,
+      metalness: options.metalness ?? surface?.metalness ?? 0.08,
       transparent: options.transparent ?? false,
       opacity: options.opacity ?? 1,
       emissive: options.emissive ?? 0,
@@ -64,6 +68,10 @@ export class SharedResources {
       depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
     material.name = key;
+    if (surface) {
+      material.envMapIntensity = surface.envMapIntensity;
+      material.userData.premiumCharacterSurface = true;
+    }
     this.materials.set(materialKey, material);
     return material;
   }
