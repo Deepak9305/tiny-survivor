@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
+import { setPrimaryFireActive } from '../game/systems/CombatTargeting';
 import { getActiveThreeGame } from '../game3d/ThreeGame';
 import { VirtualStick } from './VirtualStick';
 
@@ -23,11 +24,11 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
     if (!disabled) return;
     firePointerId.current = undefined;
     setFiring(false);
-    getActiveThreeGame()?.setPrimaryFire(false);
+    setPrimaryFireActive(false);
   }, [disabled]);
 
   useEffect(() => () => {
-    getActiveThreeGame()?.setPrimaryFire(false);
+    setPrimaryFireActive(false);
   }, []);
 
   const handleMovementChange = (x: number, y: number) => {
@@ -37,7 +38,7 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
   const stopFiring = () => {
     firePointerId.current = undefined;
     setFiring(false);
-    getActiveThreeGame()?.setPrimaryFire(false);
+    setPrimaryFireActive(false);
   };
 
   return (
@@ -79,7 +80,7 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
               // Older Android WebViews can reject capture; firing still works.
             }
             setFiring(true);
-            getActiveThreeGame()?.setPrimaryFire(true);
+            setPrimaryFireActive(true);
           }}
           onPointerUp={(event) => {
             event.preventDefault();
