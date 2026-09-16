@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Crosshair } from 'lucide-react';
+import { setPrimaryFireActive } from '../game/systems/CombatTargeting';
 import { getActiveThreeGame } from '../game3d/ThreeGame';
 import { VirtualStick } from './VirtualStick';
 
@@ -8,6 +10,8 @@ interface TwinStickControlsProps {
 
 export function TwinStickControls({ disabled = false }: TwinStickControlsProps) {
   const [showTutorial, setShowTutorial] = useState(true);
+  const [firing, setFiring] = useState(false);
+  const firePointerId = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -16,12 +20,25 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (!disabled) return;
+    firePointerId.current = undefined;
+    setFiring(false);
+    setPrimaryFireActive(false);
+  }, [disabled]);
+
+  useEffect(() => () => {
+    setPrimaryFireActive(false);
+  }, []);
+
   const handleMovementChange = (x: number, y: number) => {
     getActiveThreeGame()?.setMovementVector(x, y);
   };
 
-  const handleAimChange = (x: number, y: number) => {
-    getActiveThreeGame()?.setAimVector(x, y);
+  const stopFiring = () => {
+    firePointerId.current = undefined;
+    setFiring(false);
+    setPrimaryFireActive(false);
   };
 
   return (
@@ -31,12 +48,11 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
           <div className="twin-stick-tutorial__pill">
             <span className="twin-stick-tutorial__left">MOVE</span>
             <span className="twin-stick-tutorial__bullet">•</span>
-            <span className="twin-stick-tutorial__right">AIM TO ATTACK</span>
+            <span className="twin-stick-tutorial__right">HOLD FIRE · SPECIALS AUTO-AIM</span>
           </div>
         </div>
       )}
 
-      {/* Left Stick: Movement */}
       <div className="twin-stick-zone twin-stick-zone--left">
         <VirtualStick
           mode="movement"
@@ -47,15 +63,46 @@ export function TwinStickControls({ disabled = false }: TwinStickControlsProps) 
         <div className="twin-stick-label">MOVE</div>
       </div>
 
-      {/* Right Stick: Aim */}
-      <div className="twin-stick-zone twin-stick-zone--right">
-        <VirtualStick
-          mode="aim"
+      <div className="twin-stick-zone twin-stick-zone--fire">
+        <button
+          type="button"
+          className={`primary-fire-btn${firing ? ' is-firing' : ''}`}
           disabled={disabled}
-          label="Aim weapon with right virtual stick"
-          onVectorChange={handleAimChange}
-        />
-        <div className="twin-stick-label twin-stick-label--aim">AIM</div>
+          aria-label="Hold to auto-target and fire primary weapon"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (disabled || firePointerId.current !== undefined) return;
+            firePointerId.current = event.pointerId;
+            try {
+              event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+              // Older Android WebViews can reject capture; firing still works.
+            }
+            setFiring(true);
+            setPrimaryFireActive(true);
+          }}
+          onPointerUp={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (firePointerId.current === event.pointerId) stopFiring();
+          }}
+          onPointerCancel={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (firePointerId.current === event.pointerId) stopFiring();
+          }}
+          onLostPointerCapture={() => {
+            if (firePointerId.current !== undefined) stopFiring();
+          }}
+        >
+          <span className="primary-fire-btn__pulse" aria-hidden="true" />
+          <span className="primary-fire-btn__inner" aria-hidden="true">
+            <Crosshair size={32} strokeWidth={2.25} />
+          </span>
+          <span className="primary-fire-btn__text">FIRE</span>
+        </button>
+        <div className="twin-stick-label twin-stick-label--fire">HOLD</div>
       </div>
     </div>
   );

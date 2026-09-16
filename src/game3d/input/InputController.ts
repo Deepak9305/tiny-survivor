@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import {
+  getCombatAutoAim,
+  isPrimaryFireActive,
+  resetCombatTargeting,
+  setPrimaryFireActive,
+} from '../../game/systems/CombatTargeting';
 
 export class InputController {
   private readonly keys = new Set<string>();
@@ -25,6 +31,7 @@ export class InputController {
     this.moveJoystick.set(x, y).clampLength(0, 1);
   }
 
+  /** Legacy manual-aim channel retained for desktop/debug controls. */
   setAimVector(x: number, y: number): void {
     const len = Math.sqrt(x * x + y * y);
     if (len > 0.12) {
@@ -47,7 +54,16 @@ export class InputController {
   }
 
   getAimVector(): THREE.Vector2 {
-    // Check arrow keys or IJKL for keyboard aiming
+    // Hold-to-fire uses the live automatic target direction supplied by WeaponSystem.
+    if (isPrimaryFireActive()) {
+      const autoAim = getCombatAutoAim(500);
+      if (autoAim) {
+        this.lastAimVector.set(autoAim.x, autoAim.y);
+        return new THREE.Vector2(autoAim.x, autoAim.y);
+      }
+    }
+
+    // Desktop/debug manual aiming remains available.
     const aimKeyX =
       Number(this.keys.has('arrowright') || this.keys.has('l')) -
       Number(this.keys.has('arrowleft') || this.keys.has('j'));
@@ -75,10 +91,12 @@ export class InputController {
       this.keys.has('k') ||
       this.keys.has('l');
 
-    return this.aimActive || aimKeyActive;
+    return isPrimaryFireActive() || this.aimActive || aimKeyActive;
   }
 
   getLastAimVector(): THREE.Vector2 {
+    const autoAim = getCombatAutoAim(650);
+    if (autoAim) return new THREE.Vector2(autoAim.x, autoAim.y);
     return this.lastAimVector.clone();
   }
 
@@ -87,6 +105,7 @@ export class InputController {
     this.moveJoystick.set(0, 0);
     this.aimJoystick.set(0, 0);
     this.aimActive = false;
+    resetCombatTargeting();
   }
 
   dispose(): void {
@@ -99,6 +118,7 @@ export class InputController {
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
+
     if (key === '1') {
       this.onAbilityKey?.(1);
       event.preventDefault();
@@ -116,6 +136,12 @@ export class InputController {
     }
     if (key === '4') {
       this.onAbilityKey?.(4);
+      event.preventDefault();
+      return;
+    }
+
+    if (event.code === 'Space' || key === 'f') {
+      setPrimaryFireActive(true);
       event.preventDefault();
       return;
     }
@@ -142,7 +168,11 @@ export class InputController {
   };
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
-    this.keys.delete(event.key.toLowerCase());
+    const key = event.key.toLowerCase();
+    this.keys.delete(key);
+    if (event.code === 'Space' || key === 'f') {
+      setPrimaryFireActive(false);
+    }
   };
 
   private readonly handleBlur = (): void => {

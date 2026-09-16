@@ -18,7 +18,11 @@ export class EnemyProjectile3D {
     this.x = x;
     this.y = y;
     this.damage = damage;
-    this.velocity = new THREE.Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    // Auto-aim makes player offense easier, so hostile shots travel faster while
+    // preserving their existing telegraphs and patterns. The multiplier is kept
+    // moderate so dodging remains readable rather than becoming reaction-only.
+    const threatSpeed = speed * 1.15;
+    this.velocity = new THREE.Vector2(Math.cos(angle) * threatSpeed, Math.sin(angle) * threatSpeed);
     this.group = new THREE.Group();
     this.group.name = this.id;
     const bolt = addMesh(this.group, resources.octa('enemy-projectile'), resources.standardMaterial(`enemy-projectile-${color}`, color, { emissive: color, emissiveIntensity: 1.2, roughness: 0.35 }));

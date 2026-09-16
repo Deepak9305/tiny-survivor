@@ -1,5 +1,10 @@
 import { WEAPON_BALANCE } from '../../data/balance';
 import type { DamageType, WeaponId } from '../../types';
+import {
+  clearCombatAutoAim,
+  isPrimaryFireActive,
+  setCombatAutoAim,
+} from './CombatTargeting';
 
 export interface TargetPoint {
   id: string;
@@ -60,10 +65,12 @@ export class WeaponSystem {
   private readonly cooldowns = new Map<WeaponId, number>();
   private primaryHitCounter = 0;
   private chainFallbackTimer = 0;
+  private lockedTargetId?: string;
+  private autoTarget?: TargetPoint;
 
   constructor(private readonly hooks: WeaponHooks) {
     this.levels.set('magic-bolt', 1);
-    this.cooldowns.set('magic-bolt', 0.1);
+    this.cooldowns.set('magic-bolt', 0.05);
   }
 
   addWeapon(id: WeaponId): void {
@@ -93,24 +100,32 @@ export class WeaponSystem {
   }
 
   update(delta: number): void {
-    const isAiming = this.hooks.isAimActive();
+    this.autoTarget = this.findAutoTarget(570);
+    if (this.autoTarget) {
+      const player = this.hooks.getPlayerPosition();
+      setCombatAutoAim(this.autoTarget.x - player.x, this.autoTarget.y - player.y);
+    } else {
+      clearCombatAutoAim();
+      this.lockedTargetId = undefined;
+    }
 
-    // 1. Primary: Magic Bolt (fires continuously according to cooldown only while actively aiming)
+    // Primary now means: hold FIRE, then automatically track a nearby threat.
+    // Legacy keyboard/manual aiming still counts as firing for web/debug play.
+    const primaryFiring = isPrimaryFireActive() || this.hooks.isAimActive();
     const boltCooldown = (this.cooldowns.get('magic-bolt') ?? 0) - delta;
     if (boltCooldown <= 0) {
-      if (isAiming) {
-        this.triggerMagicBolt();
+      if (primaryFiring && this.autoTarget && this.triggerMagicBolt(this.autoTarget)) {
         const level = this.getWeaponLevel('magic-bolt');
         const base = WEAPON_BALANCE['magic-bolt'].cooldown * this.hooks.getCooldownMultiplier();
-        this.cooldowns.set('magic-bolt', Math.max(0.12, base * (level >= 4 ? 0.82 : level >= 2 ? 0.92 : 1)));
+        this.cooldowns.set('magic-bolt', Math.max(0.09, base * (level >= 4 ? 0.80 : level >= 2 ? 0.90 : 1)));
       } else {
+        // Holding fire before an enemy enters range should not spend a cooldown.
         this.cooldowns.set('magic-bolt', 0);
       }
     } else {
       this.cooldowns.set('magic-bolt', boltCooldown);
     }
 
-    // 2. Auto Weapon: Orbiting Blades (periodic auto damage around player)
     if (this.hasWeapon('orbiting-blades')) {
       const bladesCooldown = (this.cooldowns.get('orbiting-blades') ?? 0) - delta;
       if (bladesCooldown <= 0) {
@@ -134,7 +149,6 @@ export class WeaponSystem {
       }
     }
 
-    // 3. Auto Weapon: Chain Lightning fallback proc in case player hits are spaced out
     if (this.hasWeapon('chain-lightning')) {
       this.chainFallbackTimer += delta;
       const level = this.getWeaponLevel('chain-lightning');
@@ -151,15 +165,10 @@ export class WeaponSystem {
     }
   }
 
-  /**
-   * Called whenever a primary Magic Bolt impacts an enemy.
-   * Procs Chain Lightning after required hits!
-   */
   onPrimaryHit(targetX: number, targetY: number, targetId?: string): void {
     if (!this.hasWeapon('chain-lightning')) return;
     this.primaryHitCounter += 1;
     const level = this.getWeaponLevel('chain-lightning');
-    // Baseline: 6 hits, reduced per level to 5, 4, 3, 2
     const requiredHits = Math.max(2, 7 - level);
     if (this.primaryHitCounter >= requiredHits) {
       this.primaryHitCounter = 0;
@@ -168,58 +177,84 @@ export class WeaponSystem {
     }
   }
 
-  private triggerMagicBolt(): void {
+  private findAutoTarget(maxDist: number): TargetPoint | undefined {
+    const player = this.hooks.getPlayerPosition();
+    const candidates = new Map<string, TargetPoint>();
+
+    // Normal enemies are available directly through the spatial grid hook.
+    for (const target of this.hooks.findTargetsInRadius(player.x, player.y, maxDist)) {
+      candidates.set(target.id, target);
+    }
+
+    // Sample eight cones to also discover boss / boss-echo targets exposed by
+    // SurvivorGame's existing aim-assist query without adding another engine API.
+    const sampleCount = 8;
+    for (let index = 0; index < sampleCount; index += 1) {
+      const angle = (index / sampleCount) * Math.PI * 2;
+      const target = this.hooks.findAimAssistTarget(
+        player.x,
+        player.y,
+        Math.cos(angle),
+        Math.sin(angle),
+        Math.PI / 4 + 0.04,
+        maxDist
+      );
+      if (target) candidates.set(target.id, target);
+    }
+
+    const locked = this.lockedTargetId ? candidates.get(this.lockedTargetId) : undefined;
+    if (locked) {
+      const lockedDistance = Math.hypot(locked.x - player.x, locked.y - player.y);
+      if (lockedDistance <= maxDist * 1.08) return locked;
+    }
+
+    let best: TargetPoint | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const target of candidates.values()) {
+      const distance = Math.hypot(target.x - player.x, target.y - player.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = target;
+      }
+    }
+
+    this.lockedTargetId = best?.id;
+    return best;
+  }
+
+  private triggerMagicBolt(target: TargetPoint): boolean {
     const level = this.getWeaponLevel('magic-bolt');
+    const player = this.hooks.getPlayerPosition();
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 1) return false;
+
+    const dirX = dx / distance;
+    const dirY = dy / distance;
     const damage =
       WEAPON_BALANCE['magic-bolt'].baseDamage *
       this.hooks.getPrimaryDamageMultiplier() *
       (1 + (level - 1) * 0.25);
-    const player = this.hooks.getPlayerPosition();
-
-    const rawAim = this.hooks.getAimVector();
-    const aimLen = Math.hypot(rawAim.x, rawAim.y);
-    if (aimLen < 0.1) return;
-
-    let dirX = rawAim.x / aimLen;
-    let dirY = rawAim.y / aimLen;
-
-    // Mild aim assist (cone ~10 degrees = 0.175 rad) to nudge trajectory
-    const assist = this.hooks.findAimAssistTarget(
-      player.x,
-      player.y,
-      dirX,
-      dirY,
-      0.175,
-      480
-    );
-
-    if (assist) {
-      const targetAngle = Math.atan2(assist.y - player.y, assist.x - player.x);
-      const aimAngle = Math.atan2(dirY, dirX);
-      let diff = targetAngle - aimAngle;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      const nudgedAngle = aimAngle + diff * 0.42;
-      dirX = Math.cos(nudgedAngle);
-      dirY = Math.sin(nudgedAngle);
-    }
 
     const count = level >= 3 ? 2 : 1;
     const pierce = level >= 5 ? 2 : level >= 4 ? 1 : 0;
     for (let index = 0; index < count; index += 1) {
-      const spreadAngle = count === 2 ? (index === 0 ? -0.1 : 0.1) : 0;
+      const spreadAngle = count === 2 ? (index === 0 ? -0.085 : 0.085) : 0;
       this.hooks.fireProjectile({
         weaponId: 'magic-bolt',
+        target,
         direction: { x: dirX, y: dirY },
         angle: spreadAngle,
         damage,
-        speed: 380,
+        speed: 420,
         radius: 7,
         pierce,
         color: WEAPON_BALANCE['magic-bolt'].color,
         damageType: WEAPON_BALANCE['magic-bolt'].damageType,
       });
     }
+    return true;
   }
 
   private triggerChainLightningAt(originX: number, originY: number, initialTargetId?: string): void {

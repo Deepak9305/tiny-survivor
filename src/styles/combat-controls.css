@@ -1,0 +1,177 @@
+/* Hold-to-fire combat controls.
+ * The former right aim stick is now a large timing button; ability positions
+ * keep using the same aim-stick anchor variables so the special-attack fan
+ * remains ergonomic around the right thumb zone.
+ */
+
+/* GameScreen still owns a legacy twin-stick hint. The control component now
+ * presents the correct MOVE / HOLD FIRE / AUTO-AIM tutorial, so suppress the
+ * stale duplicate rather than showing contradictory instructions. */
+.game-tip--twin-stick {
+  display: none;
+}
+
+.twin-stick-zone--fire {
+  position: absolute;
+  z-index: 42;
+  right: var(--aim-stick-right, max(18px, env(safe-area-inset-right)));
+  bottom: var(--aim-stick-bottom, max(18px, env(safe-area-inset-bottom)));
+  width: var(--aim-stick-size, 140px);
+  height: var(--aim-stick-size, 140px);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.primary-fire-btn {
+  position: relative;
+  width: calc(var(--aim-stick-size, 140px) * .76);
+  height: calc(var(--aim-stick-size, 140px) * .76);
+  min-width: 76px;
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid rgba(255, 201, 88, .7);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(77, 197, 255, .28) 0 24%, transparent 25%),
+    radial-gradient(circle, #173653 0 42%, #0a1a2b 43% 64%, #050b13 65% 100%);
+  color: #e9faff;
+  box-shadow:
+    0 5px 20px rgba(0, 0, 0, .46),
+    inset 0 0 0 4px rgba(3, 12, 22, .72),
+    inset 0 0 18px rgba(56, 189, 248, .16),
+    0 0 0 3px rgba(79, 183, 225, .14);
+  pointer-events: auto;
+  touch-action: none;
+  transition: transform .09s ease, border-color .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+.primary-fire-btn::before,
+.primary-fire-btn::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.primary-fire-btn::before {
+  inset: 8%;
+  border: 1px dashed rgba(103, 220, 255, .34);
+}
+
+.primary-fire-btn::after {
+  inset: -7px;
+  border: 1px solid rgba(255, 190, 69, .2);
+}
+
+.primary-fire-btn__pulse {
+  position: absolute;
+  inset: -12%;
+  border: 1px solid rgba(66, 211, 255, .18);
+  border-radius: 50%;
+  opacity: .35;
+  pointer-events: none;
+}
+
+.primary-fire-btn__inner {
+  display: grid;
+  place-items: center;
+  transform: translateY(-5px);
+  filter: drop-shadow(0 0 7px rgba(83, 216, 255, .55));
+}
+
+.primary-fire-btn__text {
+  position: absolute;
+  left: 50%;
+  bottom: 17%;
+  transform: translateX(-50%);
+  color: #ffd778;
+  font: 900 12px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.4px;
+  text-shadow: 0 1px 8px rgba(255, 169, 48, .32);
+}
+
+.primary-fire-btn.is-firing {
+  transform: scale(.965);
+  border-color: #ffd166;
+  filter: brightness(1.14);
+  box-shadow:
+    0 3px 15px rgba(0, 0, 0, .42),
+    inset 0 0 0 4px rgba(3, 12, 22, .68),
+    inset 0 0 26px rgba(52, 211, 255, .31),
+    0 0 20px rgba(42, 199, 255, .3),
+    0 0 0 4px rgba(255, 193, 73, .13);
+}
+
+.primary-fire-btn.is-firing .primary-fire-btn__pulse {
+  animation: primary-fire-pulse .54s ease-out infinite;
+}
+
+.primary-fire-btn:disabled {
+  opacity: .4;
+  filter: grayscale(.35);
+}
+
+.twin-stick-label--fire {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  transform: translateX(-50%);
+  color: rgba(213, 236, 247, .62);
+  font-size: 8px;
+  letter-spacing: 1.3px;
+  pointer-events: none;
+}
+
+@keyframes primary-fire-pulse {
+  0% { transform: scale(.82); opacity: .5; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+@media (orientation: landscape) and (max-height: 440px) {
+  .primary-fire-btn {
+    width: calc(var(--aim-stick-size, 124px) * .74);
+    height: calc(var(--aim-stick-size, 124px) * .74);
+    min-width: 78px;
+    min-height: 78px;
+  }
+
+  .primary-fire-btn__inner svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .primary-fire-btn__text {
+    bottom: 15%;
+    font-size: 10px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 380px) {
+  .primary-fire-btn {
+    min-width: 72px;
+    min-height: 72px;
+  }
+
+  .primary-fire-btn__inner svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .twin-stick-label--fire {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-fire-btn,
+  .primary-fire-btn__pulse {
+    animation: none !important;
+    transition: none !important;
+  }
+}
