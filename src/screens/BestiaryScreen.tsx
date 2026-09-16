@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
+import { CreaturePreview3D } from '../components/CreaturePreview3D';
 import { ENEMY_BALANCE } from '../data/balance';
 import { BOSS_DEFINITIONS, type BossDefinition } from '../data/bosses';
 import { ALL_MONSTER_KINDS, getMonsterDefinition } from '../data/monsters';
@@ -46,24 +47,6 @@ const filters: Array<{ id: Filter; label: string; worldId?: number }> = [
   { id: 'castle', label: 'Castle', worldId: 4 },
   { id: 'bosses', label: 'Bosses' },
 ];
-
-function getEntryImage(id: string): string | undefined {
-  const images: Record<string, string> = {
-    skeleton: '/assets/images/creature_skeleton.jpg',
-    bat: '/assets/images/creature_bat.jpg',
-    slime: '/assets/images/creature_slime.jpg',
-    ghost: '/assets/images/creature_ghost.jpg',
-    archer: '/assets/images/creature_archer.jpg',
-    knight: '/assets/images/creature_knight.jpg',
-    demon: '/assets/images/creature_demon.jpg',
-    imp: '/assets/images/creature_imp.jpg',
-    'skeleton-king': '/assets/images/portrait_skeleton_king.jpg',
-    'forest-witch': '/assets/images/boss_forest_witch.jpg',
-    'frost-golem': '/assets/images/boss_frost_golem.jpg',
-    'demon-lord': '/assets/images/boss_demon_lord.jpg',
-  };
-  return images[id];
-}
 
 export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect }: BestiaryScreenProps) {
   const [filter, setFilter] = useState<Filter>('all');
@@ -106,10 +89,10 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
   const kills = selected?.kind
     ? save.enemyKillCounts[selected.kind] ?? 0
     : save.bossKillCounts[selected?.id ?? ''] ?? 0;
-  const imgUrl = selected ? getEntryImage(selected.id) : undefined;
+  const previewWorldId = selected?.worldIds[0] ?? 1;
 
   return (
-    <main className="codex-clean-screen">
+    <main className="codex-clean-screen codex-clean-screen--3d">
       <header className="codex-clean-header">
         <button type="button" className="codex-clean-back" onClick={onBack} aria-label="Back">
           <ChevronLeft size={18} />
@@ -141,50 +124,38 @@ export function BestiaryScreen({ save, initialId = 'skeleton', onBack, onSelect 
           </nav>
 
           <div className="codex-clean-list">
-            {visibleEntries.map((entry) => {
-              const entryImg = getEntryImage(entry.id);
-              return (
-                <button
-                  type="button"
-                  key={entry.id}
-                  className={`codex-clean-row ${entry.id === selected?.id ? 'is-active' : ''}`}
-                  onClick={() => selectEntry(entry.id)}
-                >
-                  <span className="codex-clean-row__thumb">
-                    {entry.discovered && entryImg ? (
-                      <img src={entryImg} alt="" />
-                    ) : entry.discovered ? (
-                      <CodexGlyph id={entry.id} size={18} />
-                    ) : (
-                      <Lock size={14} />
-                    )}
-                  </span>
-                  <span className="codex-clean-row__copy">
-                    <strong>{entry.discovered ? entry.name : 'Unknown'}</strong>
-                    <small>{entry.discovered ? entry.role : 'Not encountered'}</small>
-                  </span>
-                </button>
-              );
-            })}
+            {visibleEntries.map((entry) => (
+              <button
+                type="button"
+                key={entry.id}
+                className={`codex-clean-row ${entry.id === selected?.id ? 'is-active' : ''}`}
+                onClick={() => selectEntry(entry.id)}
+              >
+                <span className="codex-clean-row__thumb codex-clean-row__thumb--glyph">
+                  {entry.discovered ? <CodexGlyph id={entry.id} size={18} /> : <Lock size={14} />}
+                </span>
+                <span className="codex-clean-row__copy">
+                  <strong>{entry.discovered ? entry.name : 'Unknown'}</strong>
+                  <small>{entry.discovered ? entry.role : 'Not encountered'}</small>
+                </span>
+              </button>
+            ))}
           </div>
         </aside>
 
         <section className="codex-clean-subject" aria-label="Selected monster">
-          <div className={`codex-clean-art ${selected?.discovered ? '' : 'is-locked'}`}>
-            {selected?.discovered ? (
-              imgUrl ? (
-                <img src={imgUrl} alt={selected.name} className="codex-clean-art__image" />
-              ) : (
-                <div className="codex-clean-art__fallback">
-                  <CodexGlyph id={selected.id} size={82} />
-                </div>
-              )
-            ) : (
-              <div className="codex-clean-art__fallback is-unknown">
-                <Lock size={44} />
-              </div>
+          <div className={`codex-clean-art codex-clean-art--3d ${selected?.discovered ? '' : 'is-locked'}`}>
+            {selected && (
+              <CreaturePreview3D
+                kind={selected.kind}
+                bossId={selected.boss?.id}
+                worldId={previewWorldId}
+                discovered={selected.discovered}
+                className="codex-clean-art__model"
+              />
             )}
             <div className="codex-clean-art__shade" />
+            <div className="codex-clean-art__live-badge">LIVE 3D</div>
             <div className="codex-clean-art__caption">
               <span>{selected?.discovered ? selected.role : 'Unidentified threat'}</span>
               <strong>{selected?.discovered ? selected.name : 'Unknown'}</strong>
@@ -270,10 +241,10 @@ function CodexGlyph({ id, size }: { id: string; size: number }) {
   if (id === 'cursed-wolf') return <PawPrint size={size} />;
   if (id === 'thornling') return <Leaf size={size} />;
   if (id === 'treant') return <TreePine size={size} />;
-  if (id === 'frost-wraith') return <Snowflake size={size} />;
+  if (id === 'frost-wraith' || id === 'ice-mage' || id === 'frost-golem') return <Snowflake size={size} />;
   if (id === 'ghost') return <Ghost size={size} />;
-  if (id === 'demon' || id === 'imp' || id === 'demon-lord') return <Flame size={size} />;
-  if (id === 'archer') return <Zap size={size} />;
+  if (id === 'demon' || id === 'imp' || id === 'demon-lord' || id === 'demon-warrior') return <Flame size={size} />;
+  if (id === 'archer' || id === 'bone-mage' || id === 'forest-mage') return <Zap size={size} />;
   return <Skull size={size} />;
 }
 

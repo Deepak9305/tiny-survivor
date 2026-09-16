@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getCharacterSurfaceSpec } from '../visuals/CharacterSurface';
 
 type MaterialOptions = {
   transparent?: boolean;
@@ -43,6 +44,7 @@ export class SharedResources {
     const existing = this.geometries.get(key);
     if (existing) return existing;
     const created = factory();
+    created.name = key;
     this.geometries.set(key, created);
     return created;
   }
@@ -51,10 +53,13 @@ export class SharedResources {
     const materialKey = `standard:${key}:${color}:${JSON.stringify(options)}`;
     const existing = this.materials.get(materialKey);
     if (existing) return existing as THREE.MeshStandardMaterial;
+
+    const surface = getCharacterSurfaceSpec(key);
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: options.roughness ?? 0.78,
-      metalness: options.metalness ?? 0.08,
+      map: surface && !options.transparent ? surface.texture : undefined,
+      roughness: options.roughness ?? surface?.roughness ?? 0.78,
+      metalness: options.metalness ?? surface?.metalness ?? 0.08,
       transparent: options.transparent ?? false,
       opacity: options.opacity ?? 1,
       emissive: options.emissive ?? 0,
@@ -62,6 +67,11 @@ export class SharedResources {
       side: options.side,
       depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
+    material.name = key;
+    if (surface) {
+      material.envMapIntensity = surface.envMapIntensity;
+      material.userData.premiumCharacterSurface = true;
+    }
     this.materials.set(materialKey, material);
     return material;
   }
@@ -77,6 +87,7 @@ export class SharedResources {
       side: options.side,
       depthWrite: options.depthWrite ?? (options.transparent ? false : true),
     });
+    material.name = key;
     // The primary and specials are auto-aimed now. Keep legacy geometry allocation
     // harmless for compatibility, but never render the old manual aim cone/line/dot.
     if (key.startsWith('aim-cone-mat-') || key.startsWith('aim-core-mat-') || key.startsWith('aim-dot-mat-')) {
@@ -94,6 +105,7 @@ export class SharedResources {
       map: getSoftShadowTexture(), color: 0x000206, transparent: true, opacity, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });
+    material.name = key;
     this.materials.set(materialKey, material);
     return material;
   }
@@ -102,6 +114,7 @@ export class SharedResources {
     const geom = this.plane(`shadow-plane:${width}:${height}`, width, height);
     const mat = this.shadowMaterial(key, opacity);
     const meshObj = new THREE.Mesh(geom, mat);
+    meshObj.name = key;
     meshObj.rotation.x = -Math.PI / 2;
     meshObj.position.y = 0.006;
     meshObj.renderOrder = 1;
@@ -109,15 +122,15 @@ export class SharedResources {
   }
 
   box(key = 'box'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.BoxGeometry(1, 1, 1)); }
-  sphere(key = 'sphere'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.SphereGeometry(0.5, 10, 7)); }
-  ico(key = 'ico'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.IcosahedronGeometry(0.5, 0)); }
-  octa(key = 'octa'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.OctahedronGeometry(0.5, 0)); }
-  cone(key = 'cone'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.ConeGeometry(0.5, 1, 6)); }
-  cylinder(key = 'cylinder'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.CylinderGeometry(0.5, 0.5, 1, 8)); }
-  ring(key = 'ring', inner = 0.5, outer = 0.6): THREE.BufferGeometry { return this.geometry(`${key}:${inner}:${outer}`, () => new THREE.RingGeometry(inner, outer, 24)); }
+  sphere(key = 'sphere'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.SphereGeometry(0.5, 18, 12)); }
+  ico(key = 'ico'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.IcosahedronGeometry(0.5, 1)); }
+  octa(key = 'octa'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.OctahedronGeometry(0.5, 1)); }
+  cone(key = 'cone'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.ConeGeometry(0.5, 1, 10)); }
+  cylinder(key = 'cylinder'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.CylinderGeometry(0.5, 0.5, 1, 12)); }
+  ring(key = 'ring', inner = 0.5, outer = 0.6): THREE.BufferGeometry { return this.geometry(`${key}:${inner}:${outer}`, () => new THREE.RingGeometry(inner, outer, 32)); }
   plane(key = 'plane', width = 1, height = 1): THREE.BufferGeometry { return this.geometry(`${key}:${width}:${height}`, () => new THREE.PlaneGeometry(width, height)); }
-  torus(key = 'torus'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.TorusGeometry(0.5, 0.06, 6, 16)); }
-  circle(key = 'circle', radius = 0.5): THREE.BufferGeometry { return this.geometry(`${key}:${radius}`, () => new THREE.CircleGeometry(radius, 20)); }
+  torus(key = 'torus'): THREE.BufferGeometry { return this.geometry(key, () => new THREE.TorusGeometry(0.5, 0.06, 8, 24)); }
+  circle(key = 'circle', radius = 0.5): THREE.BufferGeometry { return this.geometry(`${key}:${radius}`, () => new THREE.CircleGeometry(radius, 28)); }
 
   dispose(): void {
     for (const geometry of this.geometries.values()) geometry.dispose();
@@ -129,6 +142,7 @@ export class SharedResources {
 
 export function mesh(geometry: THREE.BufferGeometry, material: THREE.Material): THREE.Mesh {
   const object = new THREE.Mesh(geometry, material);
+  object.name = geometry.name;
   object.castShadow = false;
   object.receiveShadow = false;
   return object;
