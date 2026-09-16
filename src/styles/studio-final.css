@@ -1,4 +1,850 @@
-/* Final premium treatment for transitional/system screens. */
+/*
+ * Tiny Survivor — studio v3 finishing layer
+ *
+ * This file is intentionally loaded last. The earlier files own component
+ * geometry and compact-landscape fundamentals; this layer provides the final
+ * visual hierarchy, authored equipment language, campaign-map presentation,
+ * result-screen polish and phone-specific cleanup without changing gameplay.
+ */
+
+:root {
+  --v3-bg: #02060b;
+  --v3-panel: rgba(7, 18, 30, .94);
+  --v3-panel-soft: rgba(11, 29, 45, .86);
+  --v3-line: rgba(119, 205, 237, .20);
+  --v3-line-hot: rgba(117, 224, 255, .44);
+  --v3-text: #f4fbff;
+  --v3-muted: #91acbc;
+  --v3-cyan: #70e4ff;
+  --v3-gold: #ffd573;
+  --v3-red: #ff777d;
+  --v3-green: #66e0a0;
+  --v3-shadow: 0 18px 48px rgba(0, 0, 0, .46);
+  --v3-inset: inset 0 1px rgba(255, 255, 255, .055), inset 0 -1px rgba(0, 0, 0, .35);
+}
+
+html,
+body,
+button,
+input {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button,
+[role='button'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(112, 228, 255, .78);
+  outline-offset: 2px;
+}
+
+.screen-transition {
+  width: 100%;
+  height: 100%;
+  opacity: .94;
+  transform: translateY(3px) scale(.998);
+  transition: opacity .16s ease, transform .18s cubic-bezier(.2,.8,.2,1);
+}
+
+.screen-transition.is-entered {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ---------------------------------------------------------------------
+   Shared premium language
+   --------------------------------------------------------------------- */
+
+.dark-fantasy-header,
+.heroes-header,
+.talents-header,
+.missions-header,
+.codex-header {
+  position: relative;
+  isolation: isolate;
+}
+
+.dark-fantasy-header::before,
+.heroes-header::before,
+.talents-header::before,
+.missions-header::before,
+.codex-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(110deg, rgba(255,255,255,.025), transparent 24%),
+    radial-gradient(circle at 50% 0%, rgba(75, 194, 239, .055), transparent 48%);
+}
+
+.dark-fantasy-main-title,
+.heroes-main-title,
+.talents-main-title,
+.missions-main-title,
+.codex-title {
+  letter-spacing: clamp(1.1px, .16vw, 2.4px);
+}
+
+.primary-button,
+.battle-now-gold-btn,
+.stage-start-btn,
+.stage-clear-btn,
+.run-over-btn,
+.shop-buy-btn,
+.talent-price-btn,
+.mission-reward-gold-btn {
+  transition: transform .12s ease, filter .12s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.primary-button:active:not(:disabled),
+.battle-now-gold-btn:active:not(:disabled),
+.stage-start-btn:active:not(:disabled),
+.stage-clear-btn:active:not(:disabled),
+.run-over-btn:active:not(:disabled),
+.shop-buy-btn:active:not(:disabled),
+.talent-price-btn:active:not(:disabled),
+.mission-reward-gold-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(.988);
+}
+
+/* ---------------------------------------------------------------------
+   Equipment identity — replaces emoji-looking inventory UI
+   --------------------------------------------------------------------- */
+
+.equipment-icon {
+  --equipment-accent: #7dd3fc;
+  position: relative;
+  display: inline-grid;
+  width: 1.95em;
+  height: 1.95em;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--equipment-accent) 45%, transparent);
+  border-radius: 9px;
+  color: var(--equipment-accent);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--equipment-accent) 22%, transparent), transparent 62%),
+    linear-gradient(155deg, rgba(18, 39, 56, .92), rgba(4, 13, 22, .97));
+  box-shadow:
+    0 5px 14px rgba(0,0,0,.30),
+    inset 0 1px rgba(255,255,255,.075),
+    0 0 14px color-mix(in srgb, var(--equipment-accent) 10%, transparent);
+  overflow: hidden;
+}
+
+.equipment-icon__halo {
+  position: absolute;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--equipment-accent) 22%, transparent);
+  opacity: .75;
+}
+
+.equipment-icon__glyph {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.56));
+}
+
+.equipment-icon__spark {
+  position: absolute;
+  top: 17%;
+  right: 17%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px var(--equipment-accent);
+  opacity: .7;
+}
+
+/* ---------------------------------------------------------------------
+   Home / sanctuary
+   --------------------------------------------------------------------- */
+
+.home-landscape-screen {
+  background-position: center 44%;
+}
+
+.home-screen-backdrop-overlay {
+  background:
+    radial-gradient(circle at 24% 46%, rgba(67, 191, 235, .08), transparent 27%),
+    linear-gradient(90deg, rgba(0,0,0,.10), rgba(0,0,0,.03) 36%, rgba(0,0,0,.36) 65%, rgba(0,0,0,.82)),
+    linear-gradient(180deg, rgba(2,7,13,.10), transparent 43%, rgba(2,7,13,.55));
+}
+
+.nav-rail__btn {
+  position: relative;
+}
+
+.nav-rail__btn.is-active::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 23%;
+  bottom: 23%;
+  width: 2px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, transparent, #72e6ff, transparent);
+  box-shadow: 0 0 10px rgba(102, 224, 255, .7);
+}
+
+.home-campaign-card {
+  isolation: isolate;
+}
+
+.home-campaign-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.035), transparent 20%),
+    radial-gradient(circle at 86% 20%, rgba(255, 202, 87, .075), transparent 28%);
+}
+
+.home-campaign-card__boss-name {
+  color: var(--v3-text);
+  text-shadow: 0 2px 18px rgba(0,0,0,.82), 0 0 18px rgba(102,215,255,.08);
+}
+
+.home-menu-row__title {
+  color: #eef9fd;
+}
+
+.home-menu-row__sub,
+.home-campaign-card__lore {
+  color: #8da8b8;
+}
+
+/* ---------------------------------------------------------------------
+   Heroes & loadout
+   --------------------------------------------------------------------- */
+
+.heroes-header-info,
+.heroes-loadout-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.heroes-header-info::after,
+.heroes-loadout-section::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(255,255,255,.025), transparent 20%);
+}
+
+.heroes-slot-card__icon-box {
+  display: grid;
+  place-items: center;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.heroes-slot-card__icon-box .equipment-icon {
+  font-size: 15px;
+}
+
+.heroes-equip-modal__title-group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.heroes-equip-modal__title-group > div {
+  min-width: 0;
+}
+
+.heroes-equip-modal__title-group small {
+  display: block;
+  margin-bottom: 1px;
+  color: #7894a5;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+}
+
+.heroes-equip-modal__title-group h3 {
+  margin: 0;
+}
+
+.heroes-equip-option {
+  gap: 10px;
+}
+
+.heroes-equip-option > .equipment-icon {
+  font-size: 18px;
+}
+
+.heroes-equip-option .item-rarity-badge {
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Shop / Armory
+   --------------------------------------------------------------------- */
+
+.header-currency {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.header-currency > span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(119, 205, 237, .16);
+  border-radius: 8px;
+  background: rgba(5, 16, 27, .70);
+  color: #dcedf5;
+}
+
+.shop-tabs-bar {
+  scrollbar-width: none;
+}
+.shop-tabs-bar::-webkit-scrollbar { display: none; }
+
+.shop-tab-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-tab-btn.is-active::after {
+  content: '';
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: #70e3ff;
+  box-shadow: 0 0 9px rgba(89, 216, 250, .64);
+}
+
+.shop-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-card::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(255,255,255,.028), transparent 22%);
+}
+
+.shop-card__art--hero {
+  position: relative;
+  min-height: 118px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.shop-card__hero-portrait {
+  width: 100%;
+  height: 100%;
+  min-height: 118px;
+  display: block;
+  object-fit: cover;
+  object-position: center 24%;
+  transform: scale(1.02);
+  filter: saturate(.97) contrast(1.06) brightness(.9);
+}
+
+.shop-card__hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(1,5,9,.04), rgba(2,7,12,.08) 46%, rgba(2,8,14,.78)),
+    linear-gradient(90deg, rgba(1,5,9,.16), transparent 30%, rgba(1,5,9,.12));
+}
+
+.shop-card__hero-role {
+  position: absolute;
+  left: 9px;
+  bottom: 7px;
+  padding: 3px 6px;
+  border: 1px solid rgba(170, 229, 250, .18);
+  border-radius: 6px;
+  background: rgba(3, 12, 20, .72);
+  color: #dff7ff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .9px;
+  backdrop-filter: blur(5px);
+}
+
+.shop-card__trait-name {
+  display: block;
+  margin-top: 2px;
+  color: #87dff8;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.shop-card__art--eq {
+  position: relative;
+  display: grid;
+  min-height: 94px;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(79, 197, 237, .14), transparent 52%),
+    linear-gradient(155deg, rgba(13, 34, 51, .92), rgba(4, 13, 22, .96));
+}
+
+.shop-card__equipment-icon {
+  font-size: 32px;
+}
+
+.shop-card__art--eq > .item-rarity-badge {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+}
+
+.shop-card__effect {
+  color: #b5eaf8;
+  font-weight: 700;
+}
+
+.free-chest-card__art {
+  position: relative;
+  isolation: isolate;
+}
+
+.free-chest-card__halo {
+  position: absolute;
+  z-index: -1;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,202,86,.25), transparent 66%);
+  filter: blur(2px);
+}
+
+.free-chest-card__reward {
+  display: inline-flex;
+  margin-top: 6px;
+  align-items: center;
+  gap: 5px;
+  color: #ffd773;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .5px;
+}
+
+/* ---------------------------------------------------------------------
+   Campaign world map
+   --------------------------------------------------------------------- */
+
+.map-world-view__cinematic-shade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(1,5,9,.68), rgba(1,5,9,.06) 31%, rgba(1,5,9,.04) 72%, rgba(1,5,9,.48)),
+    linear-gradient(180deg, rgba(1,5,9,.18), transparent 42%, rgba(1,5,9,.58));
+}
+
+.map-world-intro {
+  position: absolute;
+  z-index: 3;
+  top: 18px;
+  left: max(22px, env(safe-area-inset-left));
+  width: min(31vw, 330px);
+  padding: 10px 12px;
+  border: 1px solid rgba(122, 208, 239, .18);
+  border-radius: 12px;
+  background: linear-gradient(155deg, rgba(7, 21, 34, .83), rgba(3, 11, 19, .72));
+  box-shadow: 0 16px 36px rgba(0,0,0,.30), inset 0 1px rgba(255,255,255,.045);
+  backdrop-filter: blur(10px) saturate(1.05);
+}
+
+.map-world-intro__kicker {
+  display: block;
+  color: var(--world-accent, #70e4ff);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+}
+
+.map-world-intro h2 {
+  margin: 2px 0 1px;
+  color: #f4fbff;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(20px, 2.8vw, 31px);
+  line-height: 1;
+  text-shadow: 0 3px 16px rgba(0,0,0,.76);
+}
+
+.map-world-intro p {
+  margin: 4px 0 8px;
+  color: #9bb2c1;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.map-world-intro__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-world-intro__progress > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  color: #dbeaf1;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .5px;
+}
+
+.map-world-intro__track {
+  position: relative;
+  height: 4px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(0,0,0,.48);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.7);
+}
+
+.map-world-intro__track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--world-accent, #70e4ff), #f6db88);
+  box-shadow: 0 0 9px rgba(100,217,249,.22);
+}
+
+.map-header-badge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid rgba(115,204,238,.17);
+  border-radius: 8px;
+  background: rgba(4,14,24,.68);
+  color: #a8c4d3;
+  font-size: 10px;
+}
+
+.map-header-badge strong { color: #f4fbff; }
+
+.map-stage-trail {
+  z-index: 3;
+}
+
+.map-trail-svg {
+  filter: drop-shadow(0 5px 8px rgba(0,0,0,.45));
+}
+
+.map-node {
+  position: relative;
+}
+
+.map-node__halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62px;
+  height: 62px;
+  transform: translate(-50%, -58%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(103, 218, 250, .10), transparent 67%);
+  opacity: .3;
+  pointer-events: none;
+}
+
+.map-node.is-current .map-node__halo {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(255, 205, 87, .20), transparent 68%);
+  animation: v3MapPulse 1.9s ease-in-out infinite;
+}
+
+.map-node__name {
+  display: block;
+  max-width: 90px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #91a9b8;
+  font-size: 8px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-world-card__inner {
+  gap: 8px;
+}
+
+.map-world-card__number {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 1px solid rgba(123,211,242,.20);
+  border-radius: 8px;
+  background: rgba(4,15,25,.58);
+  color: #dff7ff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.map-world-card__copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  text-align: left;
+}
+
+.map-world-card__copy strong {
+  overflow: hidden;
+  color: #eaf7fc;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-world-card__copy small {
+  color: #7795a6;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .3px;
+}
+
+.map-world-locked-message {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 88px;
+  display: inline-flex;
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 193, 101, .20);
+  border-radius: 9px;
+  background: rgba(20, 13, 8, .76);
+  color: #d8b27b;
+  font-size: 9px;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes v3MapPulse {
+  0%,100% { transform: translate(-50%, -58%) scale(.92); opacity: .55; }
+  50% { transform: translate(-50%, -58%) scale(1.13); opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------
+   Survival
+   --------------------------------------------------------------------- */
+
+.survival-hero-icon-box--portrait {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.survival-hero-portrait {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 24%;
+  filter: saturate(.95) contrast(1.06);
+}
+
+.survival-desc-box__kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #ff8b82;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+}
+
+.survival-eq-chip > .equipment-icon {
+  font-size: 11px;
+}
+
+.survival-actions {
+  gap: 12px;
+}
+
+.survival-actions__copy {
+  display: grid;
+  gap: 1px;
+}
+
+.survival-actions__copy span {
+  color: #dbe8ef;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.survival-actions__copy small {
+  color: #718c9d;
+  font-size: 8px;
+}
+
+/* ---------------------------------------------------------------------
+   Splash / loading / system states
+   --------------------------------------------------------------------- */
+
+.splash-screen {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.splash-screen__shade {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(37, 157, 204, .11), transparent 27%),
+    radial-gradient(circle at 50% 112%, rgba(207, 137, 40, .10), transparent 35%),
+    linear-gradient(180deg, rgba(1,5,10,.28), rgba(1,5,10,.51) 58%, rgba(1,5,10,.88));
+}
+
+.splash-screen__grain {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  opacity: .055;
+  background-image:
+    radial-gradient(circle at 20% 35%, rgba(255,255,255,.75) 0 .35px, transparent .55px),
+    radial-gradient(circle at 70% 62%, rgba(255,255,255,.45) 0 .3px, transparent .5px);
+  background-size: 11px 11px, 17px 17px;
+  mix-blend-mode: soft-light;
+}
+
+.splash-screen__content {
+  z-index: 2;
+}
+
+.splash-screen__crest {
+  position: relative;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 10px;
+  place-items: center;
+  border: 1px solid rgba(115, 219, 251, .24);
+  border-radius: 50%;
+  color: #8de9ff;
+  background: radial-gradient(circle, rgba(52, 174, 216, .16), rgba(4, 14, 23, .42) 62%, transparent 64%);
+  box-shadow: 0 0 36px rgba(62, 205, 246, .11), inset 0 0 18px rgba(65, 200, 240, .06);
+}
+
+.splash-screen__crest-ring {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(126, 216, 246, .17);
+  border-radius: 50%;
+  animation: v3CrestSpin 9s linear infinite;
+}
+
+.splash-screen__crest-ring::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 4px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #dffaff;
+  box-shadow: 0 0 7px #6bdfff;
+}
+
+.splash-screen__crest-spark {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  color: #ffd87b;
+}
+
+.splash-screen__kicker {
+  color: #9eb7c5;
+  letter-spacing: 1.35px;
+}
+
+.splash-screen__loading {
+  width: min(390px, 62vw);
+  margin-top: 18px;
+}
+
+.splash-screen__loading-track {
+  height: 6px;
+  padding: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(104, 215, 251, .28);
+  border-radius: 10px;
+  background: rgba(2, 10, 18, .78);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.62), 0 0 20px rgba(60, 204, 243, .06);
+}
+
+.splash-screen__loading-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #178bb7, #70e1ff 70%, #f8d77f);
+  box-shadow: 0 0 12px rgba(92, 220, 255, .35);
+  transition: width .12s ease;
+}
+
+.splash-screen__loading-copy {
+  display: flex;
+  margin-top: 6px;
+  justify-content: space-between;
+  color: #7893a3;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .8px;
+}
+
+.splash-screen__loading-copy strong { color: #dff7ff; }
+
+.splash-screen__hint {
+  display: block;
+  margin-top: 12px;
+  color: #7d9aaa;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  transition: color .2s ease, opacity .2s ease;
+}
+
+.splash-screen.is-ready .splash-screen__hint {
+  color: #ffd777;
+  animation: v3HintPulse 1.25s ease-in-out infinite;
+}
+
+@keyframes v3CrestSpin { to { transform: rotate(360deg); } }
+@keyframes v3HintPulse { 0%,100% { opacity: .62; } 50% { opacity: 1; } }
 
 .rotate-device-overlay {
   background:
@@ -9,12 +855,11 @@
 
 .rotate-device-card {
   width: min(88vw, 430px);
+  padding: 22px;
   border: 1px solid rgba(112, 211, 247, .24);
   border-radius: 16px;
-  background:
-    linear-gradient(150deg, rgba(16, 39, 57, .96), rgba(4, 13, 22, .98));
+  background: linear-gradient(150deg, rgba(16, 39, 57, .96), rgba(4, 13, 22, .98));
   box-shadow: 0 28px 70px rgba(0,0,0,.58), inset 0 1px rgba(255,255,255,.06);
-  padding: 22px;
 }
 
 .rotate-device-icon-box {
@@ -23,16 +868,8 @@
   box-shadow: 0 0 28px rgba(62, 203, 246, .10);
 }
 
-.rotate-device-card h2 {
-  color: #f4fbff;
-  text-shadow: 0 2px 14px rgba(0,0,0,.72);
-}
-
-/* Replace stale twin-stick wording without changing application logic. */
-.rotate-device-card p {
-  font-size: 0;
-}
-
+.rotate-device-card h2 { color: #f4fbff; text-shadow: 0 2px 14px rgba(0,0,0,.72); }
+.rotate-device-card p { font-size: 0; }
 .rotate-device-card p::after {
   content: 'Tiny Survivor is designed for landscape combat. Rotate your device to continue.';
   display: block;
@@ -54,40 +891,69 @@
   backdrop-filter: blur(2px) saturate(.95);
 }
 
-.stage-preload__content {
-  filter: drop-shadow(0 18px 42px rgba(0,0,0,.48));
-}
-
-.stage-preload__header h1 {
-  color: #f5fbff;
-  text-shadow: 0 3px 20px rgba(0,0,0,.76), 0 0 22px rgba(74, 203, 249, .10);
-}
-
+.stage-preload__content { filter: drop-shadow(0 18px 42px rgba(0,0,0,.48)); }
+.stage-preload__header h1 { color: #f5fbff; text-shadow: 0 3px 20px rgba(0,0,0,.76), 0 0 22px rgba(74,203,249,.10); }
 .stage-preload__badge,
 .stage-preload__tip {
   border-color: rgba(111, 204, 239, .19);
   background: linear-gradient(180deg, rgba(10, 28, 43, .76), rgba(4, 14, 23, .84));
   box-shadow: 0 10px 28px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.04);
 }
-
 .stage-preload__pulse-circle {
   border-color: rgba(105, 219, 255, .30);
   background: radial-gradient(circle, rgba(61, 191, 235, .17), rgba(4, 14, 23, .28) 64%, transparent 66%);
-  box-shadow: 0 0 34px rgba(69, 199, 240, .11), inset 0 0 24px rgba(76, 206, 246, .07);
+  box-shadow: 0 0 34px rgba(69,199,240,.11), inset 0 0 24px rgba(76,206,246,.07);
+}
+.stage-preload__progress-bar { border: 1px solid rgba(108,209,244,.23); background: rgba(3,12,21,.82); box-shadow: inset 0 2px 5px rgba(0,0,0,.52); }
+.stage-preload__progress-fill { background: linear-gradient(90deg, #168ebd, #65ddff 68%, #ffe09a); box-shadow: 0 0 14px rgba(91,220,255,.36); }
+
+/* ---------------------------------------------------------------------
+   Results / reward moments
+   --------------------------------------------------------------------- */
+
+.stage-clear-landscape-screen,
+.result-overlay-landscape {
+  background:
+    radial-gradient(circle at 28% 40%, rgba(255, 193, 70, .07), transparent 30%),
+    radial-gradient(circle at 78% 36%, rgba(56, 174, 218, .08), transparent 34%),
+    linear-gradient(180deg, #07121d, #02070d 72%);
 }
 
-.stage-preload__progress-bar {
-  border: 1px solid rgba(108, 209, 244, .23);
-  background: rgba(3, 12, 21, .82);
-  box-shadow: inset 0 2px 5px rgba(0,0,0,.52);
+.stage-clear-left-victory,
+.stage-clear-right-stats,
+.run-over-left-diorama,
+.run-over-right-stats {
+  border-color: rgba(111, 201, 235, .16);
 }
 
-.stage-preload__progress-fill {
-  background: linear-gradient(90deg, #168ebd, #65ddff 68%, #ffe09a);
-  box-shadow: 0 0 14px rgba(91, 220, 255, .36);
+.stage-clear-stat-box,
+.run-over-stat-card,
+.stage-clear-ability-reward,
+.stage-clear-survival-reward,
+.stage-clear-equipment-reward {
+  border: 1px solid rgba(111, 202, 236, .17);
+  background: linear-gradient(155deg, rgba(14, 35, 52, .90), rgba(5, 15, 25, .94));
+  box-shadow: 0 10px 24px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.045);
 }
+
+.equipment-reward__icon {
+  display: grid;
+  place-items: center;
+}
+
+.equipment-reward__icon .equipment-icon { font-size: 22px; }
+
+.stage-clear-title,
+.run-over-title {
+  text-shadow: 0 4px 22px rgba(0,0,0,.75), 0 0 25px rgba(255, 205, 77, .10);
+}
+
+/* ---------------------------------------------------------------------
+   Renderer errors
+   --------------------------------------------------------------------- */
 
 .game-renderer-error {
+  padding: 18px;
   border: 1px solid rgba(255, 116, 124, .30);
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(39, 17, 23, .97), rgba(11, 9, 14, .98));
@@ -103,44 +969,196 @@
   color: #fff1ee;
 }
 
+/* ---------------------------------------------------------------------
+   Compact landscape — final QA layer
+   --------------------------------------------------------------------- */
+
 @media (orientation: landscape) and (max-height: 520px) {
+  .dark-fantasy-header,
+  .heroes-header,
+  .talents-header,
+  .missions-header,
+  .codex-header {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .header-currency > span {
+    min-height: 28px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+
+  .shop-card__art--hero,
+  .shop-card__hero-portrait {
+    min-height: 78px;
+  }
+
+  .shop-card__hero-role {
+    bottom: 5px;
+    left: 6px;
+    font-size: 7px;
+  }
+
+  .shop-card__art--eq {
+    min-height: 66px;
+  }
+
+  .shop-card__equipment-icon { font-size: 25px; }
+
+  .map-world-intro {
+    top: 7px;
+    left: max(8px, env(safe-area-inset-left));
+    width: min(29vw, 245px);
+    padding: 6px 8px;
+    border-radius: 9px;
+  }
+
+  .map-world-intro h2 {
+    margin: 1px 0;
+    font-size: clamp(16px, 2.7vw, 23px);
+  }
+
+  .map-world-intro p {
+    margin: 2px 0 5px;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .map-world-intro__kicker,
+  .map-world-intro__progress > span { font-size: 7px; }
+
+  .map-node__name { display: none; }
+
+  .map-world-card__number {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+    font-size: 8px;
+  }
+
+  .map-world-card__copy strong { font-size: 8px; }
+  .map-world-card__copy small { font-size: 6px; }
+
+  .map-world-locked-message {
+    bottom: 68px;
+    padding: 5px 8px;
+    font-size: 7px;
+  }
+
+  .survival-actions__copy { display: none; }
+
+  .heroes-equip-modal__title-group small { display: none; }
+
+  .splash-screen__crest {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .splash-screen__kicker {
+    font-size: 8px;
+    letter-spacing: .8px;
+  }
+
+  .splash-screen__loading {
+    width: min(360px, 58vw);
+    margin-top: 10px;
+  }
+
+  .splash-screen__hint { margin-top: 7px; }
+
   .stage-preload__content {
     padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
 
   .stage-preload__header h1 {
-    font-size: clamp(22px, 4.2vw, 34px);
     margin: 3px 0;
+    font-size: clamp(22px, 4.2vw, 34px);
   }
 
   .stage-preload__subtitle {
+    display: -webkit-box;
     max-width: 60vw;
+    overflow: hidden;
     font-size: 9px;
     line-height: 1.2;
-    display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-    overflow: hidden;
   }
 
-  .stage-preload__pulse-circle {
-    width: 64px;
-    height: 64px;
-  }
-
-  .stage-preload__tip {
-    padding: 5px 8px;
-  }
-
-  .stage-preload__tip p {
-    font-size: 8px;
-    line-height: 1.2;
-  }
+  .stage-preload__pulse-circle { width: 64px; height: 64px; }
+  .stage-preload__tip { padding: 5px 8px; }
+  .stage-preload__tip p { font-size: 8px; line-height: 1.2; }
 
   .game-renderer-error {
     width: min(86vw, 440px);
     max-height: 82dvh;
     overflow-y: auto;
     padding: 12px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 390px) {
+  .map-world-intro {
+    width: 220px;
+  }
+
+  .map-world-intro p,
+  .map-world-intro__progress {
+    display: none;
+  }
+
+  .shop-card__trait,
+  .shop-card__desc {
+    -webkit-line-clamp: 1 !important;
+  }
+
+  .free-chest-card__copy p {
+    display: none;
+  }
+
+  .free-chest-card__art svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .heroes-equip-option .item-rarity-badge {
+    display: none;
+  }
+
+  .stage-clear-sub,
+  .run-over-tagline {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 740px) {
+  .map-world-intro {
+    width: 190px;
+  }
+
+  .map-world-card__copy small {
+    display: none;
+  }
+
+  .shop-card__hero-role {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-node.is-current .map-node__halo,
+  .splash-screen__crest-ring,
+  .splash-screen.is-ready .splash-screen__hint {
+    animation: none !important;
+  }
+
+  .screen-transition {
+    transition: none !important;
+    transform: none !important;
   }
 }
