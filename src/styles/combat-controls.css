@@ -4,6 +4,13 @@
  * remains ergonomic around the right thumb zone.
  */
 
+/* GameScreen still owns a legacy twin-stick hint. The control component now
+ * presents the correct MOVE / HOLD FIRE / AUTO-AIM tutorial, so suppress the
+ * stale duplicate rather than showing contradictory instructions. */
+.game-tip--twin-stick {
+  display: none;
+}
+
 .twin-stick-zone--fire {
   position: absolute;
   z-index: 42;
