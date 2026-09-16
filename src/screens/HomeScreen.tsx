@@ -27,22 +27,22 @@ interface CampaignBossMeta {
 const CAMPAIGN_BOSS_META: Record<number, CampaignBossMeta> = {
   1: {
     name: 'SKELETON KING',
-    lore: 'The first king still guards his realm. Defeat the Skeleton King and push deeper into the darkness.',
+    lore: 'Ancient bones stir beneath moonlit stone. The king is waiting.',
     portrait: '/assets/images/portrait_skeleton_king.jpg',
   },
   2: {
     name: 'FOREST WITCH',
-    lore: 'Corrupted roots twist at her command. Quell the greenfire before the forest swallows all hope.',
+    lore: 'A forgotten forest. A lingering magic. Something watches between the trees.',
     portrait: '/assets/images/boss_forest_witch.jpg',
   },
   3: {
     name: 'FROST GOLEM',
-    lore: 'An ancient guardian of glacial peaks. Shatter the frozen heart before hypothermia claims you.',
+    lore: 'The ruins breathe cold. Break the guardian before the storm closes in.',
     portrait: '/assets/images/boss_frost_golem.jpg',
   },
   4: {
     name: 'DEMON KING',
-    lore: 'The arch-ruler of the burning depths. End the infernal reign to restore light to the realm.',
+    lore: 'Beyond the black gates, hell itself is awake. End the infernal reign.',
     portrait: '/assets/images/boss_demon_lord.jpg',
   },
 };
@@ -64,7 +64,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
       <NavRail current="home" onNavigate={onNavigate} />
 
       <div className="home-landscape-body">
-        <section className="home-brand-panel">
+        <section className="home-brand-panel" aria-label={`${worldMeta.name} campaign artwork`}>
           <div className="home-brand-panel__content">
             <div className="home-brand-panel__logo-box">
               <GameLogo />
@@ -73,16 +73,21 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
               </p>
             </div>
 
-            <div className="home-world-pill">
+            <button
+              type="button"
+              className="home-world-pill"
+              onClick={() => onNavigate('map')}
+              aria-label={`Open World ${stage.worldId}: ${worldMeta.name}`}
+            >
               <Globe size={15} className="home-world-pill__icon" />
               <span className="home-world-pill__text">
                 WORLD {stage.worldId}: {worldMeta.name.toUpperCase()} &mdash; {worldMeta.subtitle}
               </span>
-            </div>
+            </button>
           </div>
         </section>
 
-        <section className="home-action-panel">
+        <section className="home-action-panel" aria-label="Campaign actions">
           <header className="home-action-panel__header">
             <CurrencyBar
               coins={save.coins}
@@ -95,7 +100,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
           </header>
 
           <div className="home-campaign-card">
-            <div className="home-campaign-card__ornament">
+            <div className="home-campaign-card__ornament" aria-hidden="true">
               <span className="home-campaign-card__diamond" />
             </div>
 
@@ -115,7 +120,8 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                   alt={bossMeta.name}
                   className="home-campaign-card__portrait-img"
                 />
-                <div className="home-campaign-card__portrait-frame" />
+                <div className="home-campaign-card__portrait-frame" aria-hidden="true" />
+                <span className="home-campaign-card__portrait-badge">BOSS</span>
               </div>
             </div>
 
@@ -131,7 +137,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                 </div>
                 <div className="home-menu-row__copy">
                   <strong className="home-menu-row__title">WORLD MAP</strong>
-                  <span className="home-menu-row__sub">Explore new worlds and stages</span>
+                  <span className="home-menu-row__sub">Explore stages and discover new areas.</span>
                 </div>
                 <ChevronRight size={18} className="home-menu-row__arrow" />
               </button>
@@ -147,7 +153,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                 </div>
                 <div className="home-menu-row__copy">
                   <strong className="home-menu-row__title">MONSTER CODEX</strong>
-                  <span className="home-menu-row__sub">Discover enemies, learn their secrets</span>
+                  <span className="home-menu-row__sub">View monsters, lore, weaknesses and rewards.</span>
                 </div>
                 <ChevronRight size={18} className="home-menu-row__arrow" />
               </button>
@@ -165,7 +171,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
                 <div className="home-menu-row__copy">
                   <strong className="home-menu-row__title">SURVIVAL MODE</strong>
                   <span className="home-menu-row__sub">
-                    {survivalUnlocked ? 'Endless escalating onslaught' : 'Clear World 2 to unlock.'}
+                    {survivalUnlocked ? 'Face an endless escalating onslaught.' : 'Complete World 2 to unlock.'}
                   </span>
                 </div>
                 {survivalUnlocked ? (
@@ -182,9 +188,9 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
               type="button"
               className="battle-now-gold-btn"
               onClick={onPlay}
-              aria-label="Start Stage Battle"
+              aria-label={`Start ${stage.name}`}
             >
-              <span className="battle-now-gold-btn__glow" />
+              <span className="battle-now-gold-btn__glow" aria-hidden="true" />
               <div className="battle-now-gold-btn__content">
                 <Swords size={24} className="battle-now-gold-btn__icon" />
                 <span className="battle-now-gold-btn__text">BATTLE NOW</span>
