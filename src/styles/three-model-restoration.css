@@ -1,0 +1,214 @@
+/*
+ * Live 3D restoration pass.
+ * Heroes and Codex use the actual runtime procedural models again. Static
+ * portraits are intentionally not used as the featured subject on these screens.
+ */
+
+.hero-deck-feature--live {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 54%, rgba(64, 176, 220, .11), transparent 30%),
+    radial-gradient(circle at 50% 78%, rgba(210, 158, 67, .08), transparent 24%),
+    linear-gradient(180deg, #0c141d 0%, #080d13 58%, #05080c 100%);
+}
+
+.hero-deck-feature__model-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hero-deck-feature__model,
+.hero-deck-feature__model.hero-preview-host,
+.hero-deck-feature__model .hero-preview-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-deck-feature__model.hero-preview-host {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-deck-feature__model .hero-preview-canvas,
+.hero-preview-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.hero-deck-feature--live .hero-deck-feature__shade {
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 7, 11, .10) 0%, rgba(4, 7, 11, .02) 46%, rgba(4, 7, 11, .72) 76%, rgba(4, 7, 11, .94) 100%),
+    linear-gradient(90deg, rgba(3, 6, 10, .18), transparent 24%, transparent 76%, rgba(3, 6, 10, .16));
+}
+
+.hero-deck-feature--live .hero-deck-feature__topline,
+.hero-deck-feature--live .hero-deck-feature__copy,
+.hero-deck-feature--live .hero-deck-feature__action {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-deck-feature--live .hero-deck-feature__copy h2 {
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .92);
+}
+
+.hero-deck-feature--live .hero-deck-feature__copy p {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .9);
+}
+
+.hero-deck-live-tag,
+.codex-clean-art__live-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(107, 215, 243, .26);
+  border-radius: 999px;
+  color: #a9e9f8;
+  background: rgba(5, 15, 22, .70);
+  font: 800 8px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.05px;
+  backdrop-filter: blur(7px);
+}
+
+.hero-deck-roster__sigil {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid #303944;
+  border-radius: 8px;
+  color: #d9e4eb;
+  background: linear-gradient(180deg, #171d24, #10151b);
+}
+
+.hero-deck-roster__sigil--shadow { color: #67dff5; }
+.hero-deck-roster__sigil--warrior { color: #e8b85c; }
+.hero-deck-roster__sigil--monk { color: #78d7a5; }
+.hero-deck-roster__sigil--gunslinger { color: #ce8ff0; }
+
+.hero-deck-roster__item.is-selected .hero-deck-roster__sigil {
+  border-color: color-mix(in srgb, currentColor 48%, #303944);
+  background: #171d23;
+  box-shadow: inset 0 0 14px rgba(255, 255, 255, .025);
+}
+
+.codex-clean-art--3d {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 54%, rgba(73, 184, 218, .09), transparent 30%),
+    radial-gradient(circle at 50% 82%, rgba(201, 157, 78, .07), transparent 22%),
+    linear-gradient(180deg, #0e141a, #080c11 68%, #05080b);
+}
+
+.codex-clean-art__model,
+.codex-clean-art__model.creature-preview-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.codex-clean-art__model .creature-preview-canvas,
+.creature-preview-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.codex-clean-art--3d .codex-clean-art__shade {
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(2, 5, 8, .02) 48%, rgba(3, 6, 9, .30) 66%, rgba(3, 6, 9, .92) 100%);
+}
+
+.codex-clean-art__live-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+.codex-clean-art--3d .codex-clean-art__caption {
+  z-index: 2;
+}
+
+.codex-clean-row__thumb--glyph {
+  border: 1px solid #292f37;
+  color: #9ca9b4;
+  background: #11161c;
+}
+
+.codex-clean-row.is-active .codex-clean-row__thumb--glyph {
+  border-color: #51472f;
+  color: #d5b878;
+  background: #181710;
+}
+
+/* Keep the actual model large on phone landscape; reduce copy before reducing 3D. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .hero-deck-feature--live .hero-deck-feature__topline {
+    gap: 5px;
+  }
+
+  .hero-deck-feature--live .hero-deck-feature__copy {
+    bottom: 54px;
+  }
+
+  .hero-deck-feature--live .hero-deck-feature__action {
+    bottom: 10px;
+  }
+
+  .hero-deck-live-tag,
+  .codex-clean-art__live-badge {
+    min-height: 19px;
+    padding-inline: 6px;
+    font-size: 7px;
+  }
+
+  .hero-deck-roster__sigil {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .codex-clean-art__live-badge {
+    top: 7px;
+    right: 7px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 390px) {
+  .hero-deck-feature--live .hero-deck-feature__copy p,
+  .hero-deck-live-tag {
+    display: none;
+  }
+
+  .hero-deck-feature--live .hero-deck-feature__copy {
+    bottom: 48px;
+  }
+
+  .hero-deck-roster__sigil {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    border-radius: 7px;
+  }
+
+  .codex-clean-art__live-badge {
+    display: none;
+  }
+}

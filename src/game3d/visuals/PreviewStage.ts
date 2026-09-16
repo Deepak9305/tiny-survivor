@@ -156,7 +156,7 @@ export function disposePreviewScene(scene: THREE.Scene): void {
     object.geometry?.dispose();
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
-      material.map?.dispose();
+      if (material.map && !material.map.userData.sharedCharacterSurface) material.map.dispose();
       material.dispose();
     }
   });
