@@ -1,0 +1,617 @@
+/* Combat-depth overhaul: 10-stage campaign map, direct roster purchases,
+ * and Warrior melee-control treatment. Loaded last so it remains authoritative. */
+
+/* --------------------------------------------------------------------------
+   CAMPAIGN MAP — one fully-painted, clearly bounded realm surface
+   -------------------------------------------------------------------------- */
+.campaign-map-screen {
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #030811;
+}
+
+.campaign-map-header-progress,
+.hero-deck-wallet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(126, 204, 239, .24);
+  border-radius: 999px;
+  background: rgba(5, 16, 29, .78);
+  color: #d9eff9;
+  font: 800 11px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .65px;
+  box-shadow: inset 0 0 12px rgba(65, 181, 229, .06), 0 5px 16px rgba(0, 0, 0, .24);
+}
+
+.hero-deck-wallet {
+  color: #ffe29a;
+  border-color: rgba(255, 198, 73, .28);
+}
+
+.campaign-map-frame {
+  --map-pad-x: max(18px, env(safe-area-inset-left));
+  position: absolute;
+  inset: 58px max(10px, env(safe-area-inset-right)) max(9px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--world-accent, #38bdf8) 38%, rgba(196, 226, 240, .18));
+  border-radius: 20px;
+  background: #09131f;
+  box-shadow:
+    inset 0 0 0 2px rgba(2, 8, 15, .76),
+    inset 0 0 55px rgba(0, 0, 0, .52),
+    0 10px 30px rgba(0, 0, 0, .34);
+}
+
+.campaign-map-backdrop {
+  position: absolute;
+  inset: -2px;
+  z-index: -5;
+  background-color: #111b25;
+  background-image: var(--map-bg);
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(1.015);
+  filter: saturate(.9) contrast(1.05) brightness(.82);
+}
+
+.campaign-map-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 54% 48%, transparent 28%, rgba(2, 7, 12, .13) 62%, rgba(1, 5, 10, .62) 100%),
+    linear-gradient(90deg, rgba(3, 10, 18, .73) 0%, rgba(3, 10, 18, .19) 27%, rgba(3, 10, 18, .08) 70%, rgba(3, 10, 18, .42) 100%),
+    linear-gradient(180deg, rgba(2, 7, 13, .26), transparent 25%, transparent 70%, rgba(2, 7, 13, .78));
+}
+
+.campaign-map-boundary {
+  position: absolute;
+  inset: 8px;
+  z-index: 20;
+  border: 1px solid color-mix(in srgb, var(--world-accent, #38bdf8) 42%, transparent);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 1px rgba(235, 248, 255, .055),
+    inset 0 0 22px rgba(0, 0, 0, .34);
+  pointer-events: none;
+}
+
+.campaign-map-boundary::before,
+.campaign-map-boundary::after {
+  content: '';
+  position: absolute;
+  width: 58px;
+  height: 18px;
+  border-top: 2px solid var(--world-accent, #38bdf8);
+  opacity: .62;
+}
+
+.campaign-map-boundary::before {
+  top: -2px;
+  left: 20px;
+  border-left: 2px solid var(--world-accent, #38bdf8);
+  border-radius: 7px 0 0 0;
+}
+
+.campaign-map-boundary::after {
+  right: 20px;
+  bottom: -2px;
+  transform: rotate(180deg);
+  border-left: 2px solid var(--world-accent, #38bdf8);
+  border-radius: 7px 0 0 0;
+}
+
+.campaign-map-title {
+  position: absolute;
+  z-index: 8;
+  top: clamp(16px, 3.6vh, 32px);
+  left: clamp(18px, 3vw, 40px);
+  width: min(250px, 28vw);
+  padding: 12px 14px 13px;
+  border: 1px solid rgba(190, 225, 239, .12);
+  border-left: 2px solid var(--world-accent, #38bdf8);
+  border-radius: 13px;
+  background: linear-gradient(110deg, rgba(4, 14, 24, .86), rgba(5, 15, 26, .52));
+  backdrop-filter: blur(5px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3);
+}
+
+.campaign-map-title > span {
+  display: block;
+  margin-bottom: 4px;
+  color: color-mix(in srgb, var(--world-accent, #38bdf8) 74%, #dff7ff);
+  font: 900 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 2.1px;
+}
+
+.campaign-map-title h1 {
+  margin: 0;
+  color: #f5fbff;
+  font: 800 clamp(19px, 2.5vw, 31px)/.95 'Cinzel', serif;
+  letter-spacing: .15px;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, .72);
+}
+
+.campaign-map-title p {
+  margin: 6px 0 9px;
+  color: #9fb7c5;
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.campaign-map-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #dbeaf2;
+  font: 800 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .7px;
+}
+
+.campaign-map-progress > div:first-child svg {
+  color: #ffd166;
+}
+
+.campaign-map-progress > div:first-child span {
+  color: #829dac;
+  letter-spacing: 1.2px;
+}
+
+.campaign-map-progress__track {
+  height: 4px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(163, 204, 222, .13);
+}
+
+.campaign-map-progress__track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--world-accent, #38bdf8), #e5f8ff);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--world-accent, #38bdf8) 65%, transparent);
+}
+
+.campaign-map-arrow {
+  position: absolute;
+  z-index: 25;
+  top: 50%;
+  display: grid;
+  width: 38px;
+  height: 60px;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 1px solid rgba(178, 221, 241, .18);
+  background: rgba(2, 10, 18, .68);
+  color: #dff4ff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .32);
+  backdrop-filter: blur(4px);
+}
+
+.campaign-map-arrow--left { left: 8px; border-radius: 0 12px 12px 0; }
+.campaign-map-arrow--right { right: 8px; border-radius: 12px 0 0 12px; }
+.campaign-map-arrow:disabled { opacity: .22; }
+
+.campaign-map-route {
+  position: absolute;
+  z-index: 7;
+  inset: 7% 7% 16% 7%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.campaign-map-route > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.campaign-map-route__shadow,
+.campaign-map-route__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.campaign-map-route__shadow {
+  stroke: rgba(0, 0, 0, .72);
+  stroke-width: 8;
+}
+
+.campaign-map-route__line {
+  stroke: color-mix(in srgb, var(--world-accent, #38bdf8) 66%, #dcebf2);
+  stroke-width: 2.2;
+  stroke-dasharray: 3 8;
+  opacity: .78;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, .65));
+}
+
+.campaign-stage-node {
+  position: absolute;
+  display: flex;
+  width: 54px;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  color: #c7d8e1;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.campaign-stage-node__ring {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(171, 211, 231, .18);
+  border-radius: 50%;
+  opacity: .55;
+}
+
+.campaign-stage-node__core {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid rgba(173, 210, 228, .3);
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(25, 43, 56, .96), rgba(5, 14, 23, .98));
+  color: #c9dce6;
+  font: 900 13px/1 'Barlow Condensed', sans-serif;
+  box-shadow: 0 4px 11px rgba(0, 0, 0, .52), inset 0 0 10px rgba(255, 255, 255, .025);
+}
+
+.campaign-stage-node__label {
+  margin-top: 4px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: rgba(2, 8, 14, .72);
+  color: #bdd0db;
+  font: 900 8px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .7px;
+}
+
+.campaign-stage-node__name {
+  max-width: 80px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(218, 234, 242, .82);
+  font: 700 8px/1.05 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, .92);
+  white-space: nowrap;
+}
+
+.campaign-stage-node.is-locked .campaign-stage-node__core {
+  border-color: rgba(120, 142, 154, .17);
+  background: rgba(6, 12, 18, .82);
+  color: #5f7380;
+  filter: saturate(.4);
+}
+
+.campaign-stage-node.is-unlocked .campaign-stage-node__core {
+  border-color: color-mix(in srgb, var(--world-accent, #38bdf8) 58%, #dff8ff);
+  color: #f1fbff;
+  box-shadow:
+    0 5px 13px rgba(0, 0, 0, .55),
+    inset 0 0 13px color-mix(in srgb, var(--world-accent, #38bdf8) 17%, transparent),
+    0 0 10px color-mix(in srgb, var(--world-accent, #38bdf8) 18%, transparent);
+}
+
+.campaign-stage-node.is-complete .campaign-stage-node__core {
+  border-color: rgba(89, 235, 146, .62);
+  background: linear-gradient(180deg, rgba(32, 102, 68, .94), rgba(11, 45, 33, .96));
+  color: #c9ffdf;
+}
+
+.campaign-stage-node.is-current .campaign-stage-node__ring {
+  border-color: var(--world-accent, #38bdf8);
+  opacity: .9;
+  animation: campaign-node-pulse 1.65s ease-out infinite;
+}
+
+.campaign-stage-node.is-current .campaign-stage-node__core {
+  transform: scale(1.08);
+  border-color: #fff4c2;
+  box-shadow:
+    0 5px 15px rgba(0, 0, 0, .56),
+    0 0 15px color-mix(in srgb, var(--world-accent, #38bdf8) 48%, transparent),
+    inset 0 0 13px color-mix(in srgb, var(--world-accent, #38bdf8) 22%, transparent);
+}
+
+.campaign-stage-node.is-boss .campaign-stage-node__core {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+  border-color: rgba(255, 191, 76, .72);
+  background: radial-gradient(circle at 50% 38%, #6f321b, #25100c 70%);
+  color: #ffd886;
+  box-shadow: 0 0 17px rgba(255, 112, 42, .24), 0 5px 14px rgba(0, 0, 0, .58);
+}
+
+.campaign-stage-node.is-boss .campaign-stage-node__label {
+  color: #ffd277;
+}
+
+.campaign-map-locked {
+  position: absolute;
+  z-index: 27;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+  padding: 11px 16px;
+  border: 1px solid rgba(184, 205, 215, .16);
+  border-radius: 11px;
+  background: rgba(3, 9, 15, .86);
+  color: #a9bcc6;
+  font: 800 10px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+
+.campaign-map-frame.is-locked .campaign-map-route,
+.campaign-map-frame.is-locked .campaign-map-title {
+  filter: saturate(.4) brightness(.68);
+}
+
+.campaign-world-strip {
+  position: absolute;
+  z-index: 28;
+  right: clamp(13px, 2vw, 26px);
+  bottom: 12px;
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(184, 219, 235, .12);
+  border-radius: 12px;
+  background: rgba(2, 8, 15, .72);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+}
+
+.campaign-world-strip button {
+  position: relative;
+  display: grid;
+  min-width: 74px;
+  grid-template-columns: auto 1fr;
+  gap: 1px 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #8fa8b7;
+  text-align: left;
+}
+
+.campaign-world-strip button > span {
+  grid-row: 1 / span 2;
+  color: #7f9cad;
+  font: 900 9px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .6px;
+}
+
+.campaign-world-strip button strong {
+  overflow: hidden;
+  color: #bcd0db;
+  font: 800 9px/1 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-world-strip button small {
+  color: #6f8997;
+  font-size: 7px;
+  line-height: 1;
+}
+
+.campaign-world-strip button > svg {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  opacity: .55;
+}
+
+.campaign-world-strip button.is-selected {
+  border-color: color-mix(in srgb, var(--world-accent, #38bdf8) 50%, rgba(255,255,255,.15));
+  background: color-mix(in srgb, var(--world-accent, #38bdf8) 10%, rgba(7,18,29,.9));
+}
+
+.campaign-world-strip button.is-selected strong,
+.campaign-world-strip button.is-selected > span {
+  color: #effaff;
+}
+
+.campaign-world-strip button.is-locked {
+  opacity: .48;
+}
+
+@keyframes campaign-node-pulse {
+  0% { transform: translateX(-50%) scale(.82); opacity: .86; }
+  75%, 100% { transform: translateX(-50%) scale(1.2); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   HERO ROSTER — locked heroes can be bought here, without a Shop detour
+   -------------------------------------------------------------------------- */
+.hero-deck-buy {
+  display: inline-flex !important;
+  min-width: 178px;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px !important;
+  border: 1px solid rgba(255, 218, 126, .64) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, #f4bd42, #b86b17) !important;
+  color: #1e1306 !important;
+  font: 900 13px/1 'Barlow Condensed', sans-serif !important;
+  box-shadow: 0 4px 0 #6e390c, 0 8px 20px rgba(0, 0, 0, .28) !important;
+}
+
+.hero-deck-buy span {
+  padding-left: 2px;
+  font-size: 9px;
+  letter-spacing: .8px;
+}
+
+.hero-deck-buy:disabled {
+  border-color: rgba(133, 151, 160, .25) !important;
+  background: linear-gradient(180deg, #2b3942, #17232b) !important;
+  color: #81939d !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   WARRIOR — clearly reads as melee rather than a recolored ranged fire button
+   -------------------------------------------------------------------------- */
+.primary-fire-btn.is-melee {
+  border-color: rgba(255, 202, 86, .78);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 185, 57, .22) 0 24%, transparent 25%),
+    radial-gradient(circle, #4d3824 0 42%, #211811 43% 64%, #090704 65% 100%);
+  color: #fff0c3;
+  box-shadow:
+    0 5px 20px rgba(0, 0, 0, .48),
+    inset 0 0 0 4px rgba(18, 12, 6, .76),
+    inset 0 0 20px rgba(255, 176, 48, .16),
+    0 0 0 3px rgba(224, 161, 47, .14);
+}
+
+.primary-fire-btn.is-melee .primary-fire-btn__inner {
+  filter: drop-shadow(0 0 7px rgba(255, 195, 70, .45));
+}
+
+.primary-fire-btn.is-melee.is-firing {
+  border-color: #ffe39a;
+  box-shadow:
+    0 3px 15px rgba(0, 0, 0, .44),
+    inset 0 0 0 4px rgba(20, 12, 5, .68),
+    inset 0 0 26px rgba(255, 180, 45, .28),
+    0 0 21px rgba(255, 166, 39, .27);
+}
+
+/* Compact phones: keep all ten stages visible and tappable without clipping. */
+@media (orientation: landscape) and (max-height: 460px) {
+  .campaign-map-frame {
+    inset-top: 50px;
+    border-radius: 15px;
+  }
+
+  .campaign-map-title {
+    top: 12px;
+    left: 14px;
+    width: min(205px, 27vw);
+    padding: 9px 10px;
+  }
+
+  .campaign-map-title h1 { font-size: clamp(16px, 2.2vw, 23px); }
+  .campaign-map-title p { display: none; }
+  .campaign-map-route { inset: 7% 6% 15% 6%; }
+
+  .campaign-stage-node {
+    width: 46px;
+    min-height: 52px;
+  }
+
+  .campaign-stage-node__core {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    font-size: 11px;
+  }
+
+  .campaign-stage-node__ring {
+    top: -4px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .campaign-stage-node.is-boss .campaign-stage-node__core {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .campaign-stage-node__name {
+    display: none;
+  }
+
+  .campaign-stage-node.is-current .campaign-stage-node__name,
+  .campaign-stage-node.is-boss .campaign-stage-node__name {
+    display: block;
+    max-width: 70px;
+    font-size: 7px;
+  }
+
+  .campaign-world-strip {
+    right: 9px;
+    bottom: 7px;
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .campaign-world-strip button {
+    min-width: 56px;
+    padding: 5px 6px;
+  }
+
+  .campaign-world-strip button strong { max-width: 44px; font-size: 8px; }
+  .campaign-world-strip button small { display: none; }
+}
+
+@media (orientation: landscape) and (max-height: 380px) {
+  .campaign-map-title {
+    width: 176px;
+  }
+
+  .campaign-map-title > span,
+  .campaign-map-progress > div:first-child span {
+    display: none;
+  }
+
+  .campaign-map-route {
+    inset: 5% 5% 14% 5%;
+  }
+
+  .campaign-map-arrow {
+    width: 31px;
+    height: 50px;
+  }
+
+  .campaign-stage-node__label {
+    margin-top: 2px;
+    font-size: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-stage-node.is-current .campaign-stage-node__ring {
+    animation: none !important;
+  }
+}

@@ -1,11 +1,16 @@
 import { ChevronLeft, ChevronRight, Check, Lock, MapPinned, Skull, Star } from 'lucide-react';
-import { useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { getCurrentStage, getWorldStages, isStageUnlocked, isWorldUnlocked, stageNumber, WORLD_META } from '../data/stages';
 import type { SaveData } from '../types';
 
 interface WorldMapScreenProps { save: SaveData; onBack: () => void; onSelect: (stageId: string) => void }
+
+type RoutePoint = { x: number; y: number };
+const ROUTE_POINTS: RoutePoint[] = [
+  { x: 8, y: 72 }, { x: 17, y: 57 }, { x: 27, y: 68 }, { x: 37, y: 45 }, { x: 47, y: 55 },
+  { x: 57, y: 34 }, { x: 67, y: 47 }, { x: 77, y: 25 }, { x: 87, y: 38 }, { x: 94, y: 18 },
+];
 
 function getWorldBg(worldId: number): string {
   if (worldId === 2) return '/assets/images/bg_forest.jpg';
@@ -14,18 +19,8 @@ function getWorldBg(worldId: number): string {
   return '/assets/images/bg_graveyard.jpg';
 }
 
-function getWorldTrail(worldId: number) {
-  switch (worldId) {
-    case 1:
-      return { path: 'M 25 72 Q 85 36 145 74 T 265 52 L 315 54', stroke: 'rgba(176, 200, 216, 0.88)', dash: '5,7' };
-    case 2:
-      return { path: 'M 25 80 C 75 35 110 95 170 55 S 255 85 315 50', stroke: 'rgba(74, 222, 128, 0.92)', dash: '4,8' };
-    case 3:
-      return { path: 'M 25 65 L 85 45 L 155 75 L 235 48 L 315 62', stroke: 'rgba(103, 232, 249, 0.92)', dash: '7,5' };
-    case 4:
-    default:
-      return { path: 'M 25 85 Q 95 65 140 45 T 255 60 L 315 38', stroke: 'rgba(251, 146, 60, 0.94)', dash: '6,5' };
-  }
+function routePath(points: RoutePoint[]): string {
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x * 10} ${point.y * 3.6}`).join(' ');
 }
 
 export function WorldMapScreen({ save, onBack, onSelect }: WorldMapScreenProps) {
@@ -35,110 +30,104 @@ export function WorldMapScreen({ save, onBack, onSelect }: WorldMapScreenProps) 
   const worldStages = getWorldStages(world.id);
   const worldUnlocked = isWorldUnlocked(world.id, save);
   const completed = worldStages.filter((stage) => save.completedStages.includes(stage.id)).length;
+  const stageCount = Math.max(1, worldStages.length);
+  const progress = Math.round((completed / stageCount) * 100);
   const shiftWorld = (direction: number) => setWorldId(Math.min(4, Math.max(1, world.id + direction)));
-  const trail = getWorldTrail(world.id);
-  const worldBg = getWorldBg(world.id);
+  const path = routePath(ROUTE_POINTS.slice(0, stageCount));
 
   return (
-    <main className="map-screen">
+    <main className="campaign-map-screen">
       <ScreenHeader
         title="WORLD MAP"
         onBack={onBack}
-        right={<span className="map-header-badge"><MapPinned size={15} /><strong>{completed}</strong>/5</span>}
+        right={<span className="campaign-map-header-progress"><MapPinned size={15} /><strong>{completed}</strong>/{stageCount}</span>}
       />
 
-      <div
-        className={`map-world-view map-world-view--world-${world.id} ${worldUnlocked ? '' : 'is-locked'}`}
-        style={{ '--world-accent': world.color } as CSSProperties}
+      <section
+        className={`campaign-map-frame campaign-map-frame--world-${world.id} ${worldUnlocked ? '' : 'is-locked'}`}
+        style={{ '--world-accent': world.color, '--map-bg': `url(${getWorldBg(world.id)})` } as CSSProperties}
       >
-        <div className="map-world-view__backdrop" style={{ backgroundImage: `url(${worldBg})` }} />
-        <div className="map-world-view__cinematic-shade" />
+        <div className="campaign-map-backdrop" aria-hidden="true" />
+        <div className="campaign-map-vignette" aria-hidden="true" />
+        <div className="campaign-map-boundary" aria-hidden="true" />
 
-        <section className="map-world-intro" aria-label={`World ${world.id} ${world.name}`}>
-          <span className="map-world-intro__kicker">WORLD {String(world.id).padStart(2, '0')}</span>
-          <h2>{world.name}</h2>
+        <div className="campaign-map-title">
+          <span>WORLD {String(world.id).padStart(2, '0')}</span>
+          <h1>{world.name}</h1>
           <p>{world.subtitle}</p>
-          <div className="map-world-intro__progress">
-            <span><Star size={12} fill="currentColor" /> {completed}/5 CLEARED</span>
-            <div className="map-world-intro__track"><i style={{ width: `${completed * 20}%` }} /></div>
-          </div>
-        </section>
-
-        <button type="button" className="map-arrow map-arrow--left" onClick={() => shiftWorld(-1)} disabled={world.id === 1} aria-label="Previous world">
-          <ChevronLeft size={28} />
-        </button>
-        <button type="button" className="map-arrow map-arrow--right" onClick={() => shiftWorld(1)} disabled={world.id === 4} aria-label="Next world">
-          <ChevronRight size={28} />
-        </button>
-
-        <div className="map-stage-trail">
-          <svg className="map-trail-svg" viewBox="0 0 340 120" preserveAspectRatio="none" aria-hidden="true">
-            <path className="map-trail-svg__shadow" d={trail.path} fill="none" stroke="rgba(0,0,0,.55)" strokeWidth="8" />
-            <path d={trail.path} fill="none" stroke={trail.stroke} strokeWidth="3" strokeDasharray={trail.dash} />
-          </svg>
-
-          <div className="map-nodes-container">
-            {worldStages.map((stage) => {
-              const unlocked = worldUnlocked && isStageUnlocked(stage.id, save);
-              const completedStage = save.completedStages.includes(stage.id);
-              const current = stageNumber(stage.id) === save.highestUnlockedStage;
-              const isBoss = stage.bossStage;
-
-              return (
-                <button
-                  type="button"
-                  key={stage.id}
-                  className={`map-node ${unlocked ? 'is-unlocked' : 'is-locked'} ${completedStage ? 'is-complete' : ''} ${current ? 'is-current' : ''} ${isBoss ? 'is-boss-node' : ''}`}
-                  onClick={() => unlocked && onSelect(stage.id)}
-                  disabled={!unlocked}
-                  aria-label={`${stage.name}, ${unlocked ? 'available' : 'locked'}`}
-                >
-                  <div className="map-node__halo" />
-                  <div className="map-node__circle">
-                    {isBoss ? <Skull size={20} className="map-node__skull" /> : completedStage ? <Check size={18} /> : unlocked ? <span>{stage.stageNumber}</span> : <Lock size={14} />}
-                  </div>
-                  <span className="map-node__label">{isBoss ? 'BOSS' : `STAGE ${stage.stageNumber}`}</span>
-                  <span className="map-node__name">{stage.name}</span>
-                </button>
-              );
-            })}
+          <div className="campaign-map-progress">
+            <div><Star size={11} fill="currentColor" /><strong>{completed}/{stageCount}</strong><span>CLEARED</span></div>
+            <div className="campaign-map-progress__track"><i style={{ width: `${progress}%` }} /></div>
           </div>
         </div>
 
-        {!worldUnlocked && (
-          <div className="map-world-locked-message"><Lock size={16} /><span>Clear the previous world to enter this realm.</span></div>
-        )}
+        <button type="button" className="campaign-map-arrow campaign-map-arrow--left" onClick={() => shiftWorld(-1)} disabled={world.id === 1} aria-label="Previous world">
+          <ChevronLeft size={24} />
+        </button>
+        <button type="button" className="campaign-map-arrow campaign-map-arrow--right" onClick={() => shiftWorld(1)} disabled={world.id === 4} aria-label="Next world">
+          <ChevronRight size={24} />
+        </button>
 
-        <div className="map-world-carousel" role="tablist" aria-label="World selection">
-          {WORLD_META.map((meta) => {
-            const isMetaUnlocked = isWorldUnlocked(meta.id, save);
-            const isSelected = meta.id === world.id;
-            const metaStages = getWorldStages(meta.id);
-            const metaCompleted = metaStages.filter((stage) => save.completedStages.includes(stage.id)).length;
+        <div className="campaign-map-route" aria-label={`${world.name} stages`}>
+          <svg viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+            <path d={path} className="campaign-map-route__shadow" />
+            <path d={path} className="campaign-map-route__line" />
+          </svg>
 
+          {worldStages.map((stage, index) => {
+            const point = ROUTE_POINTS[index] ?? ROUTE_POINTS[ROUTE_POINTS.length - 1];
+            const unlocked = worldUnlocked && isStageUnlocked(stage.id, save);
+            const completedStage = save.completedStages.includes(stage.id);
+            const current = stageNumber(stage.id) === save.highestUnlockedStage;
+            const isBoss = stage.bossStage;
             return (
               <button
                 type="button"
-                role="tab"
-                aria-selected={isSelected}
-                key={meta.id}
-                className={`map-world-card map-world-card--world-${meta.id} ${isSelected ? 'is-selected' : ''} ${isMetaUnlocked ? 'is-unlocked' : 'is-locked'}`}
-                onClick={() => setWorldId(meta.id)}
-                aria-label={`World ${meta.id} ${meta.name}${isMetaUnlocked ? '' : ', locked'}`}
+                key={stage.id}
+                className={`campaign-stage-node ${unlocked ? 'is-unlocked' : 'is-locked'} ${completedStage ? 'is-complete' : ''} ${current ? 'is-current' : ''} ${isBoss ? 'is-boss' : ''}`}
+                style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                onClick={() => unlocked && onSelect(stage.id)}
+                disabled={!unlocked}
+                aria-label={`${stage.name}, stage ${stage.stageNumber}, ${unlocked ? 'available' : 'locked'}`}
               >
-                <div className="map-world-card__inner">
-                  <span className="map-world-card__number">W{meta.id}</span>
-                  <span className="map-world-card__copy">
-                    <strong className="map-world-card__name">{meta.name}</strong>
-                    <small>{isMetaUnlocked ? `${metaCompleted}/5 CLEARED` : 'LOCKED'}</small>
-                  </span>
-                  {!isMetaUnlocked && <Lock size={15} className="map-world-card__lock" />}
-                </div>
+                <span className="campaign-stage-node__ring" />
+                <span className="campaign-stage-node__core">
+                  {isBoss ? <Skull size={18} /> : completedStage ? <Check size={16} /> : unlocked ? stage.stageNumber : <Lock size={13} />}
+                </span>
+                <span className="campaign-stage-node__label">{isBoss ? 'BOSS' : String(stage.stageNumber).padStart(2, '0')}</span>
+                <span className="campaign-stage-node__name">{stage.name}</span>
               </button>
             );
           })}
         </div>
-      </div>
+
+        {!worldUnlocked && (
+          <div className="campaign-map-locked"><Lock size={15} /> Clear the previous world to enter this realm.</div>
+        )}
+
+        <nav className="campaign-world-strip" aria-label="World selection">
+          {WORLD_META.map((meta) => {
+            const unlocked = isWorldUnlocked(meta.id, save);
+            const selected = meta.id === world.id;
+            const stages = getWorldStages(meta.id);
+            const cleared = stages.filter((stage) => save.completedStages.includes(stage.id)).length;
+            return (
+              <button
+                type="button"
+                key={meta.id}
+                className={`${selected ? 'is-selected' : ''} ${unlocked ? '' : 'is-locked'}`}
+                onClick={() => setWorldId(meta.id)}
+                aria-pressed={selected}
+              >
+                <span>W{meta.id}</span>
+                <strong>{meta.name}</strong>
+                <small>{unlocked ? `${cleared}/${stages.length}` : 'LOCKED'}</small>
+                {!unlocked && <Lock size={12} />}
+              </button>
+            );
+          })}
+        </nav>
+      </section>
     </main>
   );
 }
