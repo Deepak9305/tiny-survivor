@@ -1,14 +1,39 @@
-import { Check, Coins, Gem, Gift, PawPrint, Play, Shield, Sparkles, Swords } from 'lucide-react';
+import {
+  Check,
+  Coins,
+  Gem,
+  Gift,
+  PawPrint,
+  Play,
+  Shield,
+  Sparkles,
+  Swords,
+  type LucideIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 import { EquipmentIcon } from '../components/EquipmentIcon';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { ALL_HERO_IDS, getHeroDefinition } from '../data/heroes';
 import { ALL_EQUIPMENT_IDS, getEquipmentDefinition } from '../data/equipment';
 import { audioService } from '../services/audioService';
 import type { EquipmentId, EquipmentSlot, HeroId, SaveData } from '../types';
 
-type ShopTab = 'daily' | 'heroes' | 'armor' | 'relic' | 'pet' | 'charm';
+type ShopTab = 'heroes' | 'armor' | 'relic' | 'pet' | 'charm' | 'daily';
+
+interface ShopTabMeta {
+  id: ShopTab;
+  label: string;
+  icon: LucideIcon;
+}
+
+const SHOP_TABS: ShopTabMeta[] = [
+  { id: 'heroes', label: 'Heroes', icon: Swords },
+  { id: 'armor', label: 'Armor', icon: Shield },
+  { id: 'relic', label: 'Relics', icon: Gem },
+  { id: 'pet', label: 'Pets', icon: PawPrint },
+  { id: 'charm', label: 'Charms', icon: Sparkles },
+  { id: 'daily', label: 'Daily', icon: Gift },
+];
 
 const HERO_SHOP_PORTRAITS: Record<HeroId, string> = {
   shadow: '/assets/images/hero_portrait_shadow.jpg',
@@ -33,7 +58,7 @@ function localDate(): string {
 export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipment }: ShopScreenProps) {
   const [activeTab, setActiveTab] = useState<ShopTab>('heroes');
   const [loadingChest, setLoadingChest] = useState(false);
-  const [chestMessage, setChestMessage] = useState<string | undefined>();
+  const [chestMessage, setChestMessage] = useState<string>();
 
   const claimed = save.freeChestClaimedDate === localDate();
 
@@ -42,7 +67,7 @@ export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipmen
     setLoadingChest(true);
     setChestMessage(undefined);
     const earned = await onFreeChest();
-    setChestMessage(earned ? 'Reward claimed: +120 coins.' : 'Rewarded ad unavailable. Try again later.');
+    setChestMessage(earned ? '+120 coins added.' : 'Reward unavailable right now.');
     setLoadingChest(false);
   };
 
@@ -52,10 +77,10 @@ export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipmen
     onBuyHero?.(heroId, price);
   };
 
-  const handlePurchaseEquipment = (eqId: EquipmentId, price: number) => {
-    if (save.coins < price || save.ownedEquipment.includes(eqId)) return;
+  const handlePurchaseEquipment = (equipmentId: EquipmentId, price: number) => {
+    if (save.coins < price || save.ownedEquipment.includes(equipmentId)) return;
     audioService.playSFX('upgrade');
-    onBuyEquipment?.(eqId, price);
+    onBuyEquipment?.(equipmentId, price);
   };
 
   const currentSlotEquipment =
@@ -66,97 +91,67 @@ export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipmen
       : [];
 
   return (
-    <main className="meta-screen shop-landscape-screen">
+    <main className="armory-screen">
       <ScreenHeader
-        title="ARMORY & SHOP"
+        title="ARMORY"
         onBack={onBack}
         right={
-          <span className="header-currency">
+          <div className="armory-wallet" aria-label="Currencies">
             <span><Coins size={14} /> {save.coins.toLocaleString()}</span>
             <span><Gem size={14} /> {save.gems.toLocaleString()}</span>
-          </span>
+          </div>
         }
       />
 
-      <div className="shop-landscape-container">
-        <nav className="shop-tabs-bar" aria-label="Shop categories">
-          <button type="button" className={`shop-tab-btn ${activeTab === 'daily' ? 'is-active' : ''}`} onClick={() => setActiveTab('daily')} aria-pressed={activeTab === 'daily'}>
-            <Gift size={16} /><span>DAILY</span>
-          </button>
-          <button type="button" className={`shop-tab-btn ${activeTab === 'heroes' ? 'is-active' : ''}`} onClick={() => setActiveTab('heroes')} aria-pressed={activeTab === 'heroes'}>
-            <Swords size={16} /><span>HEROES</span>
-          </button>
-          <button type="button" className={`shop-tab-btn ${activeTab === 'armor' ? 'is-active' : ''}`} onClick={() => setActiveTab('armor')} aria-pressed={activeTab === 'armor'}>
-            <Shield size={16} /><span>ARMOR</span>
-          </button>
-          <button type="button" className={`shop-tab-btn ${activeTab === 'relic' ? 'is-active' : ''}`} onClick={() => setActiveTab('relic')} aria-pressed={activeTab === 'relic'}>
-            <Gem size={16} /><span>RELICS</span>
-          </button>
-          <button type="button" className={`shop-tab-btn ${activeTab === 'pet' ? 'is-active' : ''}`} onClick={() => setActiveTab('pet')} aria-pressed={activeTab === 'pet'}>
-            <PawPrint size={16} /><span>PETS</span>
-          </button>
-          <button type="button" className={`shop-tab-btn ${activeTab === 'charm' ? 'is-active' : ''}`} onClick={() => setActiveTab('charm')} aria-pressed={activeTab === 'charm'}>
-            <Sparkles size={16} /><span>CHARMS</span>
-          </button>
+      <div className="armory-shell">
+        <nav className="armory-tabs" aria-label="Armory categories">
+          {SHOP_TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              type="button"
+              key={id}
+              className={activeTab === id ? 'is-active' : ''}
+              onClick={() => setActiveTab(id)}
+              aria-pressed={activeTab === id}
+            >
+              <Icon size={15} />
+              <span>{label}</span>
+            </button>
+          ))}
         </nav>
 
-        <div className="shop-tab-content">
-          {activeTab === 'daily' && (
-            <div className="shop-daily-panel">
-              <section className="free-chest-card">
-                <div className="free-chest-card__art">
-                  <span className="free-chest-card__halo" />
-                  <Gift size={52} />
-                </div>
-                <div className="free-chest-card__copy">
-                  <span className="eyebrow">DAILY REWARD CHEST</span>
-                  <h2>Sanctuary Coin Cache</h2>
-                  <p>Watch one rewarded message to claim today's bonus. No purchase required.</p>
-                  <div className="free-chest-card__reward"><Coins size={16} /> +120 COINS</div>
-                </div>
-                <PrimaryButton variant="gold" onClick={handleClaimChest} disabled={claimed || loadingChest}>
-                  <Play size={15} fill="currentColor" />{' '}
-                  {claimed ? 'CLAIMED TODAY' : loadingChest ? 'CONNECTING…' : 'CLAIM REWARD'}
-                </PrimaryButton>
-              </section>
-              {chestMessage && <p className="shop-message" role="status">{chestMessage}</p>}
-            </div>
-          )}
-
+        <section className="armory-content">
           {activeTab === 'heroes' && (
-            <div className="shop-grid shop-grid--heroes">
+            <div className="armory-hero-grid">
               {ALL_HERO_IDS.map((heroId) => {
                 const def = getHeroDefinition(heroId);
                 const owned = save.heroesUnlocked.includes(heroId);
                 const canAfford = save.coins >= def.price;
-
                 return (
-                  <article key={heroId} className={`shop-card shop-card--hero shop-card--${def.tone} ${owned ? 'is-owned' : ''}`}>
-                    <div className="shop-card__art shop-card__art--hero">
-                      <img src={HERO_SHOP_PORTRAITS[heroId]} alt="" className="shop-card__hero-portrait" aria-hidden="true" />
-                      <div className="shop-card__hero-shade" />
-                      <span className="shop-card__hero-role">{def.role.toUpperCase()}</span>
+                  <article key={heroId} className={`armory-hero-card ${owned ? 'is-owned' : ''}`}>
+                    <div className="armory-hero-card__art">
+                      <img src={HERO_SHOP_PORTRAITS[heroId]} alt={def.name} />
+                      <div className="armory-hero-card__shade" />
+                      <span className="armory-hero-card__role">{def.role}</span>
                     </div>
-                    <div className="shop-card__body">
-                      <div className="shop-card__title-row">
-                        <strong>{def.name}</strong>
-                        <span className={`shop-card__gender-badge shop-card__gender--${def.gender}`}>{def.gender.toUpperCase()}</span>
+                    <div className="armory-hero-card__body">
+                      <div>
+                        <h2>{def.name}</h2>
+                        <span>{def.traitName}</span>
                       </div>
-                      <span className="shop-card__trait-name">{def.traitName}</span>
-                      <p className="shop-card__trait">{def.traitDescription}</p>
+                      <p>{def.traitDescription}</p>
                     </div>
-                    <div className="shop-card__footer">
+                    <div className="armory-card-footer">
                       {owned ? (
-                        <div className="shop-owned-tag"><Check size={14} /> OWNED</div>
+                        <span className="armory-owned"><Check size={14} /> Owned</span>
                       ) : (
                         <button
                           type="button"
-                          className="shop-buy-btn"
-                          onClick={() => handlePurchaseHero(heroId, def.price)}
+                          className="armory-buy"
                           disabled={!canAfford}
-                          title={!canAfford ? 'Not enough coins' : `Purchase ${def.name}`}
+                          onClick={() => handlePurchaseHero(heroId, def.price)}
                         >
-                          <Coins size={14} /><span>{def.price.toLocaleString()}</span>
+                          <Coins size={14} />
+                          {def.price.toLocaleString()}
                         </button>
                       )}
                     </div>
@@ -167,35 +162,34 @@ export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipmen
           )}
 
           {(activeTab === 'armor' || activeTab === 'relic' || activeTab === 'pet' || activeTab === 'charm') && (
-            <div className="shop-grid shop-grid--equipment">
+            <div className="armory-item-grid">
               {currentSlotEquipment.map((item) => {
                 const owned = save.ownedEquipment.includes(item.id);
                 const canAfford = save.coins >= item.price;
-
                 return (
-                  <article key={item.id} className={`shop-card shop-card--equipment item-rarity-border--${item.rarity} ${owned ? 'is-owned' : ''}`}>
-                    <div className="shop-card__art shop-card__art--eq">
-                      <EquipmentIcon id={item.id} size={32} className="shop-card__equipment-icon" />
-                      <span className={`item-rarity-badge item-rarity--${item.rarity}`}>{item.rarity.toUpperCase()}</span>
+                  <article key={item.id} className={`armory-item-card armory-rarity--${item.rarity} ${owned ? 'is-owned' : ''}`}>
+                    <div className="armory-item-card__icon">
+                      <EquipmentIcon id={item.id} size={28} />
                     </div>
-                    <div className="shop-card__body">
-                      <div className="shop-card__title-row"><strong>{item.name}</strong></div>
-                      <p className="shop-card__desc">{item.description}</p>
-                      <small className="shop-card__effect">{item.shortEffect}</small>
-                      {item.bossDropFrom && <span className="shop-card__drop-source">WORLD BOSS FIRST-CLEAR DROP</span>}
+                    <div className="armory-item-card__copy">
+                      <span className="armory-rarity">{item.rarity}</span>
+                      <h2>{item.name}</h2>
+                      <strong>{item.shortEffect}</strong>
+                      <p>{item.description}</p>
+                      {item.bossDropFrom && <small>Boss first-clear drop</small>}
                     </div>
-                    <div className="shop-card__footer">
+                    <div className="armory-card-footer">
                       {owned ? (
-                        <div className="shop-owned-tag"><Check size={14} /> OWNED</div>
+                        <span className="armory-owned"><Check size={14} /> Owned</span>
                       ) : (
                         <button
                           type="button"
-                          className="shop-buy-btn"
-                          onClick={() => handlePurchaseEquipment(item.id, item.price)}
+                          className="armory-buy"
                           disabled={!canAfford}
-                          title={!canAfford ? 'Not enough coins' : `Purchase ${item.name}`}
+                          onClick={() => handlePurchaseEquipment(item.id, item.price)}
                         >
-                          <Coins size={14} /><span>{item.price.toLocaleString()}</span>
+                          <Coins size={14} />
+                          {item.price.toLocaleString()}
                         </button>
                       )}
                     </div>
@@ -204,7 +198,30 @@ export function ShopScreen({ save, onBack, onFreeChest, onBuyHero, onBuyEquipmen
               })}
             </div>
           )}
-        </div>
+
+          {activeTab === 'daily' && (
+            <div className="armory-daily-wrap">
+              <article className="armory-daily-card">
+                <div className="armory-daily-card__icon"><Gift size={30} /></div>
+                <div className="armory-daily-card__copy">
+                  <span>DAILY CACHE</span>
+                  <h2>120 bonus coins</h2>
+                  <p>One optional rewarded video. Available once per day.</p>
+                </div>
+                <button
+                  type="button"
+                  className="armory-daily-card__button"
+                  onClick={handleClaimChest}
+                  disabled={claimed || loadingChest}
+                >
+                  {claimed ? <Check size={16} /> : <Play size={16} fill="currentColor" />}
+                  {claimed ? 'Claimed' : loadingChest ? 'Connecting…' : 'Claim'}
+                </button>
+              </article>
+              {chestMessage && <p className="armory-message" role="status">{chestMessage}</p>}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
