@@ -1,5 +1,6 @@
 import { ENEMY_BALANCE } from '../../data/balance';
 import type { EnemyKind, StageDefinition } from '../../types';
+import { announceCombatWave } from './CombatTargeting';
 
 export interface SpawnHooks {
   getPlayerPosition: () => { x: number; y: number };
@@ -19,15 +20,20 @@ type PackType =
   | 'treant_escort'
   | 'frost_hunt';
 
+const CAMPAIGN_SURGE_THRESHOLDS = [0.20, 0.46, 0.72, 0.88] as const;
+
 export class EnemySpawner {
   private stage?: StageDefinition;
   private customPool?: EnemyKind[];
   private isSurvival = false;
   private elapsed = 0;
   private spawnTimer = 0;
-  private packTimer = 16;
+  private packTimer = 6;
   private breathingTimer = 0;
   private stopped = false;
+  private surgeIndex = 0;
+  private survivalSurgeTimer = 32;
+  private lastPackAngle = 0;
 
   constructor(private readonly hooks: SpawnHooks) {}
 
@@ -36,10 +42,13 @@ export class EnemySpawner {
     this.customPool = customPool;
     this.isSurvival = isSurvival;
     this.elapsed = 0;
-    this.spawnTimer = 0.5;
-    this.packTimer = 14;
+    this.spawnTimer = 0.25;
+    this.packTimer = 5.5;
     this.breathingTimer = 0;
     this.stopped = false;
+    this.surgeIndex = 0;
+    this.survivalSurgeTimer = 30;
+    this.lastPackAngle = Math.random() * Math.PI * 2;
   }
 
   stopSpawning(): void {
@@ -49,14 +58,15 @@ export class EnemySpawner {
   calculateSpawnRate(): number {
     if (this.isSurvival) {
       const minutes = this.elapsed / 60;
-      const breathingFactor = this.breathingTimer > 0 ? 2.0 : 1.0;
-      return Math.max(0.22, (0.72 / (1 + minutes * 0.15)) * breathingFactor);
+      const breathingFactor = this.breathingTimer > 0 ? 2.1 : 1.0;
+      return Math.max(0.20, (0.66 / (1 + minutes * 0.17)) * breathingFactor);
     }
-    const progress = Math.min(1, this.elapsed / (this.stage?.duration ?? 180));
+
+    const progress = Math.min(1, this.elapsed / (this.stage?.duration ?? 160));
     const density = this.stage?.difficulty.densityMultiplier ?? 1;
-    // Breathing window slows down drip rate
-    const breathingFactor = this.breathingTimer > 0 ? 2.2 : 1.0;
-    return Math.max(0.24, ((0.85 - progress * 0.48) * breathingFactor) / density);
+    const breathingFactor = this.breathingTimer > 0 ? 2.35 : 1.0;
+    // Start readable, then accelerate into a dense final minute.
+    return Math.max(0.21, ((0.76 - progress * 0.43) * breathingFactor) / density);
   }
 
   chooseEnemyType(allowedKinds?: EnemyKind[]): EnemyKind {
@@ -72,7 +82,6 @@ export class EnemySpawner {
     const player = this.hooks.getPlayerPosition();
     const world = this.hooks.getWorldSize();
     const angle = preferredAngle ?? Math.random() * Math.PI * 2;
-    // Outside landscape viewport (landscape viewport half-extent ~400 horizontal, ~250 vertical)
     const distance = 420 + Math.random() * 120 + distanceOffset;
     return {
       x: Math.min(world.width - 55, Math.max(55, player.x + Math.cos(angle) * distance)),
@@ -83,25 +92,31 @@ export class EnemySpawner {
   spawnRegularWave(): void {
     if (this.isSurvival) {
       const minutes = this.elapsed / 60;
-      const count = Math.min(5, 2 + Math.floor(minutes * 0.5));
-      const eliteChance = Math.min(0.38, 0.05 + minutes * 0.035);
+      const count = Math.min(6, 2 + Math.floor(minutes * 0.65));
+      const eliteChance = Math.min(0.42, 0.05 + minutes * 0.04);
+      const baseAngle = Math.random() * Math.PI * 2;
       for (let index = 0; index < count; index += 1) {
-        const position = this.getSafeSpawnPosition();
+        const position = this.getSafeSpawnPosition(baseAngle + (index - (count - 1) / 2) * 0.18);
         const elite = Math.random() < eliteChance;
         this.hooks.spawnEnemy(this.chooseEnemyType(), position.x, position.y, elite);
       }
       return;
     }
-    const baseCount = this.elapsed > 110 ? 3 : this.elapsed > 45 ? 2 : 1;
+
+    const progress = Math.min(1, this.elapsed / Math.max(1, this.stage?.duration ?? 160));
+    const baseCount = progress > 0.72 ? 3 : progress > 0.30 ? 2 : 1;
     const density = this.stage?.difficulty.densityMultiplier ?? 1;
     const count = Math.min(4, Math.max(1, Math.round(baseCount * density)));
     const eliteMultiplier = this.stage?.difficulty.eliteMultiplier ?? 1;
 
+    // Drip enemies arrive in a loose lane instead of unrelated random dots.
+    const baseAngle = this.lastPackAngle + (Math.random() - 0.5) * 1.35;
     for (let index = 0; index < count; index += 1) {
-      const position = this.getSafeSpawnPosition();
+      const angle = baseAngle + (index - (count - 1) / 2) * 0.16;
+      const position = this.getSafeSpawnPosition(angle, index * 8);
       const elite =
-        this.elapsed > 42 &&
-        Math.random() < Math.min(0.32, (0.035 + this.elapsed / 1500) * eliteMultiplier);
+        this.elapsed > 38 &&
+        Math.random() < Math.min(0.30, (0.028 + this.elapsed / 1700) * eliteMultiplier);
       this.hooks.spawnEnemy(this.chooseEnemyType(), position.x, position.y, elite);
     }
   }
@@ -121,16 +136,17 @@ export class EnemySpawner {
     packs.push('melee_swarm');
 
     const chosenPack = packs[Math.floor(Math.random() * packs.length)];
-    const baseAngle = Math.random() * Math.PI * 2;
+    // Rotate the pressure direction between packs so the player must keep moving.
+    const baseAngle = this.lastPackAngle + Math.PI * (0.45 + Math.random() * 0.65);
+    this.lastPackAngle = baseAngle;
     const eliteMultiplier = this.stage?.difficulty.eliteMultiplier ?? 1;
 
     switch (chosenPack) {
       case 'wolf_pack': {
-        const count = 4;
-        for (let i = 0; i < count; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
           const angle = baseAngle + (i - 1.5) * 0.28;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy('cursed-wolf', pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
+          this.hooks.spawnEnemy('cursed-wolf', pos.x, pos.y, i === 0 && Math.random() < 0.30 * eliteMultiplier);
         }
         break;
       }
@@ -143,41 +159,40 @@ export class EnemySpawner {
         const posFront = this.getSafeSpawnPosition(baseAngle);
         this.hooks.spawnEnemy(escortKind, posFront.x, posFront.y, false);
         for (let i = 0; i < 2; i += 1) {
-          const angle = baseAngle + (i - 0.5) * 0.4;
-          const pos = this.getSafeSpawnPosition(angle, 65);
-          this.hooks.spawnEnemy('thornling', pos.x, pos.y, i === 0 && Math.random() < 0.25 * eliteMultiplier);
+          const angle = baseAngle + (i - 0.5) * 0.42;
+          const pos = this.getSafeSpawnPosition(angle, 70);
+          this.hooks.spawnEnemy('thornling', pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
         }
         break;
       }
       case 'treant_escort': {
         const posTreant = this.getSafeSpawnPosition(baseAngle);
-        this.hooks.spawnEnemy('treant', posTreant.x, posTreant.y, Math.random() < 0.2 * eliteMultiplier);
+        this.hooks.spawnEnemy('treant', posTreant.x, posTreant.y, Math.random() < 0.22 * eliteMultiplier);
         const minionKind: EnemyKind = stageEnemies.includes('thornling')
           ? 'thornling'
           : stageEnemies.includes('slime')
           ? 'slime'
           : 'cursed-wolf';
-        for (let i = 0; i < 2; i += 1) {
-          const angle = baseAngle + (i === 0 ? -0.4 : 0.4);
-          const pos = this.getSafeSpawnPosition(angle, 35);
+        for (let i = 0; i < 3; i += 1) {
+          const angle = baseAngle + (i - 1) * 0.34;
+          const pos = this.getSafeSpawnPosition(angle, 38);
           this.hooks.spawnEnemy(minionKind, pos.x, pos.y, false);
         }
         break;
       }
       case 'frost_hunt': {
-        for (let i = 0; i < 2; i += 1) {
-          const angle = baseAngle + (i - 0.5) * 0.5;
+        for (let i = 0; i < 3; i += 1) {
+          const angle = baseAngle + (i - 1) * 0.38;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy('frost-wraith', pos.x, pos.y, i === 0 && Math.random() < 0.3 * eliteMultiplier);
+          this.hooks.spawnEnemy('frost-wraith', pos.x, pos.y, i === 1 && Math.random() < 0.30 * eliteMultiplier);
         }
         break;
       }
       case 'bat_swoop': {
-        const count = 4;
-        for (let i = 0; i < count; i += 1) {
-          const angle = baseAngle + (i - 1.5) * 0.35;
+        for (let i = 0; i < 5; i += 1) {
+          const angle = baseAngle + (i - 2) * 0.26;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy('bat', pos.x, pos.y, i === 0 && Math.random() < 0.25 * eliteMultiplier);
+          this.hooks.spawnEnemy('bat', pos.x, pos.y, i === 2 && Math.random() < 0.25 * eliteMultiplier);
         }
         break;
       }
@@ -187,32 +202,29 @@ export class EnemySpawner {
           : stageEnemies.includes('knight')
           ? 'knight'
           : stageEnemies[0];
-        const count = 3;
-        for (let i = 0; i < count; i += 1) {
-          const angle = baseAngle + (i - 1) * 0.3;
-          const pos = this.getSafeSpawnPosition(angle, 0);
+        for (let i = 0; i < 3; i += 1) {
+          const angle = baseAngle + (i - 1) * 0.28;
+          const pos = this.getSafeSpawnPosition(angle);
           this.hooks.spawnEnemy(frontMelee, pos.x, pos.y, false);
         }
         for (let i = 0; i < 2; i += 1) {
-          const angle = baseAngle + (i - 0.5) * 0.4;
-          const pos = this.getSafeSpawnPosition(angle, 60);
-          this.hooks.spawnEnemy('archer', pos.x, pos.y, i === 0 && Math.random() < 0.3 * eliteMultiplier);
+          const angle = baseAngle + (i - 0.5) * 0.48;
+          const pos = this.getSafeSpawnPosition(angle, 72);
+          this.hooks.spawnEnemy('archer', pos.x, pos.y, i === 0 && Math.random() < 0.32 * eliteMultiplier);
         }
         break;
       }
       case 'slime_wall': {
-        const count = 3;
-        for (let i = 0; i < count; i += 1) {
-          const angle = baseAngle + (i - 1) * 0.45;
+        for (let i = 0; i < 4; i += 1) {
+          const angle = baseAngle + (i - 1.5) * 0.36;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy('slime', pos.x, pos.y, i === 0 && Math.random() < 0.3 * eliteMultiplier);
+          this.hooks.spawnEnemy('slime', pos.x, pos.y, i === 1 && Math.random() < 0.30 * eliteMultiplier);
         }
         break;
       }
       case 'imp_rush': {
-        const count = 3;
-        for (let i = 0; i < count; i += 1) {
-          const angle = baseAngle + (i - 1) * 0.35;
+        for (let i = 0; i < 4; i += 1) {
+          const angle = baseAngle + (i - 1.5) * 0.30;
           const pos = this.getSafeSpawnPosition(angle);
           this.hooks.spawnEnemy('imp', pos.x, pos.y, false);
         }
@@ -220,27 +232,76 @@ export class EnemySpawner {
       }
       case 'melee_swarm':
       default: {
-        const meleeKind: EnemyKind = stageEnemies.includes('demon')
-          ? 'demon'
-          : stageEnemies.includes('knight')
-          ? 'knight'
-          : stageEnemies.includes('cursed-wolf')
-          ? 'cursed-wolf'
-          : stageEnemies.includes('slime')
-          ? 'slime'
-          : 'skeleton';
-        const count = 4;
-        for (let i = 0; i < count; i += 1) {
-          const angle = baseAngle + (i - 1.5) * 0.32;
+        const meleeKind = this.pickFrontliner(stageEnemies);
+        for (let i = 0; i < 5; i += 1) {
+          const angle = baseAngle + (i - 2) * 0.25;
           const pos = this.getSafeSpawnPosition(angle);
-          this.hooks.spawnEnemy(meleeKind, pos.x, pos.y, i === 0 && Math.random() < 0.28 * eliteMultiplier);
+          this.hooks.spawnEnemy(meleeKind, pos.x, pos.y, i === 2 && Math.random() < 0.30 * eliteMultiplier);
         }
         break;
       }
     }
 
-    // Enter a 2.4s breathing window after each major pack
-    this.breathingTimer = 2.4;
+    this.breathingTimer = 2.3;
+  }
+
+  private spawnSurgeWave(): void {
+    const stageEnemies = this.customPool ?? this.stage?.enemies ?? ['skeleton'];
+    const baseAngle = this.lastPackAngle + Math.PI * (0.75 + Math.random() * 0.5);
+    const opposite = baseAngle + Math.PI;
+    this.lastPackAngle = baseAngle;
+    const frontline = this.pickFrontliner(stageEnemies);
+    const ranged = this.pickRanged(stageEnemies);
+    const progress = this.stage ? Math.min(1, this.elapsed / Math.max(1, this.stage.duration)) : 0.5;
+    const eliteMultiplier = this.stage?.difficulty.eliteMultiplier ?? 1;
+    const stageNumber = this.stage?.stageNumber ?? 1;
+    const flankCount = Math.min(4, 2 + Math.floor(stageNumber / 2));
+
+    for (const sideAngle of [baseAngle, opposite]) {
+      for (let i = 0; i < flankCount; i += 1) {
+        const angle = sideAngle + (i - (flankCount - 1) / 2) * 0.22;
+        const pos = this.getSafeSpawnPosition(angle);
+        const elite =
+          i === Math.floor(flankCount / 2) &&
+          progress > 0.42 &&
+          Math.random() < Math.min(0.55, 0.18 * eliteMultiplier + progress * 0.14);
+        this.hooks.spawnEnemy(frontline, pos.x, pos.y, elite);
+      }
+
+      if (ranged && progress > 0.30) {
+        const pos = this.getSafeSpawnPosition(sideAngle, 82);
+        this.hooks.spawnEnemy(ranged, pos.x, pos.y, false);
+      }
+    }
+
+    const worldId = this.stage?.worldId ?? 1;
+    const label = worldId === 1
+      ? 'BONE SURGE'
+      : worldId === 2
+      ? 'CURSED HUNT'
+      : worldId === 3
+      ? 'WHITEOUT RUSH'
+      : 'HELLBREACH';
+    announceCombatWave({
+      label,
+      detail: ranged ? 'Two fronts closing in' : 'Enemies are surrounding you',
+      tone: progress > 0.68 ? 'elite' : 'danger',
+    });
+    this.breathingTimer = 3.1;
+  }
+
+  private pickFrontliner(pool: EnemyKind[]): EnemyKind {
+    for (const kind of ['demon', 'knight', 'cursed-wolf', 'slime', 'skeleton'] as EnemyKind[]) {
+      if (pool.includes(kind)) return kind;
+    }
+    return pool[0] ?? 'skeleton';
+  }
+
+  private pickRanged(pool: EnemyKind[]): EnemyKind | undefined {
+    for (const kind of ['thornling', 'archer', 'frost-wraith', 'ghost'] as EnemyKind[]) {
+      if (pool.includes(kind) && (ENEMY_BALANCE[kind]?.minTime ?? 0) <= this.elapsed) return kind;
+    }
+    return undefined;
   }
 
   update(delta: number): void {
@@ -249,21 +310,36 @@ export class EnemySpawner {
     this.breathingTimer = Math.max(0, this.breathingTimer - delta);
 
     const maxAlive = this.isSurvival
-      ? Math.min(96, 68 + Math.floor((this.elapsed / 60) * 6))
-      : (this.elapsed > 110 ? 95 : 68);
+      ? Math.min(102, 70 + Math.floor((this.elapsed / 60) * 7))
+      : (this.elapsed > this.stage.duration * 0.68 ? 92 : 70);
     if (this.hooks.getAliveCount() >= maxAlive) return;
 
-    // Pack spawner check
+    if (this.isSurvival) {
+      this.survivalSurgeTimer -= delta;
+      if (this.survivalSurgeTimer <= 0) {
+        this.spawnSurgeWave();
+        this.survivalSurgeTimer = Math.max(24, 34 - (this.elapsed / 60) * 1.2);
+      }
+    } else {
+      const progress = Math.min(1, this.elapsed / Math.max(1, this.stage.duration));
+      if (
+        this.surgeIndex < CAMPAIGN_SURGE_THRESHOLDS.length &&
+        progress >= CAMPAIGN_SURGE_THRESHOLDS[this.surgeIndex]
+      ) {
+        this.surgeIndex += 1;
+        this.spawnSurgeWave();
+      }
+    }
+
     this.packTimer -= delta;
     if (this.packTimer <= 0) {
       this.spawnAuthoredPack();
       const packInterval = this.isSurvival
-        ? Math.max(12, 18 - (this.elapsed / 60) * 1.0) + Math.random() * 4
-        : (18 + Math.random() * 6);
+        ? Math.max(9.5, 13.5 - (this.elapsed / 60) * 0.65) + Math.random() * 2.8
+        : 11.5 + Math.random() * 4.2;
       this.packTimer = packInterval;
     }
 
-    // Regular drip spawner check
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
       this.spawnRegularWave();

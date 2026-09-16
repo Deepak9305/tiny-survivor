@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Heart, Pause, Play, Shield, Skull } from 'lucide-react';
+import { Heart, Pause, Play, Shield, Skull, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { TwinStickControls } from '../components/TwinStickControls';
 import { AbilityControls } from '../components/AbilityControls';
@@ -9,6 +9,11 @@ import { PauseOverlay } from '../components/PauseOverlay';
 import { modelRegistry } from '../game3d/assets/ModelRegistry';
 import { AdService } from '../services/adService';
 import { audioService } from '../services/audioService';
+import {
+  getCombatFlowState,
+  type CombatFlowState,
+  type CombatWaveAnnouncement,
+} from '../game/systems/CombatTargeting';
 import { GameOverScreen } from './GameOverScreen';
 import type { GameSnapshot, RunMode, RunResult, SaveData, Settings, StageDefinition, UpgradeChoice } from '../types';
 
@@ -24,14 +29,41 @@ interface GameScreenProps {
   onSettingsChange?: (settings: Settings) => void;
 }
 
-const initialSnapshot: GameSnapshot = { time: 0, duration: 180, kills: 0, eliteKills: 0, level: 1, xp: 0, xpRequired: 82, hp: 100, maxHp: 100, coins: 0, aliveEnemies: 0, weaponLevels: { 'magic-bolt': 1 }, passiveLevels: {} };
+const initialSnapshot: GameSnapshot = {
+  time: 0,
+  duration: 180,
+  kills: 0,
+  eliteKills: 0,
+  level: 1,
+  xp: 0,
+  xpRequired: 82,
+  hp: 100,
+  maxHp: 100,
+  coins: 0,
+  aliveEnemies: 0,
+  weaponLevels: { 'magic-bolt': 1 },
+  passiveLevels: {},
+};
 
-export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGameOver, onRetry, onHome, onBestiary, onSettingsChange }: GameScreenProps) {
+const HERO_SIGILS = {
+  shadow: '✦',
+  warrior: '⚔',
+  monk: '◉',
+  gunslinger: '✧',
+} as const;
+
+export function GameScreen({
+  stage,
+  save,
+  mode = 'campaign',
+  onStageClear,
+  onGameOver,
+  onRetry,
+  onHome,
+  onBestiary,
+  onSettingsChange,
+}: GameScreenProps) {
   const gameRoot = useRef<HTMLDivElement>(null);
-
-  // GameScreen is keyed per run. Capture the run-start inputs once so normal parent
-  // state updates (for example an audio setting toggled while paused) never rebuild
-  // the Three.js arena or reset the run.
   const runSave = useRef(save);
   const runStage = useRef(stage);
   const runMode = useRef(mode);
@@ -49,8 +81,16 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
   const [reviveMessage, setReviveMessage] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [preloadProgress, setPreloadProgress] = useState(15);
+  const [flow, setFlow] = useState<CombatFlowState>(() => getCombatFlowState());
+  const [waveCallout, setWaveCallout] = useState<CombatWaveAnnouncement | undefined>();
+  const [killCallout, setKillCallout] = useState<string | undefined>();
+
   const warningTimer = useRef<number | undefined>(undefined);
   const hitTimer = useRef<number | undefined>(undefined);
+  const waveTimer = useRef<number | undefined>(undefined);
+  const killTimer = useRef<number | undefined>(undefined);
+  const wasOverdrive = useRef(false);
+  const lastKillMilestone = useRef(0);
 
   useEffect(() => {
     callbacks.current = { onStageClear, onGameOver };
@@ -72,7 +112,6 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
 
       if (!mounted) return;
       setPreloadProgress(100);
-
       await new Promise((resolve) => setTimeout(resolve, 280));
       if (!mounted) return;
       setIsLoading(false);
@@ -124,15 +163,55 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
     };
   }, []);
 
-  // Audio preferences can update live without remounting or resetting the run.
   useEffect(() => {
     audioService.setMusicEnabled(save.settings.music);
     audioService.setSfxEnabled(save.settings.soundEffects);
   }, [save.settings.music, save.settings.soundEffects]);
 
   useEffect(() => {
-    const tutorialTimer = window.setTimeout(() => setTutorialVisible(false), 5500);
+    const tutorialTimer = window.setTimeout(() => setTutorialVisible(false), 5200);
     return () => window.clearTimeout(tutorialTimer);
+  }, []);
+
+  useEffect(() => {
+    const handleFlow = (event: Event) => {
+      const next = (event as CustomEvent<CombatFlowState>).detail;
+      if (!next) return;
+      setFlow(next);
+      if (next.overdrive && !wasOverdrive.current) {
+        audioService.playSFX('level-up', { pitch: 1.2, volume: 0.62, throttle: 0.5 });
+      }
+      wasOverdrive.current = next.overdrive;
+    };
+
+    const handleWave = (event: Event) => {
+      const next = (event as CustomEvent<CombatWaveAnnouncement>).detail;
+      if (!next) return;
+      setWaveCallout(next);
+      if (waveTimer.current) window.clearTimeout(waveTimer.current);
+      waveTimer.current = window.setTimeout(() => setWaveCallout(undefined), 1700);
+    };
+
+    window.addEventListener('tiny-survivor-combat-flow', handleFlow);
+    window.addEventListener('tiny-survivor-wave', handleWave);
+    return () => {
+      window.removeEventListener('tiny-survivor-combat-flow', handleFlow);
+      window.removeEventListener('tiny-survivor-wave', handleWave);
+      if (waveTimer.current) window.clearTimeout(waveTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const milestone = Math.floor(snapshot.kills / 25) * 25;
+    if (milestone < 25 || milestone <= lastKillMilestone.current) return;
+    lastKillMilestone.current = milestone;
+    setKillCallout(milestone >= 100 ? `ONSLAUGHT · ${milestone} KILLS` : `RAMPAGE · ${milestone} KILLS`);
+    if (killTimer.current) window.clearTimeout(killTimer.current);
+    killTimer.current = window.setTimeout(() => setKillCallout(undefined), 1350);
+  }, [snapshot.kills]);
+
+  useEffect(() => () => {
+    if (killTimer.current) window.clearTimeout(killTimer.current);
   }, []);
 
   const chooseUpgrade = (choice: UpgradeChoice) => {
@@ -153,9 +232,11 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
 
   const hpPercent = snapshot.maxHp > 0 ? Math.max(0, Math.min(100, snapshot.hp / snapshot.maxHp * 100)) : 0;
   const xpPercent = snapshot.xpRequired > 0 ? Math.min(100, snapshot.xp / snapshot.xpRequired * 100) : 0;
+  const heroId = save.selectedHero ?? 'shadow';
+  const heroSigil = HERO_SIGILS[heroId];
 
   return (
-    <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}`}>
+    <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}${flow.overdrive ? ' game-screen--overdrive' : ''}`}>
       <div ref={gameRoot} className="three-root" />
       {isLoading && <StagePreloadScreen stage={stage} progress={preloadProgress} />}
       {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
@@ -167,27 +248,35 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
           <button type="button" onClick={onHome}>RETURN HOME</button>
         </div>
       )}
+
       <div className="game-ui">
         <div className="game-topbar">
           <div className="game-player-hud">
-            <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
-              <div className="game-health__icon" aria-hidden="true"><Heart size={15} fill="currentColor" /></div>
-              <div className="game-health__track">
-                <i style={{ width: `${hpPercent}%` }} />
-                <span className="game-health__value">{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</span>
+            <div className={`game-hero-sigil game-hero-sigil--${heroId}`} aria-label={`${heroId} hero`}>
+              {heroSigil}
+            </div>
+            <div className="game-player-bars">
+              <div className={`game-health${hpPercent < 30 ? ' game-health--low' : ''}`}>
+                <div className="game-health__icon" aria-hidden="true"><Heart size={15} fill="currentColor" /></div>
+                <div className="game-health__track">
+                  <i style={{ width: `${hpPercent}%` }} />
+                  <span className="game-health__value">{Math.ceil(snapshot.hp)} / {Math.ceil(snapshot.maxHp)}</span>
+                </div>
+              </div>
+              <div className="game-level-xp">
+                <span className="game-level-text">Lv. {snapshot.level}</span>
+                <div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div>
               </div>
             </div>
-            <div className="game-level-xp">
-              <span className="game-level-text">Lv. {snapshot.level}</span>
-              <div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div>
-            </div>
           </div>
+
           <div className="game-timer">
             <span className="game-stage-title">
               {mode === 'survival' ? 'SURVIVAL' : stage.bossStage ? 'BOSS' : `STAGE ${stage.stageNumber || (stage.id.includes('-') ? stage.id.split('-')[1] : stage.id)}`}
             </span>
             <strong className="game-stage-time">{formatRunTime(snapshot.time)}</strong>
           </div>
+
           <div className="game-actions">
             <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}>
               <Skull size={18} />
@@ -209,6 +298,15 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
             </button>
           </div>
         </div>
+
+        <div className={`game-flow-hud${flow.overdrive ? ' game-flow-hud--overdrive' : ''}${flow.meter <= 0 ? ' game-flow-hud--empty' : ''}`}>
+          <span className="game-flow-hud__label"><Zap size={11} fill="currentColor" /> {flow.overdrive ? 'OVERDRIVE' : 'FLOW'}</span>
+          <div className="game-flow-hud__track"><i style={{ width: `${flow.meter}%` }} /></div>
+          <strong className="game-flow-hud__value">
+            {flow.overdrive ? `${flow.overdriveRemaining.toFixed(1)}s` : flow.streak >= 3 ? `x${flow.streak}` : `${Math.round(flow.meter)}%`}
+          </strong>
+        </div>
+
         {snapshot.boss && (
           <div className="boss-hud">
             <div>
@@ -220,6 +318,7 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
             </div>
           </div>
         )}
+
         {warning && stage.bossStage && (
           <div className="boss-warning" role="status">
             <span className="boss-warning__skull"><Skull size={27} /></span>
@@ -228,9 +327,19 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
             <small>{stage.bossName ?? 'World boss'} enters the arena</small>
           </div>
         )}
+
+        {waveCallout && (
+          <div className={`game-wave-callout game-wave-callout--${waveCallout.tone}`} role="status">
+            <strong>{waveCallout.label}</strong>
+            <span>{waveCallout.detail}</span>
+          </div>
+        )}
+
+        {killCallout && <div className="game-kill-callout" aria-live="polite">{killCallout}</div>}
+
         {tutorialVisible && (
           <div className="game-tip game-tip--twin-stick">
-            LEFT STICK — MOVE &middot; RIGHT STICK — AIM &middot; TAP SPECIAL ABILITIES
+            LEFT STICK — MOVE &middot; HOLD FIRE — AUTO-TARGET &middot; TAP SPECIALS — AUTO-AIM
           </div>
         )}
       </div>
@@ -254,6 +363,7 @@ export function GameScreen({ stage, save, mode = 'campaign', onStageClear, onGam
           onSettingsChange={onSettingsChange}
         />
       )}
+
       {gameOver && (
         <GameOverScreen
           result={gameOver}

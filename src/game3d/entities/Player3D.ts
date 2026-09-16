@@ -3,6 +3,7 @@ import { setLogicalPosition } from '../core/coordinates';
 import { SharedResources, addMesh } from '../core/SharedResources';
 import { createHeroVisual, createPetModel, createRelicAccent } from '../visuals/CharacterFactory';
 import { resolveObstacleCollision } from '../scene/WorldObstacles';
+import { getCombatFlowState } from '../../game/systems/CombatTargeting';
 import type { HeroId, HeroLoadout } from '../../types';
 
 export interface PlayerStats {
@@ -23,6 +24,13 @@ function lerpAngle(current: number, target: number, t: number): number {
   return current + diff * t;
 }
 
+const HERO_COMBAT_COLORS: Record<HeroId, number> = {
+  shadow: 0x55ddff,
+  warrior: 0xffbd45,
+  monk: 0x34d399,
+  gunslinger: 0xe879f9,
+};
+
 export class Player3D {
   readonly group: THREE.Group;
   readonly stats: PlayerStats;
@@ -37,10 +45,14 @@ export class Player3D {
   private readonly baseCharacterScale = 0.92;
   private readonly movement = new THREE.Vector2();
   private readonly velocity = new THREE.Vector2();
+  private readonly heroLight: THREE.PointLight;
+  private readonly powerHalo: THREE.Mesh;
+  private readonly heroAccent = new THREE.Group();
   private invulnerableUntil = 0;
   private visualTime = 0;
   private hitFlash = 0;
   private attackTime = 0;
+  private attackVariant = 0;
   private reviveTime = 0;
   private levelUpTime = 0;
   private victoryTime = 0;
@@ -78,9 +90,9 @@ export class Player3D {
     this.worldId = worldId;
     this.heroId = heroId;
     this.onFootstep = onFootstep;
+    const heroColor = HERO_COMBAT_COLORS[heroId];
     const visual = createHeroVisual(heroId, resources);
     this.character = visual.root;
-    // Set Euler order to 'YXZ' so pitch (X) and roll/banking (Z) follow the character's facing direction (Y)
     this.character.rotation.order = 'YXZ';
     this.aura = visual.aura;
     this.shadow = visual.shadow;
@@ -113,43 +125,86 @@ export class Player3D {
       parent.add(this.petObject);
     }
 
-    // Subtle Cyan Focal Light attached directly to Player Group (Follows player everywhere)
-    const heroPointLight = new THREE.PointLight(0x38bdf8, 0.85, 4.8, 1.8);
-    heroPointLight.name = 'hero-point-light';
-    heroPointLight.position.set(0, 1.2, 0.2);
-    this.group.add(heroPointLight);
+    // Every hero gets a distinct combat light instead of the previous universal cyan.
+    this.heroLight = new THREE.PointLight(heroColor, 0.82, 5.2, 1.75);
+    this.heroLight.name = `hero-point-light-${heroId}`;
+    this.heroLight.position.set(0, 1.15, 0.18);
+    this.group.add(this.heroLight);
 
-    // Warm red-orange directional aim trajectory cone matching reference screenshot
+    // Lightweight hero identity accents. They stay subtle during normal play and
+    // flare up as FLOW rises / OVERDRIVE activates.
+    this.powerHalo = addMesh(
+      this.group,
+      resources.torus(`hero-power-halo-${heroId}`),
+      resources.basicMaterial(`hero-power-halo-mat-${heroId}`, heroColor, {
+        transparent: true,
+        opacity: 0.12,
+        depthWrite: false,
+      })
+    );
+    this.powerHalo.position.y = 1.08;
+    this.powerHalo.rotation.x = Math.PI / 2;
+    this.powerHalo.scale.setScalar(0.62);
+
+    this.heroAccent.name = `hero-accent-${heroId}`;
+    for (let index = 0; index < 3; index += 1) {
+      const shard = addMesh(
+        this.heroAccent,
+        resources.octa(`hero-accent-shard-${heroId}`),
+        resources.basicMaterial(`hero-accent-shard-mat-${heroId}`, heroColor, {
+          transparent: true,
+          opacity: 0.72,
+          depthWrite: false,
+        })
+      );
+      shard.scale.setScalar(0.09);
+      shard.userData.baseAngle = index * Math.PI * 2 / 3;
+    }
+    this.group.add(this.heroAccent);
+
+    // Auto-target direction is now a thin hero-colored guide, not a large red cone.
     const aimIndicatorGroup = new THREE.Group();
     aimIndicatorGroup.name = 'aim-indicator';
     aimIndicatorGroup.position.set(0, 0.02, 0);
 
     const aimCone = addMesh(
       aimIndicatorGroup,
-      resources.cone('aim-cone-geom'),
-      resources.basicMaterial('aim-cone-mat', 0xff382e, { transparent: true, opacity: 0.72, depthWrite: false })
+      resources.cone(`aim-cone-geom-${heroId}`),
+      resources.basicMaterial(`aim-cone-mat-${heroId}`, heroColor, {
+        transparent: true,
+        opacity: 0.34,
+        depthWrite: false,
+      })
     );
-    aimCone.scale.set(0.36, 1.85, 0.08);
+    aimCone.scale.set(0.20, 1.48, 0.05);
     aimCone.rotation.x = Math.PI / 2;
-    aimCone.position.set(0, 0, 1.15);
+    aimCone.position.set(0, 0, 0.93);
 
     const aimCore = addMesh(
       aimIndicatorGroup,
-      resources.cylinder('aim-core-geom'),
-      resources.basicMaterial('aim-core-mat', 0xffaa44, { transparent: true, opacity: 0.9, depthWrite: false })
+      resources.cylinder(`aim-core-geom-${heroId}`),
+      resources.basicMaterial(`aim-core-mat-${heroId}`, 0xffffff, {
+        transparent: true,
+        opacity: 0.78,
+        depthWrite: false,
+      })
     );
-    aimCore.scale.set(0.035, 1.65, 0.035);
+    aimCore.scale.set(0.022, 1.18, 0.022);
     aimCore.rotation.x = Math.PI / 2;
-    aimCore.position.set(0, 0.005, 1.05);
+    aimCore.position.set(0, 0.005, 0.82);
 
     const aimDot = addMesh(
       aimIndicatorGroup,
-      resources.circle('aim-dot-geom'),
-      resources.basicMaterial('aim-dot-mat', 0xffea77, { transparent: true, opacity: 0.85, depthWrite: false })
+      resources.circle(`aim-dot-geom-${heroId}`),
+      resources.basicMaterial(`aim-dot-mat-${heroId}`, heroColor, {
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+      })
     );
-    aimDot.scale.setScalar(0.14);
+    aimDot.scale.setScalar(0.11);
     aimDot.rotation.x = -Math.PI / 2;
-    aimDot.position.set(0, 0.008, 2.05);
+    aimDot.position.set(0, 0.008, 1.62);
 
     this.group.add(aimIndicatorGroup);
     this.aimIndicator = aimIndicatorGroup;
@@ -169,6 +224,7 @@ export class Player3D {
     this.invulnerableUntil = 0;
     this.hitFlash = 0;
     this.attackTime = 0;
+    this.attackVariant = 0;
     this.reviveTime = 0;
     this.levelUpTime = 0;
     this.victoryTime = 0;
@@ -184,12 +240,9 @@ export class Player3D {
   updateMovement(delta: number, worldWidth: number, worldHeight: number): void {
     if (this.chillTimer > 0) {
       this.chillTimer -= delta;
-      if (this.chillTimer <= 0) {
-        this.chillMultiplier = 1.0;
-      }
+      if (this.chillTimer <= 0) this.chillMultiplier = 1.0;
     }
 
-    // 1. Deadzone filtering & curved non-linear analog response
     const rawLen = this.movement.length();
     let targetSpeed = 0;
     const targetVel = new THREE.Vector2(0, 0);
@@ -197,38 +250,28 @@ export class Player3D {
 
     if (rawLen > DEADZONE) {
       const normalizedMagnitude = Math.min(1, (rawLen - DEADZONE) / (1 - DEADZONE));
-      // Organic response curve: precision at slight tilts, athletic sprint at full tilt
       const curve = normalizedMagnitude * (0.35 + 0.65 * normalizedMagnitude);
       const topSpeed = this.stats.moveSpeed * this.chillMultiplier;
       targetSpeed = topSpeed * curve;
       targetVel.set((this.movement.x / rawLen) * targetSpeed, (this.movement.y / rawLen) * targetSpeed);
     }
 
-    // 2. Physical acceleration, traction & braking physics
-    const currentSpeed = this.velocity.length();
     const isStopping = targetSpeed < 0.001;
     const isReversing = !isStopping && this.velocity.dot(targetVel) < 0;
-    // Snappy acceleration (~0.08s ramp), crisp foot-plant braking (~0.06s stop)
     const accelRate = isStopping ? 26 : (isReversing ? 32 : 20);
     this.velocity.lerp(targetVel, Math.min(1, delta * accelRate));
-    if (isStopping && this.velocity.lengthSq() < 0.2) {
-      this.velocity.set(0, 0);
-    }
+    if (isStopping && this.velocity.lengthSq() < 0.2) this.velocity.set(0, 0);
 
-    // 3. Movement integration and obstacle sliding
     const effectiveSpeed = this.velocity.length();
     if (effectiveSpeed > 0.02) {
       const nextX = THREE.MathUtils.clamp(this.x + this.velocity.x * delta, 48, worldWidth - 48);
       const nextY = THREE.MathUtils.clamp(this.y + this.velocity.y * delta, 64, worldHeight - 64);
-
-      // 2D Static Obstacle Collision resolution with tangential sliding
       const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);
       const pushX = resolved.x - nextX;
       const pushY = resolved.y - nextY;
       const pushDistSq = pushX * pushX + pushY * pushY;
 
       if (pushDistSq > 0.0001) {
-        // Wall sliding: project velocity onto collision tangent to preserve fluid glide along boundaries & pillars
         const pushDist = Math.sqrt(pushDistSq);
         const normalX = pushX / pushDist;
         const normalY = pushY / pushDist;
@@ -241,21 +284,17 @@ export class Player3D {
 
       this.x = resolved.x;
       this.y = resolved.y;
-
-      // Update movement heading based on actual travel velocity
       this.direction = Math.atan2(this.velocity.x, this.velocity.y);
     }
 
     this.syncPosition();
     this.visualTime += delta;
 
-    // 4. Stride phase and cadence scaling
     const speedRatio = THREE.MathUtils.clamp(effectiveSpeed / Math.max(1, this.stats.moveSpeed), 0, 1.25);
     const moving = speedRatio > 0.03;
     const walkCadence = THREE.MathUtils.lerp(8.0, 13.0, Math.min(1, speedRatio));
     this.stridePhase += delta * walkCadence * speedRatio;
 
-    // Footstep dust trigger on foot plant (each half-stride cycle)
     if (moving && speedRatio > 0.3) {
       const currentStepIndex = Math.floor(this.stridePhase / Math.PI);
       if (currentStepIndex > this.lastFootstepPhase) {
@@ -264,7 +303,6 @@ export class Player3D {
       }
     }
 
-    // 5. Hip-pivoted leg stride animation
     const legs = this.parts.legs as THREE.Group[] | undefined;
     if (legs && legs.length === 2) {
       if (moving) {
@@ -281,23 +319,19 @@ export class Player3D {
       }
     }
 
-    // 6. Natural running bounce & idle breathing
     const bounce = Math.abs(Math.sin(this.stridePhase)) * 0.040 * speedRatio;
     const idleBreathe = Math.sin(this.visualTime * 3.2) * 0.016 * (1 - Math.min(1, speedRatio * 1.6));
     this.character.position.y = bounce + idleBreathe;
 
-    // Grounded contact shadow stays strictly on terrain, pulsing with stride bounce
     this.shadow.position.y = 0.006;
     const shadowContract = Math.max(0, bounce * 1.5);
     this.shadow.scale.set(1.05 - shadowContract * 0.32, 0.65 - shadowContract * 0.20, 1);
 
-    // 7. Heading, banking into turns & forward running lean
     const targetFacing = this.aimActive ? this.aimDirection : this.direction;
     const prevHeading = this.character.rotation.y;
     const turnSpeed = this.aimActive ? 22 : 16;
     this.character.rotation.y = lerpAngle(this.character.rotation.y, targetFacing, Math.min(1, delta * turnSpeed));
 
-    // Angular turn velocity calculation for centrifugal banking
     let angleDelta = this.character.rotation.y - prevHeading;
     if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
     if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
@@ -305,28 +339,22 @@ export class Player3D {
     const targetBank = THREE.MathUtils.clamp(-turnRate * 0.032 * speedRatio, -0.16, 0.16);
     this.bankAngle = THREE.MathUtils.lerp(this.bankAngle, targetBank, Math.min(1, delta * 12));
 
-    // Forward lean when running, subtle backward pitch during sharp braking
     const targetLean = 0.15 * Math.min(1, speedRatio);
     const isBraking = speedRatio > 0.18 && targetSpeed < 1.0;
     const targetPitch = isBraking ? -0.06 : targetLean;
     this.pitchAngle = THREE.MathUtils.lerp(this.pitchAngle, targetPitch, Math.min(1, delta * 10));
 
-    // Lateral sway from stride rhythm
     const strideSway = Math.cos(this.stridePhase) * 0.042 * speedRatio;
     this.character.rotation.x = this.pitchAngle;
     this.character.rotation.z = this.bankAngle + strideSway;
 
-    // 8. Aim indicator updates
     if (this.aimIndicator) {
       this.aimIndicator.rotation.y = this.aimDirection;
-      const targetIndicatorOpacity = this.aimActive ? 0.88 : (this.hasAimed ? 0.28 : 0);
+      const targetIndicatorOpacity = this.aimActive ? 0.55 : 0;
       for (const child of this.aimIndicator.children) {
         if (child instanceof THREE.Mesh && child.material && 'opacity' in child.material) {
-          (child.material as THREE.Material & { opacity: number }).opacity = THREE.MathUtils.lerp(
-            (child.material as THREE.Material & { opacity: number }).opacity,
-            targetIndicatorOpacity,
-            Math.min(1, delta * 10)
-          );
+          const material = child.material as THREE.Material & { opacity: number };
+          material.opacity = THREE.MathUtils.lerp(material.opacity, targetIndicatorOpacity, Math.min(1, delta * 12));
         }
       }
     }
@@ -336,11 +364,13 @@ export class Player3D {
     this.levelUpTime = Math.max(0, this.levelUpTime - delta);
     this.victoryTime = Math.max(0, this.victoryTime - delta);
 
-    const attackProgress = this.attackTime > 0 ? 1 - this.attackTime / 0.24 : 0;
+    const attackDuration = this.heroId === 'gunslinger' ? 0.15 : this.heroId === 'warrior' ? 0.22 : 0.19;
+    const attackProgress = this.attackTime > 0 ? 1 - this.attackTime / attackDuration : 0;
     const attackSwing = attackProgress > 0 ? Math.sin(Math.min(1, attackProgress) * Math.PI) : 0;
-    const celebrateProgress = this.levelUpTime > 0 ? Math.sin((1 - this.levelUpTime / 0.8) * Math.PI) : (this.victoryTime > 0 ? 1 : 0);
+    const celebrateProgress = this.levelUpTime > 0
+      ? Math.sin((1 - this.levelUpTime / 0.8) * Math.PI)
+      : (this.victoryTime > 0 ? 1 : 0);
 
-    // 9. Arm counter-swing counter-phases legs
     const arms = this.parts.arms as THREE.Object3D[] | undefined;
     if (arms?.length === 2) {
       const armSwing = moving ? Math.sin(this.stridePhase) * 0.48 * speedRatio : 0;
@@ -350,7 +380,6 @@ export class Player3D {
       arms[1].rotation.z = this.armBaseRotZ[1] + attackSwing * 0.65 + celebrateProgress * 0.7;
     }
 
-    // 10. Cloak flutter and scarf trailing wind physics
     const cloak = this.parts.cloak as THREE.Object3D | undefined;
     if (cloak) {
       const cloakFlutter = (0.16 + Math.sin(this.visualTime * 14) * 0.06) * speedRatio;
@@ -360,13 +389,21 @@ export class Player3D {
     const staff = this.parts.staff;
     if (staff instanceof THREE.Object3D) {
       const staffBob = moving ? Math.sin(this.stridePhase) * 0.20 * speedRatio : 0;
-      staff.rotation.x = staffBob;
-      staff.rotation.z = -0.28 - attackSwing * 0.5 - celebrateProgress * 0.6;
+      staff.rotation.x = staffBob - attackSwing * 0.20;
+      staff.rotation.z = -0.28 - attackSwing * 0.62 - celebrateProgress * 0.6;
     }
+
     const crystal = this.parts.crystal;
-    if (crystal instanceof THREE.Object3D) crystal.rotation.y += delta * (moving ? 4.5 : (celebrateProgress > 0 ? 8 : 2.2));
+    if (crystal instanceof THREE.Object3D) {
+      crystal.rotation.y += delta * (moving ? 4.5 : (celebrateProgress > 0 ? 8 : 2.2));
+      const castPulse = 1 + attackSwing * 0.32;
+      crystal.scale.setScalar(0.28 * castPulse);
+    }
     const crystalHalo = this.parts.crystalHalo;
-    if (crystalHalo instanceof THREE.Object3D) crystalHalo.rotation.z += delta * (celebrateProgress > 0 ? 5 : 2.4);
+    if (crystalHalo instanceof THREE.Object3D) {
+      crystalHalo.rotation.z += delta * (celebrateProgress > 0 ? 5 : 2.4);
+      crystalHalo.scale.setScalar(0.26 * (1 + attackSwing * 0.42));
+    }
 
     const scarfTail = this.parts.scarfTail;
     if (scarfTail instanceof THREE.Object3D) {
@@ -374,15 +411,98 @@ export class Player3D {
       scarfTail.rotation.z = Math.cos(this.visualTime * 5.5) * (0.06 + 0.16 * speedRatio);
     }
 
+    // Hero-specific attack personality. All heroes share the same combat system,
+    // but no longer look like the same puppet firing the same animation.
+    if (this.heroId === 'warrior') {
+      const weapon = this.parts.weapon;
+      if (weapon instanceof THREE.Object3D) {
+        weapon.rotation.z = -0.32 + attackSwing * 1.18;
+        weapon.rotation.x = -attackSwing * 0.32;
+      }
+      if (arms?.length === 2 && attackSwing > 0) {
+        arms[1].rotation.x = -0.45 - attackSwing * 0.85;
+        arms[0].rotation.x = 0.18 + attackSwing * 0.25;
+      }
+    } else if (this.heroId === 'monk') {
+      const chiL = this.parts.chiL;
+      const chiR = this.parts.chiR;
+      if (chiL instanceof THREE.Object3D) chiL.scale.setScalar(0.16 * (1 + attackSwing * (this.attackVariant === 0 ? 0.9 : 0.35)));
+      if (chiR instanceof THREE.Object3D) chiR.scale.setScalar(0.16 * (1 + attackSwing * (this.attackVariant === 1 ? 0.9 : 0.35)));
+      if (arms?.length === 2 && attackSwing > 0) {
+        const active = this.attackVariant % 2;
+        arms[active].rotation.x = -1.0 * attackSwing;
+        arms[1 - active].rotation.x = 0.35 * attackSwing;
+      }
+    } else if (this.heroId === 'gunslinger') {
+      const pistolR = this.parts.pistolR;
+      const pistolL = this.parts.pistolL;
+      const rightShot = this.attackVariant % 2 === 0;
+      if (pistolR instanceof THREE.Object3D) {
+        pistolR.position.z = 0.28 - (rightShot ? attackSwing * 0.13 : 0);
+        pistolR.rotation.x = rightShot ? -attackSwing * 0.16 : 0;
+      }
+      if (pistolL instanceof THREE.Object3D) {
+        pistolL.position.z = 0.28 - (!rightShot ? attackSwing * 0.13 : 0);
+        pistolL.rotation.x = !rightShot ? -attackSwing * 0.16 : 0;
+      }
+      if (arms?.length === 2 && attackSwing > 0) {
+        arms[0].rotation.x = -0.55 - (!rightShot ? attackSwing * 0.52 : 0.12);
+        arms[1].rotation.x = -0.55 - (rightShot ? attackSwing * 0.52 : 0.12);
+      }
+    }
+
+    const flow = getCombatFlowState();
+    const flowRatio = flow.meter / 100;
+    const overdrive = flow.overdrive;
+    this.heroLight.intensity = 0.78 + flowRatio * 0.48 + (overdrive ? 0.72 : 0);
+    this.heroLight.distance = overdrive ? 6.2 : 5.2;
+
+    const haloMaterial = this.powerHalo.material;
+    if (haloMaterial instanceof THREE.Material && 'opacity' in haloMaterial) {
+      (haloMaterial as THREE.Material & { opacity: number }).opacity = 0.08 + flowRatio * 0.24 + (overdrive ? 0.34 : 0);
+    }
+    this.powerHalo.visible = flow.meter > 4 || overdrive;
+    this.powerHalo.rotation.z += delta * (0.8 + flowRatio * 2.3 + (overdrive ? 2.2 : 0));
+    this.powerHalo.scale.setScalar(0.62 + flowRatio * 0.16 + attackSwing * 0.06 + (overdrive ? 0.16 : 0));
+
+    const accentRadius = 0.64 + flowRatio * 0.16 + (overdrive ? 0.12 : 0);
+    this.heroAccent.visible = flow.meter > 18 || overdrive;
+    for (let index = 0; index < this.heroAccent.children.length; index += 1) {
+      const shard = this.heroAccent.children[index];
+      const baseAngle = shard.userData.baseAngle as number;
+      const angle = baseAngle + this.visualTime * (1.4 + flowRatio * 1.8 + (overdrive ? 2.2 : 0));
+      shard.position.set(
+        Math.cos(angle) * accentRadius,
+        1.02 + Math.sin(angle * 1.7) * 0.16,
+        Math.sin(angle) * accentRadius
+      );
+      shard.rotation.x += delta * 3.4;
+      shard.rotation.y += delta * 5.2;
+      shard.scale.setScalar((overdrive ? 0.13 : 0.085) * (1 + attackSwing * 0.30));
+    }
+
     const lowHealth = this.stats.currentHP / Math.max(1, this.stats.maxHP) < 0.3;
-    this.aura.scale.setScalar(1 + Math.sin(this.visualTime * (lowHealth ? 5.6 : 3)) * (lowHealth ? 0.11 : 0.06) + celebrateProgress * 0.35);
-    this.aura.rotation.z += delta * 0.8;
+    this.aura.scale.setScalar(
+      1 +
+      Math.sin(this.visualTime * (lowHealth ? 5.6 : 3)) * (lowHealth ? 0.11 : 0.06) +
+      celebrateProgress * 0.35 +
+      flowRatio * 0.09 +
+      (overdrive ? 0.13 : 0)
+    );
+    this.aura.rotation.z += delta * (0.8 + flowRatio * 0.7 + (overdrive ? 1.1 : 0));
+
     this.hitFlash = Math.max(0, this.hitFlash - delta);
     const revivePop = this.reviveTime > 0 ? 1 + Math.sin((1 - this.reviveTime / 1.2) * Math.PI) * 0.12 : 1;
     const levelUpPulse = celebrateProgress > 0 ? 1 + celebrateProgress * 0.15 : 1;
-    this.character.scale.setScalar(this.baseCharacterScale * (this.hitFlash > 0 ? 1.055 : 1) * revivePop * levelUpPulse);
+    const overdrivePulse = overdrive ? 1 + Math.sin(this.visualTime * 8) * 0.018 : 1;
+    this.character.scale.setScalar(
+      this.baseCharacterScale *
+      (this.hitFlash > 0 ? 1.055 : 1) *
+      revivePop *
+      levelUpPulse *
+      overdrivePulse
+    );
 
-    // 11. Pet follower physics/smoothing (trailing directly behind player facing direction)
     if (this.petObject) {
       const behindX = -Math.sin(this.direction);
       const behindY = -Math.cos(this.direction);
@@ -412,13 +532,8 @@ export class Player3D {
     }
   }
 
-  isAiming(): boolean {
-    return this.aimActive;
-  }
-
-  getAimDirection(): number {
-    return this.aimDirection;
-  }
+  isAiming(): boolean { return this.aimActive; }
+  getAimDirection(): number { return this.aimDirection; }
 
   getMovementVector(): THREE.Vector2 {
     const spd = this.velocity.length();
@@ -428,17 +543,14 @@ export class Player3D {
     return new THREE.Vector2((this.velocity.x / spd) * ratio, (this.velocity.y / spd) * ratio);
   }
 
-  getVelocity(): THREE.Vector2 {
-    return this.velocity.clone();
-  }
-
-  getSpeedRatio(): number {
-    return this.velocity.length() / Math.max(1, this.stats.moveSpeed);
-  }
-
+  getVelocity(): THREE.Vector2 { return this.velocity.clone(); }
+  getSpeedRatio(): number { return this.velocity.length() / Math.max(1, this.stats.moveSpeed); }
   getPosition(): { x: number; y: number } { return { x: this.x, y: this.y }; }
 
-  triggerAttack(): void { this.attackTime = 0.24; }
+  triggerAttack(): void {
+    this.attackVariant = (this.attackVariant + 1) % 2;
+    this.attackTime = this.heroId === 'gunslinger' ? 0.15 : this.heroId === 'warrior' ? 0.22 : 0.19;
+  }
   triggerRevive(): void { this.reviveTime = 1.2; this.hitFlash = 0.2; }
   triggerLevelUp(): void { this.levelUpTime = 0.8; }
   triggerVictory(): void { this.victoryTime = 3.0; }
@@ -449,7 +561,6 @@ export class Player3D {
     this.applyInvulnerability(now, invulnerabilityDuration);
     this.hitFlash = invulnerabilityDuration;
     this.attackTime = 0;
-    // Micro hit-flinch that dampens velocity slightly without freezing
     this.velocity.multiplyScalar(0.72);
     return true;
   }

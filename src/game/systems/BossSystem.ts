@@ -9,6 +9,7 @@ export interface BossHooks {
   telegraphAttack: (attack: BossAttack, x: number, y: number) => void;
   executeAttack: (attack: BossAttack, x: number, y: number) => void;
 }
+
 export interface BossState {
   id: BossId;
   name: string;
@@ -19,12 +20,15 @@ export interface BossState {
 
 export class BossSystem {
   private state?: BossState;
-  private attackTimer = 3.2;
+  private attackTimer = 2.8;
   private pendingAttack = 0;
   private pendingAttackType?: BossAttack;
-  private attackCursor = 0;
   private dead = false;
   private echoActive = false;
+  private lastAttack?: BossAttack;
+  private attacksSinceBurst = 0;
+  private movementClock = 0;
+  private strafeDirection = 1;
 
   constructor(private readonly hooks: BossHooks) {}
 
@@ -32,17 +36,20 @@ export class BossSystem {
     const definition = getBossDefinition(id) ?? getBossDefinition('skeleton-king');
     if (!definition) return;
     this.state = { id: definition.id, name: definition.name, hp: definition.hp, maxHp: definition.hp, phase: 1 };
-    this.attackTimer = 3.2;
+    this.attackTimer = 2.8;
     this.pendingAttack = 0;
     this.pendingAttackType = undefined;
-    this.attackCursor = 0;
     this.dead = false;
     this.echoActive = false;
+    this.lastAttack = undefined;
+    this.attacksSinceBurst = 0;
+    this.movementClock = 0;
+    this.strafeDirection = Math.random() < 0.5 ? -1 : 1;
   }
 
   setEchoActive(active: boolean): void {
     this.echoActive = active;
-    if (active && this.attackTimer < 2.75) {
+    if (active && this.attackTimer < 2.7) {
       this.attackTimer = 2.9;
     }
   }
@@ -55,12 +62,45 @@ export class BossSystem {
     if (!this.state || this.dead) return;
     const definition = getBossDefinition(this.state.id);
     if (!definition) return;
+
     const boss = this.hooks.getBossPosition();
     const player = this.hooks.getPlayerPosition();
     const dx = player.x - boss.x;
     const dy = player.y - boss.y;
     const distance = Math.max(1, Math.hypot(dx, dy));
-    if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * definition.speed * 1.08 * delta, boss.y + (dy / distance) * definition.speed * 1.08 * delta);
+    const phaseSpeed = this.state.phase === 2 ? 1.16 : 1.07;
+
+    // Bosses should feel alive between attacks: close the gap, then circle rather
+    // than standing still like a turret.
+    this.movementClock += delta;
+    if (this.movementClock >= 2.4) {
+      this.movementClock = 0;
+      this.strafeDirection *= -1;
+    }
+
+    if (this.pendingAttack <= 0) {
+      if (distance > 118) {
+        this.hooks.setBossPosition(
+          boss.x + (dx / distance) * definition.speed * phaseSpeed * delta,
+          boss.y + (dy / distance) * definition.speed * phaseSpeed * delta
+        );
+      } else if (distance > 72) {
+        const strafeScale = definition.speed * (this.state.phase === 2 ? 0.56 : 0.38) * delta;
+        const tangentX = (-dy / distance) * this.strafeDirection;
+        const tangentY = (dx / distance) * this.strafeDirection;
+        this.hooks.setBossPosition(
+          boss.x + tangentX * strafeScale,
+          boss.y + tangentY * strafeScale
+        );
+      } else {
+        // Back off a touch so large melee bosses do not glue themselves to the player.
+        this.hooks.setBossPosition(
+          boss.x - (dx / distance) * definition.speed * 0.24 * delta,
+          boss.y - (dy / distance) * definition.speed * 0.24 * delta
+        );
+      }
+    }
+
     this.attackTimer -= delta;
     if (this.pendingAttack > 0) {
       this.pendingAttack -= delta;
@@ -69,14 +109,19 @@ export class BossSystem {
         const attack = this.pendingAttackType ?? this.chooseBossAttack();
         this.hooks.executeAttack(attack, position.x, position.y);
         if (attack === 'summon' || attack === 'summon-imps') this.hooks.spawnSummon(definition.summonKind);
+        this.lastAttack = attack;
         this.pendingAttackType = undefined;
-        const baseInterval = this.state.phase === 2 ? 2.25 : 3.45;
-        this.attackTimer = this.echoActive ? baseInterval * 1.32 : baseInterval;
+        this.attacksSinceBurst += 1;
+
+        const phaseTwo = this.state.phase === 2;
+        const normalInterval = phaseTwo ? 2.18 : 3.35;
+        const burstInterval = phaseTwo && this.attacksSinceBurst >= 3 ? 1.35 : normalInterval;
+        if (burstInterval < normalInterval) this.attacksSinceBurst = 0;
+        this.attackTimer = this.echoActive ? burstInterval * 1.34 : burstInterval;
       }
     } else if (this.attackTimer <= 0) {
       const position = this.hooks.getBossPosition();
-      // Telegraphs remain readable even though the overall cadence is faster.
-      this.pendingAttack = this.state.phase === 2 ? 0.58 : 0.66;
+      this.pendingAttack = this.state.phase === 2 ? 0.54 : 0.66;
       this.pendingAttackType = this.chooseBossAttack();
       this.hooks.telegraphAttack(this.pendingAttackType, position.x, position.y);
     }
@@ -85,10 +130,33 @@ export class BossSystem {
   chooseBossAttack(): BossAttack {
     const definition = this.getDefinition();
     if (!definition) return 'slam';
-    const attacks = this.state?.phase === 2 ? definition.attackSet : definition.attackSet.slice(0, Math.max(2, definition.attackSet.length - 1));
-    const attack = attacks[this.attackCursor % attacks.length] ?? definition.attackSet[0];
-    this.attackCursor += 1;
-    return attack;
+
+    const basePool = this.state?.phase === 2
+      ? definition.attackSet
+      : definition.attackSet.slice(0, Math.max(2, definition.attackSet.length - 1));
+    const pool = basePool.filter((attack) => attack !== this.lastAttack);
+    const choices = pool.length > 0 ? pool : basePool;
+
+    // Avoid fully deterministic loops while still using the authored boss kit.
+    // In phase two, mobility / projectile moves get a small extra chance to keep
+    // the arena moving and make each attempt feel less scripted.
+    const weighted = [...choices];
+    if (this.state?.phase === 2) {
+      for (const attack of choices) {
+        if (
+          attack === 'charge' ||
+          attack === 'demon-charge' ||
+          attack === 'blink' ||
+          attack === 'spirit-volley' ||
+          attack === 'ice-shard-fan' ||
+          attack === 'fire-wave'
+        ) {
+          weighted.push(attack);
+        }
+      }
+    }
+
+    return weighted[Math.floor(Math.random() * weighted.length)] ?? definition.attackSet[0];
   }
 
   damageBoss(amount: number): boolean {
