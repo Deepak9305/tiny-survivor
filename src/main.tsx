@@ -11,6 +11,7 @@ import './styles/studio-mobile-master.css';
 import './styles/studio-final.css';
 import './styles/studio-v3-integrations.css';
 import './styles/anti-slop.css';
+import './styles/combat-depth-overhaul.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
