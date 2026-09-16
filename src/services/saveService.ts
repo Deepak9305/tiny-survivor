@@ -6,7 +6,7 @@ import { ALL_EQUIPMENT_IDS } from '../data/equipment';
 import { getTotalCampaignStageCount } from '../data/stages';
 
 const SAVE_KEY = 'tiny-survivor-save-v1';
-const SAVE_SCHEMA_VERSION = 5;
+const SAVE_SCHEMA_VERSION = 6;
 
 export const DEFAULT_SETTINGS: Settings = {
   music: true,
@@ -21,10 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const DEFAULT_LOADOUTS: Record<HeroId, HeroLoadout> = {
-  shadow: {},
-  warrior: {},
-  monk: {},
-  gunslinger: {},
+  shadow: {}, warrior: {}, monk: {}, gunslinger: {},
 };
 
 export const DEFAULT_SAVE: SaveData = {
@@ -66,7 +63,6 @@ const validNumber = (value: unknown, fallback: number, min = 0): number => {
   const number = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   return Math.max(min, number);
 };
-
 const validInteger = (value: unknown, fallback: number, min = 0): number => Math.floor(validNumber(value, fallback, min));
 
 function normalizeMissions(value: unknown): MissionProgress[] {
@@ -89,17 +85,45 @@ function normalizeIdList<T extends string>(value: unknown): T[] {
 
 function normalizeCountMap(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object') return {};
-  return Object.fromEntries(Object.entries(value).filter(([key, count]) => typeof key === 'string' && typeof count === 'number' && Number.isFinite(count) && count > 0).map(([key, count]) => [key, Math.floor(count as number)]));
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key, count]) => typeof key === 'string' && typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([key, count]) => [key, Math.floor(count as number)]));
+}
+
+function migrateCampaignProgress(data: Partial<SaveData>): { completedStages: string[]; highestUnlockedStage: number } {
+  const rawCompleted = Array.isArray(data.completedStages)
+    ? data.completedStages.filter((id): id is string => typeof id === 'string')
+    : [];
+  const rawHighest = Math.max(1, validInteger(data.highestUnlockedStage, 1, 1));
+  if ((data.schemaVersion ?? 0) >= 6) {
+    return { completedStages: rawCompleted, highestUnlockedStage: rawHighest };
+  }
+
+  // v5 used five stages per world. Preserve the same percentage of each realm:
+  // old 1-2 -> new progress through 1-4, old boss 1-5 -> new boss 1-10.
+  const completed = new Set<string>();
+  for (const id of rawCompleted) {
+    const [world, local] = id.split('-').map(Number);
+    if (!Number.isFinite(world) || !Number.isFinite(local) || world < 1 || world > 4) continue;
+    const mappedLocal = local <= 5 ? Math.min(10, local * 2) : Math.min(10, local);
+    for (let stage = 1; stage <= mappedLocal; stage += 1) completed.add(`${world}-${stage}`);
+  }
+
+  const oldWorld = Math.min(4, Math.floor((rawHighest - 1) / 5) + 1);
+  const oldLocal = ((rawHighest - 1) % 5) + 1;
+  const newLocal = Math.min(10, (oldLocal - 1) * 2 + 1);
+  const newHighest = (oldWorld - 1) * 10 + newLocal;
+  return { completedStages: [...completed], highestUnlockedStage: newHighest };
 }
 
 export function normalizeSave(raw: unknown): SaveData {
   const data = raw && typeof raw === 'object' ? raw as Partial<SaveData> : {};
   const permanent = data.permanentUpgrades && typeof data.permanentUpgrades === 'object' ? data.permanentUpgrades : {};
   const settings = data.settings && typeof data.settings === 'object' ? data.settings as Partial<Settings> : {};
-  const completedStages = Array.isArray(data.completedStages) ? data.completedStages.filter((id): id is string => typeof id === 'string') : [];
-  const highestUnlockedStage = Math.min(getTotalCampaignStageCount(), Math.max(1, validInteger(data.highestUnlockedStage, 1, 1)));
+  const campaign = migrateCampaignProgress(data);
+  const completedStages = campaign.completedStages;
+  const highestUnlockedStage = Math.min(getTotalCampaignStageCount(), Math.max(1, campaign.highestUnlockedStage));
 
-  // Hero ID migration (knight -> warrior, ranger -> gunslinger)
   const mappedHeroes: HeroId[] = [];
   if (Array.isArray(data.heroesUnlocked)) {
     for (const rawId of data.heroesUnlocked) {
@@ -115,48 +139,30 @@ export function normalizeSave(raw: unknown): SaveData {
   let selectedHero = data.selectedHero as string | undefined;
   if (selectedHero === 'knight') selectedHero = 'warrior';
   else if (selectedHero === 'ranger') selectedHero = 'gunslinger';
-  if (!selectedHero || !heroesUnlocked.includes(selectedHero as HeroId)) {
-    selectedHero = 'shadow';
-  }
+  if (!selectedHero || !heroesUnlocked.includes(selectedHero as HeroId)) selectedHero = 'shadow';
 
-  // Equipment and Loadout normalization
   const rawOwnedEquipment = Array.isArray(data.ownedEquipment) ? data.ownedEquipment : [];
   const ownedEquipment = [...new Set(rawOwnedEquipment.filter((id): id is EquipmentId => ALL_EQUIPMENT_IDS.includes(id as EquipmentId)))];
-
   const rawLoadouts = (data.heroLoadouts && typeof data.heroLoadouts === 'object') ? data.heroLoadouts : {};
-  const heroLoadouts: Record<HeroId, HeroLoadout> = {
-    shadow: {},
-    warrior: {},
-    monk: {},
-    gunslinger: {},
-  };
+  const heroLoadouts: Record<HeroId, HeroLoadout> = { shadow: {}, warrior: {}, monk: {}, gunslinger: {} };
   for (const hId of ALL_HERO_IDS) {
     const hLoadout = (rawLoadouts as Record<string, unknown>)[hId];
-    if (hLoadout && typeof hLoadout === 'object') {
-      const cleanLoadout: HeroLoadout = {};
-      for (const slot of ['armor', 'relic', 'pet', 'charm'] as const) {
-        const eqId = (hLoadout as Record<string, unknown>)[slot];
-        if (typeof eqId === 'string' && ownedEquipment.includes(eqId as EquipmentId)) {
-          cleanLoadout[slot] = eqId as EquipmentId;
-        }
-      }
-      heroLoadouts[hId] = cleanLoadout;
+    if (!hLoadout || typeof hLoadout !== 'object') continue;
+    const cleanLoadout: HeroLoadout = {};
+    for (const slot of ['armor', 'relic', 'pet', 'charm'] as const) {
+      const eqId = (hLoadout as Record<string, unknown>)[slot];
+      if (typeof eqId === 'string' && ownedEquipment.includes(eqId as EquipmentId)) cleanLoadout[slot] = eqId as EquipmentId;
     }
+    heroLoadouts[hId] = cleanLoadout;
   }
 
-  // Preserve any previously unlocked abilities
   const explicitUnlocked = Array.isArray(data.unlockedAbilities)
     ? data.unlockedAbilities.filter((id): id is AbilityId => ALL_ABILITY_IDS.includes(id as AbilityId))
     : [];
-
-  // Migration backfill for existing saves based on completed stage milestones
   const inferredUnlocked: AbilityId[] = [];
   for (const abilityId of ALL_ABILITY_IDS) {
-    if (isAbilityMilestoneCleared(abilityId, completedStages, highestUnlockedStage)) {
-      inferredUnlocked.push(abilityId);
-    }
+    if (isAbilityMilestoneCleared(abilityId, completedStages, highestUnlockedStage)) inferredUnlocked.push(abilityId);
   }
-
   const unlockedAbilities = [...new Set([...explicitUnlocked, ...inferredUnlocked])];
 
   return {
