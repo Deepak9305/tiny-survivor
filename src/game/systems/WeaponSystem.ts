@@ -1,5 +1,5 @@
 import { WEAPON_BALANCE } from '../../data/balance';
-import type { DamageType, WeaponId } from '../../types';
+import type { DamageType, HeroId, WeaponId } from '../../types';
 import {
   clearCombatAutoAim,
   getCombatHeroId,
@@ -38,6 +38,13 @@ export interface WeaponHooks {
   getCooldownMultiplier: () => number;
 }
 
+const PRIMARY_ATTACK_RANGE: Record<HeroId, number> = {
+  warrior: 126,
+  monk: 255,
+  shadow: 340,
+  gunslinger: 400,
+};
+
 export class WeaponSystem {
   private readonly levels = new Map<WeaponId, number>();
   private readonly cooldowns = new Map<WeaponId, number>();
@@ -69,8 +76,9 @@ export class WeaponSystem {
   update(delta: number): void {
     this.updateFlow(delta);
 
-    const melee = getCombatHeroId() === 'warrior';
-    this.autoTarget = this.findAutoTarget(melee ? 126 : 590);
+    const heroId = getCombatHeroId();
+    const melee = heroId === 'warrior';
+    this.autoTarget = this.findAutoTarget(PRIMARY_ATTACK_RANGE[heroId]);
     if (this.autoTarget) {
       const player = this.hooks.getPlayerPosition();
       setCombatAutoAim(this.autoTarget.x - player.x, this.autoTarget.y - player.y);
@@ -194,7 +202,7 @@ export class WeaponSystem {
     const dx = target.x - player.x;
     const dy = target.y - player.y;
     const distance = Math.hypot(dx, dy);
-    if (distance < 1 || distance > 126) return false;
+    if (distance < 1 || distance > PRIMARY_ATTACK_RANGE.warrior) return false;
     const level = this.getWeaponLevel('magic-bolt');
     const dirX = dx / distance;
     const dirY = dy / distance;
@@ -217,7 +225,8 @@ export class WeaponSystem {
     const dx = target.x - player.x;
     const dy = target.y - player.y;
     const distance = Math.hypot(dx, dy);
-    if (distance < 1) return false;
+    const maxRange = PRIMARY_ATTACK_RANGE[getCombatHeroId()];
+    if (distance < 1 || distance > maxRange) return false;
     this.primaryVolleyCounter += 1;
     const overdrive = this.overdriveRemaining > 0;
     const heavyCadence = overdrive || level >= 4 ? 3 : level >= 2 ? 4 : 5;

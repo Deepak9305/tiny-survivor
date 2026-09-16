@@ -34,8 +34,26 @@ export interface EnemyAttackEvent {
 }
 
 type AttackStyle = 'melee' | 'ranged' | 'dash' | 'leap' | 'explode' | 'slam';
+type EnemyBrain =
+  | 'duelist'
+  | 'bruiser'
+  | 'artillery'
+  | 'diver'
+  | 'jumper'
+  | 'flanker'
+  | 'marksman'
+  | 'vanguard'
+  | 'hunter'
+  | 'heavy'
+  | 'bomber'
+  | 'skirmisher'
+  | 'controller'
+  | 'guardian'
+  | 'siege';
+
 type EnemyProfile = {
   style: AttackStyle;
+  brain: EnemyBrain;
   engage: number;
   preferred?: number;
   windup: number;
@@ -48,27 +66,30 @@ type EnemyProfile = {
   color: number;
   highThreat?: boolean;
   slow?: boolean;
+  shots?: number;
+  spread?: number;
+  leadTime?: number;
 };
 
 const PROFILES: Record<EnemyKind, EnemyProfile> = {
-  skeleton: { style: 'melee', engage: 56, windup: .40, attack: .18, recover: .52, cooldown: 1.75, reach: 44, radius: 47, damage: 1.0, color: 0xdfe7ef },
-  zombie: { style: 'melee', engage: 66, windup: .62, attack: .24, recover: .72, cooldown: 2.15, reach: 48, radius: 62, damage: 1.28, color: 0x9fb48c },
-  'bone-mage': { style: 'ranged', engage: 280, preferred: 220, windup: .72, attack: .12, recover: .55, cooldown: 2.55, reach: 300, radius: 14, damage: 1.0, color: 0xc084fc, highThreat: true },
-  bat: { style: 'dash', engage: 145, windup: .42, attack: .28, recover: .42, cooldown: 2.05, reach: 0, radius: 36, damage: 1.1, color: 0xa855f7, highThreat: true },
-  slime: { style: 'leap', engage: 165, windup: .52, attack: .38, recover: .58, cooldown: 2.35, reach: 0, radius: 52, damage: 1.18, color: 0x22c55e, highThreat: true, slow: true },
-  ghost: { style: 'dash', engage: 180, windup: .42, attack: .28, recover: .46, cooldown: 2.20, reach: 0, radius: 40, damage: 1.0, color: 0x7dd3fc, highThreat: true },
-  archer: { style: 'ranged', engage: 300, preferred: 205, windup: .62, attack: .12, recover: .48, cooldown: 2.35, reach: 300, radius: 13, damage: .96, color: 0x93c5fd, highThreat: true },
-  knight: { style: 'melee', engage: 62, windup: .50, attack: .22, recover: .74, cooldown: 2.25, reach: 52, radius: 60, damage: 1.34, color: 0x60a5fa },
-  demon: { style: 'melee', engage: 64, windup: .32, attack: .20, recover: .48, cooldown: 1.65, reach: 50, radius: 54, damage: 1.16, color: 0xef4444 },
-  'demon-warrior': { style: 'melee', engage: 78, windup: .70, attack: .26, recover: .90, cooldown: 2.55, reach: 62, radius: 76, damage: 1.48, color: 0xff5b4f, highThreat: true },
-  imp: { style: 'explode', engage: 76, windup: .88, attack: .08, recover: .05, cooldown: 99, reach: 0, radius: 80, damage: 1.46, color: 0xf97316, highThreat: true },
-  'cursed-wolf': { style: 'dash', engage: 150, windup: .36, attack: .25, recover: .38, cooldown: 1.85, reach: 0, radius: 34, damage: 1.16, color: 0xd97706, highThreat: true },
-  thornling: { style: 'ranged', engage: 250, preferred: 178, windup: .54, attack: .12, recover: .42, cooldown: 2.20, reach: 260, radius: 12, damage: .94, color: 0x84cc16, highThreat: true },
-  'forest-mage': { style: 'ranged', engage: 290, preferred: 218, windup: .78, attack: .12, recover: .60, cooldown: 2.70, reach: 300, radius: 18, damage: 1.08, color: 0xb875df, highThreat: true },
-  'forest-guardian': { style: 'melee', engage: 74, windup: .62, attack: .25, recover: .82, cooldown: 2.45, reach: 58, radius: 70, damage: 1.34, color: 0x78a95b, highThreat: true },
-  treant: { style: 'slam', engage: 78, windup: .72, attack: .25, recover: .92, cooldown: 3.05, reach: 22, radius: 76, damage: 1.46, color: 0x4d7c0f, highThreat: true },
-  'frost-wraith': { style: 'dash', engage: 170, windup: .42, attack: .27, recover: .42, cooldown: 2.08, reach: 0, radius: 38, damage: 1.14, color: 0x38bdf8, highThreat: true, slow: true },
-  'ice-mage': { style: 'ranged', engage: 300, preferred: 225, windup: .70, attack: .12, recover: .58, cooldown: 2.50, reach: 310, radius: 15, damage: 1.06, color: 0x67e8f9, highThreat: true },
+  skeleton: { style: 'melee', brain: 'duelist', engage: 58, windup: .36, attack: .18, recover: .52, cooldown: 1.68, reach: 48, radius: 44, damage: 1.0, color: 0xdfe7ef },
+  zombie: { style: 'melee', brain: 'bruiser', engage: 72, windup: .64, attack: .26, recover: .78, cooldown: 2.25, reach: 54, radius: 68, damage: 1.28, color: 0x9fb48c },
+  'bone-mage': { style: 'ranged', brain: 'artillery', engage: 335, preferred: 255, windup: .82, attack: .42, recover: .72, cooldown: 3.05, reach: 360, radius: 16, damage: .72, color: 0xc084fc, highThreat: true, shots: 3, spread: .17, leadTime: .30 },
+  bat: { style: 'dash', brain: 'diver', engage: 170, windup: .34, attack: .30, recover: .46, cooldown: 1.88, reach: 0, radius: 34, damage: 1.06, color: 0xa855f7, highThreat: true },
+  slime: { style: 'leap', brain: 'jumper', engage: 185, windup: .58, attack: .40, recover: .66, cooldown: 2.55, reach: 0, radius: 58, damage: 1.16, color: 0x22c55e, highThreat: true, slow: true },
+  ghost: { style: 'dash', brain: 'flanker', engage: 205, windup: .38, attack: .30, recover: .48, cooldown: 2.05, reach: 0, radius: 38, damage: 1.02, color: 0x7dd3fc, highThreat: true },
+  archer: { style: 'ranged', brain: 'marksman', engage: 390, preferred: 285, windup: .68, attack: .12, recover: .62, cooldown: 2.65, reach: 430, radius: 12, damage: 1.02, color: 0x93c5fd, highThreat: true, leadTime: .42 },
+  knight: { style: 'melee', brain: 'vanguard', engage: 68, windup: .52, attack: .22, recover: .78, cooldown: 2.20, reach: 56, radius: 62, damage: 1.34, color: 0x60a5fa },
+  demon: { style: 'melee', brain: 'hunter', engage: 66, windup: .28, attack: .20, recover: .42, cooldown: 1.48, reach: 52, radius: 52, damage: 1.14, color: 0xef4444 },
+  'demon-warrior': { style: 'dash', brain: 'heavy', engage: 205, windup: .64, attack: .38, recover: 1.00, cooldown: 3.00, reach: 0, radius: 72, damage: 1.46, color: 0xff5b4f, highThreat: true },
+  imp: { style: 'explode', brain: 'bomber', engage: 82, windup: .82, attack: .08, recover: .05, cooldown: 99, reach: 0, radius: 84, damage: 1.44, color: 0xf97316, highThreat: true },
+  'cursed-wolf': { style: 'dash', brain: 'hunter', engage: 175, windup: .30, attack: .28, recover: .40, cooldown: 1.68, reach: 0, radius: 34, damage: 1.14, color: 0xd97706, highThreat: true },
+  thornling: { style: 'ranged', brain: 'skirmisher', engage: 285, preferred: 190, windup: .48, attack: .30, recover: .46, cooldown: 2.20, reach: 310, radius: 11, damage: .62, color: 0x84cc16, highThreat: true, shots: 2, spread: .12, leadTime: .12 },
+  'forest-mage': { style: 'ranged', brain: 'controller', engage: 350, preferred: 260, windup: .88, attack: .38, recover: .72, cooldown: 3.15, reach: 380, radius: 22, damage: .80, color: 0xb875df, highThreat: true, slow: true, shots: 2, spread: .24, leadTime: .18 },
+  'forest-guardian': { style: 'melee', brain: 'guardian', engage: 82, windup: .60, attack: .26, recover: .88, cooldown: 2.45, reach: 64, radius: 72, damage: 1.32, color: 0x78a95b, highThreat: true },
+  treant: { style: 'slam', brain: 'siege', engage: 90, windup: .78, attack: .25, recover: 1.05, cooldown: 3.20, reach: 24, radius: 88, damage: 1.44, color: 0x4d7c0f, highThreat: true },
+  'frost-wraith': { style: 'dash', brain: 'flanker', engage: 195, windup: .38, attack: .30, recover: .44, cooldown: 1.92, reach: 0, radius: 38, damage: 1.12, color: 0x38bdf8, highThreat: true, slow: true },
+  'ice-mage': { style: 'ranged', brain: 'artillery', engage: 370, preferred: 280, windup: .74, attack: .42, recover: .70, cooldown: 2.85, reach: 410, radius: 14, damage: .66, color: 0x67e8f9, highThreat: true, slow: true, shots: 3, spread: .15, leadTime: .26 },
 };
 
 function telegraphAccent(kind: EnemyKind): number { return PROFILES[kind].color; }
@@ -120,9 +141,15 @@ export class Enemy3D implements SpatialEntity {
   private attackDirectionY = 1;
   private facingAngle = 0;
   private emittedAttack = false;
+  private shotsEmitted = 0;
   private leapStartX = 0;
   private leapStartY = 0;
   private orbitSign = enemySequence % 2 === 0 ? 1 : -1;
+  private lastPlayerX = 0;
+  private lastPlayerY = 0;
+  private playerVelocityX = 0;
+  private playerVelocityY = 0;
+  private hasPlayerSample = false;
 
   constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1) {
     const balance = ENEMY_BALANCE[kind];
@@ -199,6 +226,7 @@ export class Enemy3D implements SpatialEntity {
     this.hitPulse = Math.max(0, this.hitPulse - delta);
     this.healthBarLife = Math.max(0, this.healthBarLife - delta);
     this.updateHealthBar();
+    this.observePlayer(playerX, playerY, delta);
 
     if (this.eliteAura) { this.eliteAura.rotation.z += delta * .7; this.eliteAura.scale.setScalar(this.baseVisualScale * 1.5 * (1 + Math.sin(this.phaseTime * 2.8) * .06)); }
     if (now < this.freezeUntil) { this.frostMesh.visible = true; this.frostMesh.rotation.y += delta * 1.8; this.syncPosition(); return undefined; }
@@ -207,7 +235,7 @@ export class Enemy3D implements SpatialEntity {
     const dx = playerX - this.x; const dy = playerY - this.y; const distance = Math.max(1, Math.hypot(dx, dy));
     let event: EnemyAttackEvent | undefined;
 
-    if (distance > 410 && this.state === 'approach') {
+    if (distance > 440 && this.state === 'approach') {
       this.moveToward(playerX, playerY, delta, now, 1.12);
       this.animate(delta, false);
       return undefined;
@@ -224,7 +252,7 @@ export class Enemy3D implements SpatialEntity {
       if (this.kind === 'imp') this.moveToward(playerX, playerY, delta, now, .22);
       if (this.stateTimer <= 0) {
         if (this.profile.style === 'leap') { this.leapStartX = this.x; this.leapStartY = this.y; }
-        this.state = 'attack'; this.stateTimer = this.profile.attack; this.emittedAttack = false;
+        this.state = 'attack'; this.stateTimer = this.profile.attack; this.emittedAttack = false; this.shotsEmitted = 0;
       }
     } else if (this.state === 'attack') {
       this.stateTimer -= delta;
@@ -244,23 +272,66 @@ export class Enemy3D implements SpatialEntity {
     return event;
   }
 
+  private observePlayer(playerX: number, playerY: number, delta: number): void {
+    if (!this.hasPlayerSample) {
+      this.lastPlayerX = playerX;
+      this.lastPlayerY = playerY;
+      this.hasPlayerSample = true;
+      return;
+    }
+    const safeDelta = Math.max(.008, delta);
+    const sampleX = THREE.MathUtils.clamp((playerX - this.lastPlayerX) / safeDelta, -260, 260);
+    const sampleY = THREE.MathUtils.clamp((playerY - this.lastPlayerY) / safeDelta, -260, 260);
+    this.playerVelocityX = THREE.MathUtils.lerp(this.playerVelocityX, sampleX, .22);
+    this.playerVelocityY = THREE.MathUtils.lerp(this.playerVelocityY, sampleY, .22);
+    this.lastPlayerX = playerX;
+    this.lastPlayerY = playerY;
+  }
+
   private moveTactically(playerX: number, playerY: number, distance: number, delta: number, now: number): void {
-    const preferred = this.profile.preferred;
-    if (preferred) {
-      if (distance < preferred * .74) this.moveAway(playerX, playerY, delta, now, 1.02);
-      else if (distance > preferred * 1.14) this.moveToward(playerX, playerY, delta, now, .92);
-      else this.strafe(playerX, playerY, distance, delta, now, .82);
+    const brain = this.profile.brain;
+
+    if (brain === 'artillery' || brain === 'marksman' || brain === 'controller' || brain === 'skirmisher') {
+      const preferred = this.profile.preferred ?? 220;
+      const retreatBand = brain === 'marksman' ? .62 : brain === 'artillery' ? .68 : .72;
+      const approachBand = brain === 'skirmisher' ? 1.10 : 1.16;
+      if (distance < preferred * retreatBand) this.moveAway(playerX, playerY, delta, now, brain === 'controller' ? 1.14 : 1.04);
+      else if (distance > preferred * approachBand) this.moveToward(playerX, playerY, delta, now, brain === 'marksman' ? .72 : .84, .10);
+      else this.strafe(playerX, playerY, distance, delta, now, brain === 'skirmisher' ? 1.04 : .74, brain === 'controller');
       return;
     }
 
-    if (this.kind === 'cursed-wolf' || this.kind === 'ghost' || this.kind === 'frost-wraith' || this.kind === 'bat') {
-      if (distance > 105) this.strafe(playerX, playerY, distance, delta, now, .82, true);
-      else this.moveAway(playerX, playerY, delta, now, .38);
+    if (brain === 'diver' || brain === 'flanker' || brain === 'hunter') {
+      const circleDistance = brain === 'hunter' ? 118 : 132;
+      if (distance > circleDistance) this.strafe(playerX, playerY, distance, delta, now, brain === 'hunter' ? .96 : .84, true);
+      else this.moveAway(playerX, playerY, delta, now, brain === 'hunter' ? .26 : .42);
       return;
     }
 
-    const flank = this.kind === 'demon' || this.kind === 'skeleton' ? .28 : this.kind === 'zombie' || this.kind === 'treant' ? .06 : .15;
-    this.moveToward(playerX, playerY, delta, now, 1, flank);
+    if (brain === 'duelist') {
+      if (distance > 118) this.moveToward(playerX, playerY, delta, now, 1.02, .34);
+      else if (distance > 72) this.strafe(playerX, playerY, distance, delta, now, .70, true);
+      else this.moveToward(playerX, playerY, delta, now, .78, .12);
+      return;
+    }
+
+    if (brain === 'guardian' || brain === 'vanguard') {
+      this.moveToward(playerX, playerY, delta, now, brain === 'guardian' ? .82 : .92, .08);
+      return;
+    }
+
+    if (brain === 'heavy') {
+      if (distance > 145) this.moveToward(playerX, playerY, delta, now, .76, .16);
+      else this.strafe(playerX, playerY, distance, delta, now, .34, true);
+      return;
+    }
+
+    if (brain === 'bruiser' || brain === 'siege' || brain === 'bomber' || brain === 'jumper') {
+      this.moveToward(playerX, playerY, delta, now, brain === 'bruiser' ? .88 : brain === 'siege' ? .68 : 1.0, brain === 'jumper' ? .10 : 0);
+      return;
+    }
+
+    this.moveToward(playerX, playerY, delta, now, 1, .12);
   }
 
   private moveToward(playerX: number, playerY: number, delta: number, now: number, factor = 1, flank = 0): void {
@@ -297,14 +368,23 @@ export class Enemy3D implements SpatialEntity {
   }
 
   private enterWindup(playerX: number, playerY: number): void {
-    this.state = 'windup'; this.stateTimer = this.profile.windup; this.emittedAttack = false;
+    this.state = 'windup'; this.stateTimer = this.profile.windup; this.emittedAttack = false; this.shotsEmitted = 0;
     let targetX = playerX; let targetY = playerY;
-    // Specialist casters aim slightly toward the interior when the player hugs a wall.
-    // This turns perimeter circling into a choice instead of the dominant safe strategy.
-    if (this.kind === 'bone-mage' || this.kind === 'forest-mage' || this.kind === 'ice-mage') {
-      if (playerX < 190) targetX += 72; else if (playerX > WORLD_WIDTH - 190) targetX -= 72;
-      if (playerY < 190) targetY += 72; else if (playerY > WORLD_HEIGHT - 190) targetY -= 72;
+
+    if (this.profile.leadTime) {
+      targetX += this.playerVelocityX * this.profile.leadTime;
+      targetY += this.playerVelocityY * this.profile.leadTime;
     }
+
+    // Casters bias shots toward the arena interior when the player hugs a wall.
+    // Combined with predictive aiming this makes perimeter circling unreliable.
+    if (this.kind === 'bone-mage' || this.kind === 'forest-mage' || this.kind === 'ice-mage') {
+      if (playerX < 190) targetX += 78; else if (playerX > WORLD_WIDTH - 190) targetX -= 78;
+      if (playerY < 190) targetY += 78; else if (playerY > WORLD_HEIGHT - 190) targetY -= 78;
+    }
+
+    targetX = THREE.MathUtils.clamp(targetX, 48, WORLD_WIDTH - 48);
+    targetY = THREE.MathUtils.clamp(targetY, 58, WORLD_HEIGHT - 58);
     this.attackTargetX = targetX; this.attackTargetY = targetY;
     const dx = targetX - this.x; const dy = targetY - this.y; const dist = Math.max(1, Math.hypot(dx, dy));
     this.attackDirectionX = dx / dist; this.attackDirectionY = dy / dist;
@@ -317,14 +397,29 @@ export class Enemy3D implements SpatialEntity {
 
   private executeAttack(playerX: number, playerY: number, distance: number, delta: number): EnemyAttackEvent | undefined {
     const p = this.profile;
-    if (p.style === 'ranged' && !this.emittedAttack) {
-      this.emittedAttack = true;
-      return this.event('projectile', this.x, this.y, this.x + this.attackDirectionX * p.reach, this.y + this.attackDirectionY * p.reach, p.radius, p.damage, p.color, p.slow);
+    if (p.style === 'ranged') {
+      const shotCount = p.shots ?? 1;
+      const progress = 1 - Math.max(0, this.stateTimer / Math.max(.001, p.attack));
+      const dueShots = Math.min(shotCount, Math.max(1, Math.floor(progress * shotCount + .999)));
+      if (this.shotsEmitted < dueShots) {
+        const shotIndex = this.shotsEmitted;
+        this.shotsEmitted += 1;
+        const center = (shotCount - 1) / 2;
+        const angle = (shotIndex - center) * (p.spread ?? 0);
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const dirX = this.attackDirectionX * cos - this.attackDirectionY * sin;
+        const dirY = this.attackDirectionX * sin + this.attackDirectionY * cos;
+        const targetX = this.x + dirX * p.reach;
+        const targetY = this.y + dirY * p.reach;
+        return this.event('projectile', this.x, this.y, targetX, targetY, p.radius, p.damage, p.color, p.slow);
+      }
+      return undefined;
     }
     if ((p.style === 'melee' || p.style === 'slam') && !this.emittedAttack) {
       this.emittedAttack = true;
       if (this.kind === 'skeleton' || this.kind === 'knight') audioService.playSFX('skeleton-slash', { throttle: .2 });
-      else if (this.kind === 'demon' || this.kind === 'demon-warrior') audioService.playSFX('demon-slash', { throttle: .2 });
+      else if (this.kind === 'demon') audioService.playSFX('demon-slash', { throttle: .2 });
       return this.event('melee', this.x, this.y, this.x + this.attackDirectionX * p.reach, this.y + this.attackDirectionY * p.reach, p.radius * (this.elite ? 1.18 : 1), p.damage, p.color, p.slow);
     }
     if (p.style === 'explode' && !this.emittedAttack) {
@@ -340,11 +435,12 @@ export class Enemy3D implements SpatialEntity {
       return undefined;
     }
     if (p.style === 'dash') {
-      const dashSpeed = this.kind === 'cursed-wolf' ? 2.9 : this.kind === 'bat' ? 2.8 : 2.55;
+      const dashSpeed = this.kind === 'demon-warrior' ? 2.15 : this.kind === 'cursed-wolf' ? 2.95 : this.kind === 'bat' ? 2.8 : 2.55;
       this.x += this.attackDirectionX * this.baseSpeed * dashSpeed * delta;
       this.y += this.attackDirectionY * this.baseSpeed * dashSpeed * delta;
-      if (!this.emittedAttack && distance < this.radius + 25) {
+      if (!this.emittedAttack && distance < this.radius + (this.kind === 'demon-warrior' ? 38 : 25)) {
         this.emittedAttack = true;
+        if (this.kind === 'demon-warrior') audioService.playSFX('demon-slash', { throttle: .2 });
         return this.event(this.kind === 'bat' ? 'dive' : 'melee', this.x, this.y, playerX, playerY, p.radius, p.damage, p.color, p.slow);
       }
     }
@@ -360,17 +456,20 @@ export class Enemy3D implements SpatialEntity {
     const pulse = 1 + Math.sin(this.phaseTime * 18) * .045; this.telegraphGroup.scale.setScalar(pulse);
     const style = this.profile.style;
     if (style === 'ranged') {
-      this.telegraphMesh.scale.set(.13, 3.2, .13); this.telegraphRing.scale.set(.19, 3.35, .19);
-      this.telegraphMesh.position.set(0, 0, 2.0); this.telegraphRing.position.set(0, 0, 2.0);
+      const fan = Math.max(.13, .13 + ((this.profile.shots ?? 1) - 1) * Math.abs(this.profile.spread ?? 0) * 1.6);
+      const length = this.profile.brain === 'marksman' ? 3.8 : this.profile.brain === 'artillery' ? 3.45 : 3.05;
+      this.telegraphMesh.scale.set(fan, length, fan); this.telegraphRing.scale.set(fan + .07, length + .15, fan + .07);
+      this.telegraphMesh.position.set(0, 0, length * .62); this.telegraphRing.position.set(0, 0, length * .62);
     } else if (style === 'dash') {
-      this.telegraphMesh.scale.set(.42, 2.6, .42); this.telegraphRing.scale.set(.52, 2.75, .52);
-      this.telegraphMesh.position.set(0, 0, 1.62); this.telegraphRing.position.set(0, 0, 1.62);
+      const heavy = this.kind === 'demon-warrior';
+      this.telegraphMesh.scale.set(heavy ? .70 : .42, heavy ? 3.15 : 2.6, heavy ? .70 : .42); this.telegraphRing.scale.set(heavy ? .82 : .52, heavy ? 3.3 : 2.75, heavy ? .82 : .52);
+      this.telegraphMesh.position.set(0, 0, heavy ? 1.95 : 1.62); this.telegraphRing.position.set(0, 0, heavy ? 1.95 : 1.62);
     } else if (style === 'leap' || style === 'slam' || style === 'explode') {
-      const scale = style === 'explode' ? 1.75 : style === 'slam' ? 2.15 : 1.30;
+      const scale = style === 'explode' ? 1.75 : style === 'slam' ? 2.25 : 1.38;
       this.telegraphMesh.scale.setScalar(scale); this.telegraphRing.scale.setScalar(scale + .16);
       this.telegraphMesh.position.set(0, 0, .15); this.telegraphRing.position.set(0, 0, .15);
     } else {
-      const wide = this.kind === 'demon-warrior' || this.kind === 'forest-guardian' || this.kind === 'zombie';
+      const wide = this.kind === 'forest-guardian' || this.kind === 'zombie';
       this.telegraphMesh.scale.set(wide ? .90 : .66, wide ? 1.20 : .96, wide ? .90 : .66);
       this.telegraphRing.scale.set(wide ? 1.0 : .76, wide ? 1.32 : 1.06, wide ? 1.0 : .76);
       this.telegraphMesh.position.set(0, 0, .72); this.telegraphRing.position.set(0, 0, .72);
