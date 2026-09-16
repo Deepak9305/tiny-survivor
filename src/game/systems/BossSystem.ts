@@ -19,7 +19,7 @@ export interface BossState {
 
 export class BossSystem {
   private state?: BossState;
-  private attackTimer = 3.8;
+  private attackTimer = 3.2;
   private pendingAttack = 0;
   private pendingAttackType?: BossAttack;
   private attackCursor = 0;
@@ -32,7 +32,7 @@ export class BossSystem {
     const definition = getBossDefinition(id) ?? getBossDefinition('skeleton-king');
     if (!definition) return;
     this.state = { id: definition.id, name: definition.name, hp: definition.hp, maxHp: definition.hp, phase: 1 };
-    this.attackTimer = 3.8;
+    this.attackTimer = 3.2;
     this.pendingAttack = 0;
     this.pendingAttackType = undefined;
     this.attackCursor = 0;
@@ -42,8 +42,8 @@ export class BossSystem {
 
   setEchoActive(active: boolean): void {
     this.echoActive = active;
-    if (active && this.attackTimer < 3.0) {
-      this.attackTimer = 3.2;
+    if (active && this.attackTimer < 2.75) {
+      this.attackTimer = 2.9;
     }
   }
 
@@ -60,7 +60,7 @@ export class BossSystem {
     const dx = player.x - boss.x;
     const dy = player.y - boss.y;
     const distance = Math.max(1, Math.hypot(dx, dy));
-    if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * definition.speed * delta, boss.y + (dy / distance) * definition.speed * delta);
+    if (distance > 105) this.hooks.setBossPosition(boss.x + (dx / distance) * definition.speed * 1.08 * delta, boss.y + (dy / distance) * definition.speed * 1.08 * delta);
     this.attackTimer -= delta;
     if (this.pendingAttack > 0) {
       this.pendingAttack -= delta;
@@ -70,13 +70,13 @@ export class BossSystem {
         this.hooks.executeAttack(attack, position.x, position.y);
         if (attack === 'summon' || attack === 'summon-imps') this.hooks.spawnSummon(definition.summonKind);
         this.pendingAttackType = undefined;
-        // Moderate cadence if echo is active to prevent overlapping undodgeable telegraphs
-        const baseInterval = this.state.phase === 2 ? 2.65 : 4.1;
-        this.attackTimer = this.echoActive ? baseInterval * 1.35 : baseInterval;
+        const baseInterval = this.state.phase === 2 ? 2.25 : 3.45;
+        this.attackTimer = this.echoActive ? baseInterval * 1.32 : baseInterval;
       }
     } else if (this.attackTimer <= 0) {
       const position = this.hooks.getBossPosition();
-      this.pendingAttack = 0.72;
+      // Telegraphs remain readable even though the overall cadence is faster.
+      this.pendingAttack = this.state.phase === 2 ? 0.58 : 0.66;
       this.pendingAttackType = this.chooseBossAttack();
       this.hooks.telegraphAttack(this.pendingAttackType, position.x, position.y);
     }
