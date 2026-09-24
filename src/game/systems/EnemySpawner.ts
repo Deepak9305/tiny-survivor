@@ -4,6 +4,7 @@ import { announceCombatWave } from './CombatTargeting';
 
 export interface SpawnHooks {
   getPlayerPosition: () => { x: number; y: number };
+  getPlayerVelocity?: () => { x: number; y: number };
   getWorldSize: () => { width: number; height: number };
   getAliveCount: () => number;
   spawnEnemy: (type: EnemyKind, x: number, y: number, elite: boolean) => void;
@@ -43,6 +44,7 @@ export class EnemySpawner {
   private survivalSurgeTimer = 34;
   private lastPackAngle = 0;
   private lastSetPiece: SetPieceType | undefined;
+  private edgeCampTimer = 0;
 
   constructor(private readonly hooks: SpawnHooks) {}
 
@@ -51,15 +53,16 @@ export class EnemySpawner {
     this.customPool = customPool;
     this.isSurvival = isSurvival;
     this.elapsed = 0;
-    this.spawnTimer = 1.1;
-    this.packTimer = 8.5;
-    this.setPieceTimer = isSurvival ? 28 : 24 + Math.random() * 8;
+    this.spawnTimer = 0.4;
+    this.packTimer = 4.8;
+    this.setPieceTimer = isSurvival ? 24 : 20 + Math.random() * 6;
     this.breathingTimer = 0;
     this.stopped = false;
     this.surgeIndex = 0;
     this.survivalSurgeTimer = 34;
     this.lastPackAngle = Math.random() * Math.PI * 2;
     this.lastSetPiece = undefined;
+    this.edgeCampTimer = 0;
   }
 
   stopSpawning(): void {
@@ -69,14 +72,14 @@ export class EnemySpawner {
   calculateSpawnRate(): number {
     if (this.isSurvival) {
       const minutes = this.elapsed / 60;
-      const breathing = this.breathingTimer > 0 ? 2.1 : 1;
-      return Math.max(0.82, (1.45 / (1 + minutes * 0.05)) * breathing);
+      const breathing = this.breathingTimer > 0 ? 1.35 : 1;
+      return Math.max(0.42, (0.95 / (1 + minutes * 0.08)) * breathing);
     }
 
     const progress = this.getProgress();
     const density = this.stage?.difficulty.densityMultiplier ?? 1;
-    const breathing = this.breathingTimer > 0 ? 2.45 : 1;
-    return Math.max(1.08, ((1.92 - progress * 0.38) * breathing) / Math.max(0.72, density));
+    const breathing = this.breathingTimer > 0 ? 1.35 : 1;
+    return Math.max(0.48, ((1.15 - progress * 0.42) * breathing) / Math.max(0.75, density));
   }
 
   chooseEnemyType(allowedKinds?: EnemyKind[]): EnemyKind {
@@ -92,10 +95,24 @@ export class EnemySpawner {
     const player = this.hooks.getPlayerPosition();
     const world = this.hooks.getWorldSize();
     const angle = preferredAngle ?? Math.random() * Math.PI * 2;
-    const distance = 420 + Math.random() * 105 + distanceOffset;
+    const distance = 400 + Math.random() * 95 + distanceOffset;
+
+    let targetX = player.x + Math.cos(angle) * distance;
+    let targetY = player.y + Math.sin(angle) * distance;
+
+    // Avoid stacking clamped spawns on the outer border
+    if (targetX < 65 || targetX > world.width - 65) {
+      targetX = Math.min(world.width - 65, Math.max(65, targetX));
+      targetY += (Math.random() - 0.5) * 80;
+    }
+    if (targetY < 75 || targetY > world.height - 75) {
+      targetY = Math.min(world.height - 75, Math.max(75, targetY));
+      targetX += (Math.random() - 0.5) * 80;
+    }
+
     return {
-      x: Math.min(world.width - 62, Math.max(62, player.x + Math.cos(angle) * distance)),
-      y: Math.min(world.height - 68, Math.max(68, player.y + Math.sin(angle) * distance)),
+      x: Math.min(world.width - 65, Math.max(65, targetX)),
+      y: Math.min(world.height - 75, Math.max(75, targetY)),
     };
   }
 
@@ -103,27 +120,40 @@ export class EnemySpawner {
     const pool = this.getAvailablePool();
     if (pool.length === 0) return;
 
-    if (this.isSurvival) {
-      const minutes = this.elapsed / 60;
-      const count = Math.min(3, 1 + Math.floor(minutes / 4));
-      const baseAngle = this.lastPackAngle + (Math.random() - 0.5) * 1.3;
-      for (let index = 0; index < count; index += 1) {
-        const kind = this.chooseEnemyType(pool);
-        const eliteChance = Math.min(0.25, 0.03 + minutes * 0.022);
-        this.spawnAtAngle(kind, baseAngle + (index - (count - 1) / 2) * 0.18, index * 12, Math.random() < eliteChance);
-      }
-      return;
-    }
-
     const progress = this.getProgress();
     const stageNumber = this.stage?.stageNumber ?? 1;
-    const count = progress > 0.82 && stageNumber >= 8 ? 2 : 1;
-    const baseAngle = this.lastPackAngle + (Math.random() - 0.5) * 1.08;
-    const eliteChance = this.getEliteChance(progress) * 0.32;
+    const baseCount = progress > 0.7 ? 4 : progress > 0.3 ? 3 : 2;
+    const count = this.isSurvival
+      ? Math.min(5, 2 + Math.floor((this.elapsed / 60) / 2.5))
+      : Math.min(5, baseCount + Math.floor(stageNumber * 0.12));
 
+    const eliteChance = this.isSurvival
+      ? Math.min(0.25, 0.03 + (this.elapsed / 60) * 0.022)
+      : this.getEliteChance(progress) * 0.28;
+
+    const playerVel = this.hooks.getPlayerVelocity?.() ?? { x: 0, y: 0 };
+    const speed = Math.hypot(playerVel.x, playerVel.y);
+    const leadAngle = speed > 25 ? Math.atan2(playerVel.y, playerVel.x) : this.nextPressureAngle();
+    this.lastPackAngle = leadAngle;
+
+    // Multi-angle pincer/surround distribution to prevent predictable single-point clumps
     for (let index = 0; index < count; index += 1) {
       const kind = this.chooseEnemyType(pool);
-      this.spawnAtAngle(kind, baseAngle + (index - (count - 1) / 2) * 0.16, index * 12, Math.random() < eliteChance);
+      let angle = leadAngle;
+      if (index === 0) {
+        // Cut off the player's front/lead trajectory
+        angle = leadAngle + (Math.random() - 0.5) * 0.35;
+      } else if (index === 1) {
+        // Flank from the left (100-120 degrees away)
+        angle = leadAngle + 1.65 + (Math.random() - 0.5) * 0.35;
+      } else if (index === 2) {
+        // Flank from the right (100-120 degrees away)
+        angle = leadAngle - 1.65 + (Math.random() - 0.5) * 0.35;
+      } else {
+        // Rear pincer
+        angle = leadAngle + Math.PI + (Math.random() - 0.5) * 0.5;
+      }
+      this.spawnAtAngle(kind, angle, (Math.random() - 0.5) * 40, Math.random() < eliteChance);
     }
   }
 
@@ -168,17 +198,20 @@ export class EnemySpawner {
       case 'bat_swoop': {
         const count = this.stage && this.stage.stageNumber >= 7 ? 4 : 3;
         for (let i = 0; i < count; i += 1) {
-          this.spawnAtAngle('bat', baseAngle + (i - (count - 1) / 2) * 0.28, i * 6, i === Math.floor(count / 2) && Math.random() < eliteChance * 0.35);
+          // Opposite pincer angles: dive from front and rear/flanks!
+          const angle = i % 2 === 0 ? baseAngle + i * 0.22 : baseAngle + Math.PI + (i - 1) * 0.35;
+          this.spawnAtAngle('bat', angle, i * 8, i === 0 && Math.random() < eliteChance * 0.35);
         }
         break;
       }
       case 'wolf_hunt': {
         const count = this.stage && this.stage.stageNumber >= 6 ? 3 : 2;
-        for (let i = 0; i < count; i += 1) {
-          this.spawnAtAngle('cursed-wolf', baseAngle + (i - (count - 1) / 2) * 0.38, i * 10, i === 0 && Math.random() < eliteChance * 0.45);
-        }
+        // Lead wolf ahead, flankers on left and right!
+        this.spawnAtAngle('cursed-wolf', baseAngle, 0, Math.random() < eliteChance * 0.45);
+        if (count >= 2) this.spawnAtAngle('cursed-wolf', baseAngle + 1.45, 12, false);
+        if (count >= 3) this.spawnAtAngle('cursed-wolf', baseAngle - 1.45, 12, false);
         const ranged = this.pickRanged(pool);
-        if (ranged && count >= 3) this.spawnAtAngle(ranged, baseAngle + 0.66, 74, false);
+        if (ranged && count >= 3) this.spawnAtAngle(ranged, baseAngle + Math.PI, 74, false);
         break;
       }
       case 'slime_wall': {
@@ -220,15 +253,17 @@ export class EnemySpawner {
       case 'melee_pressure':
       default: {
         const front = this.pickFrontliner(pool);
-        const count = this.stage && this.stage.stageNumber >= 8 ? 4 : 3;
+        const count = this.stage && this.stage.stageNumber >= 6 ? 6 : 4;
+        // Split into converging pincer wings to prevent single-line conga lines
         for (let i = 0; i < count; i += 1) {
-          this.spawnAtAngle(front, baseAngle + (i - (count - 1) / 2) * 0.30, 0, i === Math.floor(count / 2) && Math.random() < eliteChance * 0.5);
+          const wing = i % 2 === 0 ? 0.75 : -0.75;
+          this.spawnAtAngle(front, baseAngle + wing + (Math.random() - 0.5) * 0.30, i * 8, i === 0 && Math.random() < eliteChance * 0.5);
         }
         break;
       }
     }
 
-    this.breathingTimer = this.isSurvival ? 2.8 : 4.2;
+    this.breathingTimer = this.isSurvival ? 1.4 : 1.8;
   }
 
   private spawnSurgeWave(): void {
@@ -264,7 +299,7 @@ export class EnemySpawner {
       detail: ranged ? 'Break the frontline or dodge the crossfire' : 'Two attack lanes are closing in',
       tone: progress > 0.66 ? 'elite' : 'danger',
     });
-    this.breathingTimer = 5.2;
+    this.breathingTimer = 1.2;
   }
 
   private spawnSetPiece(): void {
@@ -313,7 +348,7 @@ export class EnemySpawner {
       announceCombatWave({ label: 'GAUNTLET', detail: 'Heavy pressure ahead, flankers on both sides.', tone: 'elite' });
     }
 
-    this.breathingTimer = 6.2;
+    this.breathingTimer = 1.4;
   }
 
   private getAvailablePool(): EnemyKind[] {
@@ -368,6 +403,48 @@ export class EnemySpawner {
     return HEAVY_KINDS.find((kind) => pool.includes(kind) && (ENEMY_BALANCE[kind]?.minTime ?? 0) <= this.elapsed);
   }
 
+  private spawnEdgeCutoffAmbush(
+    player: { x: number; y: number },
+    playerVel: { x: number; y: number },
+    world: { width: number; height: number }
+  ): void {
+    const pool = this.getAvailablePool();
+    if (pool.length === 0) return;
+
+    const speed = Math.hypot(playerVel.x, playerVel.y);
+    let dirX = speed > 20 ? playerVel.x / speed : 0;
+    let dirY = speed > 20 ? playerVel.y / speed : 0;
+
+    // If player is stationary near edge, determine corridor direction along the nearest wall
+    if (speed <= 20) {
+      if (player.x < 175 || player.x > world.width - 175) {
+        dirY = player.y > world.height / 2 ? -1 : 1;
+      } else {
+        dirX = player.x > world.width / 2 ? -1 : 1;
+      }
+    }
+
+    // 1. Ambush interceptor spawned directly ahead along the perimeter runway to cut off running lane
+    const hunter = this.pickMobile(pool) ?? this.pickFrontliner(pool);
+    const interceptDist = 250 + Math.random() * 50;
+    const aheadX = Math.min(world.width - 65, Math.max(65, player.x + dirX * interceptDist));
+    const aheadY = Math.min(world.height - 75, Math.max(75, player.y + dirY * interceptDist));
+    this.hooks.spawnEnemy(hunter, aheadX, aheadY, false);
+
+    // 2. Interior flanker pushing outward to trap player against the boundary wall
+    const inwardX = player.x < world.width / 2 ? 1 : -1;
+    const inwardY = player.y < world.height / 2 ? 1 : -1;
+    const flankX = Math.min(world.width - 65, Math.max(65, player.x + inwardX * 220));
+    const flankY = Math.min(world.height - 75, Math.max(75, player.y + inwardY * 220));
+    this.hooks.spawnEnemy(this.chooseEnemyType(pool), flankX, flankY, false);
+
+    announceCombatWave({
+      label: 'AMBUSH CUTOFF',
+      detail: 'Hunters emerge ahead to seal the perimeter!',
+      tone: 'danger',
+    });
+  }
+
   update(delta: number): void {
     if (this.stopped || !this.stage) return;
     this.elapsed += delta;
@@ -376,22 +453,43 @@ export class EnemySpawner {
     const progress = this.getProgress();
     const stageNumber = this.stage.stageNumber ?? 1;
     const maxAlive = this.isSurvival
-      ? Math.min(58, 34 + Math.floor((this.elapsed / 60) * 4))
-      : Math.min(34, 18 + Math.round(stageNumber * 1.05) + (progress > 0.78 ? 3 : 0));
+      ? Math.min(68, 38 + Math.floor((this.elapsed / 60) * 6))
+      : Math.min(48, 24 + Math.round(stageNumber * 1.4) + Math.round(progress * 12));
+
+    const player = this.hooks.getPlayerPosition();
+    const playerVel = this.hooks.getPlayerVelocity?.() ?? { x: 0, y: 0 };
+    const world = this.hooks.getWorldSize();
+    const edgeMargin = 175;
+    const isNearEdge =
+      player.x < edgeMargin ||
+      player.x > world.width - edgeMargin ||
+      player.y < edgeMargin ||
+      player.y > world.height - edgeMargin;
+
+    // Detect edge-running cheese: if player stays near perimeter, trigger interceptor cutoff ambush
+    if (isNearEdge) {
+      this.edgeCampTimer += delta;
+      if (this.edgeCampTimer >= 1.8 && this.hooks.getAliveCount() < maxAlive) {
+        this.spawnEdgeCutoffAmbush(player, playerVel, world);
+        this.edgeCampTimer = -2.4; // Cooldown before next edge punishment
+      }
+    } else {
+      this.edgeCampTimer = Math.max(0, this.edgeCampTimer - delta * 2);
+    }
 
     if (this.hooks.getAliveCount() >= maxAlive) return;
 
     this.setPieceTimer -= delta;
     if (this.setPieceTimer <= 0 && this.hooks.getAliveCount() <= maxAlive - 5) {
       this.spawnSetPiece();
-      this.setPieceTimer = this.isSurvival ? 31 + Math.random() * 9 : 34 + Math.random() * 11;
+      this.setPieceTimer = this.isSurvival ? 28 + Math.random() * 8 : 28 + Math.random() * 9;
     }
 
     if (this.isSurvival) {
       this.survivalSurgeTimer -= delta;
       if (this.survivalSurgeTimer <= 0) {
         this.spawnSurgeWave();
-        this.survivalSurgeTimer = Math.max(27, 38 - (this.elapsed / 60) * 0.7);
+        this.survivalSurgeTimer = Math.max(24, 32 - (this.elapsed / 60) * 0.7);
       }
     } else if (
       this.surgeIndex < CAMPAIGN_SURGE_THRESHOLDS.length &&
@@ -405,8 +503,8 @@ export class EnemySpawner {
     if (this.packTimer <= 0 && this.hooks.getAliveCount() < maxAlive - 4) {
       this.spawnAuthoredPack();
       this.packTimer = this.isSurvival
-        ? Math.max(11, 15 - (this.elapsed / 60) * 0.38) + Math.random() * 2.8
-        : 13.5 + Math.random() * 4.5;
+        ? Math.max(8, 11 - (this.elapsed / 60) * 0.35) + Math.random() * 2
+        : 8.5 + Math.random() * 3.5;
     }
 
     this.spawnTimer -= delta;

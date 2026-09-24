@@ -1,4 +1,4 @@
-import type { GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
+import type { ChestReward, GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice } from '../types';
 
 export interface Game3DCallbacks {
   onSnapshot: (snapshot: GameSnapshot) => void;
@@ -8,6 +8,7 @@ export interface Game3DCallbacks {
   onPaused: (paused: boolean) => void;
   onBossWarning: () => void;
   onPlayerHit?: () => void;
+  onChestOpened?: (rewards: ChestReward) => void;
   onRendererError?: (message: string) => void;
 }
 

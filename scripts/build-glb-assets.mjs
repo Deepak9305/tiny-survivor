@@ -179,51 +179,136 @@ function buildShadowHero() {
 function buildSkeletonEnemy() {
   const root = new THREE.Group();
   root.name = 'enemy_skeleton';
-  const mBone = matStandard(0xc8d8e6, { roughness: 0.82 });
-  const mDarkMetal = matStandard(0x243242, { roughness: 0.55, metalness: 0.6 });
-  const mWood = matStandard(0x3e281b, { roughness: 0.92 });
-  const mSoulEye = matBasic(0x56e2ff);
+  const mBone = matStandard(0xd4e2ee, { roughness: 0.72, metalness: 0.1 });
+  const mDarkMetal = matStandard(0x334455, { roughness: 0.52, metalness: 0.65 });
+  const mWood = matStandard(0x4a3424, { roughness: 0.92 });
+  const mSoulEye = matStandard(0x56e2ff, { emissive: 0x38bdf8, emissiveIntensity: 2.2, roughness: 0.2 });
+  const mCloth = matStandard(0x222a36, { roughness: 0.95 });
 
-  // Skull with Cranial Cavity & Jaw
-  root.add(createBox(0.42, 0.38, 0.4, mBone, 0, 1.22, 0));
-  root.add(createBox(0.28, 0.16, 0.28, mBone, 0, 0.98, 0.08));
+  // 1. Sculpted Cranium & Sinister Jaw
+  const skull = new THREE.Group();
+  skull.position.set(0, 1.35, 0.02);
+  skull.add(createSphere(0.25, 8, mBone, 0, 0, 0));
   // Deep eye sockets with soul fire
-  root.add(createBox(0.1, 0.1, 0.05, mSoulEye, -0.11, 1.24, 0.2));
-  root.add(createBox(0.1, 0.1, 0.05, mSoulEye, 0.11, 1.24, 0.2));
+  skull.add(createSphere(0.065, 5, mSoulEye, -0.12, 0.02, 0.22));
+  skull.add(createSphere(0.065, 5, mSoulEye, 0.12, 0.02, 0.22));
+  // Jaw with bone teeth
+  skull.add(createBox(0.28, 0.12, 0.24, mBone, 0, -0.22, 0.08));
+  for (let t = -0.09; t <= 0.09; t += 0.045) {
+    skull.add(createCone(0.015, 0.04, 3, mBone, t, -0.15, 0.19, Math.PI, 0, 0));
+  }
+  root.add(skull);
 
-  // Spine & Ribcage
-  root.add(createCylinder(0.07, 0.07, 0.52, 6, mBone, 0, 0.7, 0));
-  root.add(createBox(0.42, 0.07, 0.28, mBone, 0, 0.86, 0.02));
-  root.add(createBox(0.38, 0.07, 0.25, mBone, 0, 0.74, 0.02));
-  root.add(createBox(0.32, 0.07, 0.22, mBone, 0, 0.62, 0.02));
-  // Pelvic bone
-  root.add(createBox(0.34, 0.12, 0.22, mBone, 0, 0.46, 0));
+  // 2. Spine & Arched Ribcage
+  root.add(createCylinder(0.065, 0.065, 0.58, 6, mBone, 0, 0.74, -0.02));
+  for (let r = 0; r < 4; r += 1) {
+    const ry = 0.95 - r * 0.10;
+    const spread = 0.22 - r * 0.02;
+    root.add(createTorus(spread, 0.028, 4, 8, mBone, 0, ry, 0.03, Math.PI / 2.2, 0, 0));
+  }
+  // Glowing soul spark inside chest
+  root.add(createOcta(0.12, mSoulEye, 0, 0.78, 0.02));
 
-  // Scrap Iron Pauldron
-  root.add(createBox(0.25, 0.15, 0.25, mDarkMetal, -0.32, 0.9, 0, 0, 0, 0.25));
+  // Pelvis & Ragged Loincloth
+  root.add(createBox(0.32, 0.12, 0.22, mBone, 0, 0.44, 0));
+  root.add(createCone(0.22, 0.32, 5, mCloth, 0, 0.32, 0.02, Math.PI, 0, 0));
 
-  // Arms & Legs
-  root.add(createCylinder(0.045, 0.045, 0.48, 5, mBone, -0.3, 0.62, 0, 0, 0, 0.2));
-  root.add(createCylinder(0.045, 0.045, 0.48, 5, mBone, 0.3, 0.62, 0, 0, 0, -0.2));
-  root.add(createCylinder(0.055, 0.055, 0.48, 5, mBone, -0.14, 0.24, 0));
-  root.add(createCylinder(0.055, 0.055, 0.48, 5, mBone, 0.14, 0.24, 0));
+  // Scrap Iron Spiked Pauldron
+  root.add(createSphere(0.16, 6, mDarkMetal, -0.32, 0.98, 0.02));
+  root.add(createCone(0.06, 0.22, 4, mDarkMetal, -0.38, 1.10, 0.02, 0, 0, 0.45));
 
-  // Notched Iron Broadsword
-  const sword = new THREE.Group();
-  sword.add(createBox(0.09, 0.72, 0.03, mDarkMetal, 0, 0.42, 0));
-  sword.add(createBox(0.24, 0.05, 0.06, mDarkMetal, 0, 0.14, 0));
-  sword.add(createCylinder(0.03, 0.03, 0.18, 5, mWood, 0, 0.04, 0));
-  sword.position.set(0.42, 0.46, 0.1);
-  sword.rotation.set(-0.25, 0, -0.32);
-  root.add(sword);
-
-  // Banded Round Shield
+  // Left Arm & Banded Round Shield
+  const leftArm = new THREE.Group();
+  leftArm.position.set(-0.32, 0.88, 0.02);
+  leftArm.add(createCylinder(0.045, 0.045, 0.46, 5, mBone, -0.04, -0.18, 0.02, 0, 0, 0.22));
   const shield = new THREE.Group();
-  shield.add(createCylinder(0.26, 0.26, 0.06, 8, mWood, 0, 0, 0, Math.PI / 2, 0, 0));
-  shield.add(createTorus(0.25, 0.035, 4, 10, mDarkMetal, 0, 0, 0.02, 0, 0, 0));
-  shield.add(createSphere(0.07, 6, mDarkMetal, 0, 0, 0.05));
-  shield.position.set(-0.4, 0.6, 0.15);
-  root.add(shield);
+  shield.add(createCylinder(0.26, 0.26, 0.05, 8, mWood, 0, 0, 0, Math.PI / 2, 0, 0));
+  shield.add(createTorus(0.25, 0.032, 4, 10, mDarkMetal, 0, 0, 0.02, 0, 0, 0));
+  shield.add(createSphere(0.065, 5, mDarkMetal, 0, 0, 0.05));
+  shield.position.set(-0.12, -0.16, 0.20);
+  leftArm.add(shield);
+  root.add(leftArm);
+
+  // Right Arm & Notched Iron Broadsword
+  const rightArm = new THREE.Group();
+  rightArm.position.set(0.32, 0.88, 0.02);
+  rightArm.add(createCylinder(0.045, 0.045, 0.46, 5, mBone, 0.04, -0.18, 0.02, 0, 0, -0.22));
+  const sword = new THREE.Group();
+  sword.add(createBox(0.08, 0.78, 0.03, mDarkMetal, 0, 0.36, 0));
+  sword.add(createBox(0.24, 0.05, 0.06, mDarkMetal, 0, 0.06, 0));
+  sword.add(createCylinder(0.028, 0.028, 0.16, 5, mWood, 0, -0.04, 0));
+  sword.position.set(0.12, -0.22, 0.16);
+  sword.rotation.set(-0.32, 0, -0.26);
+  rightArm.add(sword);
+  root.add(rightArm);
+
+  // Articulated Legs with Knee Joints
+  for (const dir of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(dir * 0.15, 0.42, 0);
+    leg.add(createCylinder(0.048, 0.048, 0.26, 5, mBone, 0, -0.12, 0));
+    leg.add(createSphere(0.06, 5, mBone, 0, -0.24, 0.02));
+    leg.add(createCylinder(0.042, 0.042, 0.24, 5, mBone, 0, -0.34, 0));
+    leg.add(createBox(0.12, 0.06, 0.22, mBone, 0, -0.46, 0.06));
+    root.add(leg);
+  }
+
+  return root;
+}
+
+function buildZombieEnemy() {
+  const root = new THREE.Group();
+  root.name = 'enemy_zombie';
+  const mSkin = matStandard(0x526b45, { roughness: 0.88 });
+  const mFace = matStandard(0x455a3a, { roughness: 0.85 });
+  const mTunic = matStandard(0x2f3b2f, { roughness: 0.95 });
+  const mPants = matStandard(0x222a36, { roughness: 0.95 });
+  const mWound = matStandard(0x6e141c, { roughness: 0.65, metalness: 0.1 });
+  const mBone = matStandard(0xd6e4ee, { roughness: 0.8 });
+  const mEyeYellow = matBasic(0xfacc15);
+
+  // Hunched Torso
+  const torso = createCylinder(0.38, 0.34, 0.88, 8, mTunic, 0, 0.74, 0.08, 0.16, 0, 0);
+  root.add(torso);
+
+  // Gaping chest wound with exposed ribs
+  root.add(createBox(0.28, 0.2, 0.08, mWound, -0.12, 0.86, 0.36, 0, 0, 0.12));
+  root.add(createCylinder(0.025, 0.025, 0.12, 4, mBone, -0.16, 0.86, 0.38, 0, 0, 0.35));
+  root.add(createCylinder(0.025, 0.025, 0.14, 4, mBone, -0.08, 0.86, 0.38, 0, 0, 0.35));
+
+  // Tilting Head with Asymmetrical Eyes
+  const headGroup = new THREE.Group();
+  headGroup.position.set(0.06, 1.35, 0.16);
+  headGroup.rotation.set(0.18, 0.08, -0.16);
+  headGroup.add(createSphere(0.26, 8, mFace, 0, 0, 0));
+  // Bulging yellow cataract dead eye
+  headGroup.add(createSphere(0.07, 5, mEyeYellow, -0.12, 0.05, 0.22));
+  // Rotting socket
+  headGroup.add(createSphere(0.07, 5, mWound, 0.12, 0.05, 0.22));
+  // Snarling jaw
+  headGroup.add(createBox(0.26, 0.12, 0.18, mFace, 0, -0.18, 0.12));
+  root.add(headGroup);
+
+  // Reaching Undead Arms
+  for (const dir of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.position.set(dir * 0.44, 0.88, 0.12);
+    arm.rotation.set(0.72, dir * -0.14, dir * 0.18);
+    arm.add(createCylinder(0.09, 0.09, 0.22, 6, mTunic, 0, -0.06, 0));
+    arm.add(createCylinder(0.07, 0.07, 0.44, 6, mSkin, 0, -0.32, 0));
+    arm.add(createBox(0.14, 0.12, 0.18, mSkin, 0, -0.54, 0.05));
+    root.add(arm);
+  }
+
+  // Heavy Dragging Legs
+  for (const dir of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(dir * 0.2, 0.42, 0.04);
+    leg.add(createCylinder(0.09, 0.09, 0.32, 6, mPants, 0, -0.14, 0));
+    leg.add(createSphere(0.08, 6, mSkin, 0, -0.28, 0.04));
+    leg.add(createBox(0.18, 0.16, 0.34, matStandard(0x141a1c, { roughness: 0.9 }), 0, -0.46, 0.08));
+    root.add(leg);
+  }
 
   return root;
 }
@@ -1115,6 +1200,7 @@ async function buildAllAssets() {
 
   // 2. Enemies
   await exportGLB(buildSkeletonEnemy(), 'public/assets/models/enemies/skeleton.glb');
+  await exportGLB(buildZombieEnemy(), 'public/assets/models/enemies/zombie.glb');
   await exportGLB(buildBatEnemy(), 'public/assets/models/enemies/bat.glb');
   await exportGLB(buildSlimeEnemy(), 'public/assets/models/enemies/slime.glb');
   await exportGLB(buildGhostEnemy(), 'public/assets/models/enemies/ghost.glb');

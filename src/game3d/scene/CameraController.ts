@@ -19,6 +19,7 @@ export class CameraController {
   private readonly screenShakeEnabled: boolean;
   private isOverviewDebug = false;
   private currentFov = 39.2;
+  private currentAspect = 16 / 9;
   private cameraTime = 0;
 
   // Camera Occlusion System
@@ -32,9 +33,10 @@ export class CameraController {
   constructor(lowPerformanceMode: boolean, reducedEffects = false, screenShakeEnabled = true) {
     this.reducedEffects = reducedEffects || lowPerformanceMode;
     this.screenShakeEnabled = screenShakeEnabled;
+    this.currentFov = 41.5;
     this.camera = new THREE.PerspectiveCamera(this.currentFov, 16 / 9, 0.1, 110);
-    this.camera.position.set(0, 12.75, 10.65);
-    this.currentLookAt.set(0, 0, -0.65);
+    this.camera.position.set(0, 10.75, 8.95);
+    this.currentLookAt.set(0, 0, -0.45);
     this.camera.lookAt(this.currentLookAt);
 
     if (typeof window !== 'undefined') {
@@ -54,7 +56,9 @@ export class CameraController {
   getIsOverviewDebug(): boolean { return this.isOverviewDebug; }
 
   resize(width: number, height: number): void {
-    this.camera.aspect = Math.max(1.0, width / Math.max(1, height));
+    const aspect = Math.max(0.2, width / Math.max(1, height));
+    this.currentAspect = aspect;
+    this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
   }
 
@@ -109,9 +113,12 @@ export class CameraController {
     const flowRatio = flow.meter / 100;
 
     // Dynamic lens response is deliberately subtle: it opens the battlefield a
-    // little during fast movement / Overdrive and settles closer during calm play.
+    // Dynamic lens response: compensates for portrait aspect ratios so horizontal
+    // view is wide and clear, while opening slightly during fast movement / Overdrive.
+    const portraitCompensation = this.currentAspect < 1.0 ? Math.min(18, (1.0 - this.currentAspect) * 24) : 0;
     const targetFov =
-      39.0 +
+      41.5 +
+      portraitCompensation +
       moveMagnitude * 1.15 +
       (isAiming ? aimMagnitude * 0.35 : 0) +
       flowRatio * 0.38 +
@@ -138,7 +145,7 @@ export class CameraController {
       ARENA_WIDTH / 2 - horizontalMargin
     );
     const lookZ = THREE.MathUtils.clamp(
-      player.z - 0.65 + leadZ,
+      player.z - 0.45 + leadZ,
       -ARENA_DEPTH / 2 + depthMargin,
       ARENA_DEPTH / 2 - depthMargin
     );
@@ -147,10 +154,11 @@ export class CameraController {
     const pullbackProgress = this.pullbackDuration > 0 ? this.pullbackTime / this.pullbackDuration : 0;
     const pullback = this.pullbackAmount * Math.sin(Math.min(1, pullbackProgress) * Math.PI);
     const overdriveLift = flow.overdrive ? 0.16 : 0;
+    const portraitHeightBonus = this.currentAspect < 1.0 ? Math.min(3.2, (1.0 - this.currentAspect) * 3.8) : 0;
     this.desiredPosition.set(
       lookX,
-      12.75 + overdriveLift + pullback * 0.68,
-      lookZ + 10.65 + pullback * 0.82
+      10.75 + portraitHeightBonus + overdriveLift + pullback * 0.68,
+      lookZ + 8.95 + portraitHeightBonus * 0.72 + pullback * 0.82
     );
 
     const follow = 1 - Math.pow(0.00045, Math.max(delta, 0.001));

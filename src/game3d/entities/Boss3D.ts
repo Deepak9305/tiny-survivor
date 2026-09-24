@@ -37,6 +37,9 @@ export class Boss3D {
     this.shadow = visual.shadow;
     this.parts = this.model.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]>;
     this.group.add(this.model);
+    this.model.traverse((child) => {
+      if (child instanceof THREE.Mesh) child.castShadow = true;
+    });
     parent.add(this.group);
     this.x = x;
     this.y = y;

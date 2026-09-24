@@ -18,6 +18,15 @@ interface StageClearScreenProps {
   onHome: () => void;
 }
 
+const GOOFY_VICTORY_QUOTES = [
+  'Absolute Cinema! You clobbered every monster! 🎬',
+  'You sent those monsters straight to bed! 🛏️',
+  'Giga Chad performance! Trophy unlocked! 🗿',
+  '1000/10 Star Player! Pure bonking excellence! 🌟',
+  'Those monsters will need ice packs for a week! 🧊',
+  'Certified Brawler of the Year! 🏆',
+];
+
 export function StageClearScreen({
   result,
   newlyUnlockedAbilities = [],
@@ -28,6 +37,7 @@ export function StageClearScreen({
   onHome,
 }: StageClearScreenProps) {
   const [coinsCount, setCoinsCount] = useState(0);
+  const [victoryQuote] = useState(() => GOOFY_VICTORY_QUOTES[Math.floor(Math.random() * GOOFY_VICTORY_QUOTES.length)]);
   const isFinalCampaign = isLastCampaignStage(result.stageId);
   const unlockedAbilityId = newlyUnlockedAbilities[0];
   const unlockedAbility = unlockedAbilityId ? ABILITY_DEFINITIONS[unlockedAbilityId] : undefined;
@@ -35,7 +45,7 @@ export function StageClearScreen({
   const hasAnyUnlocks = Boolean(unlockedAbility || unlockedSurvival || eqDef);
 
   useEffect(() => {
-    audioService.playSFX('stage-clear', { volume: 0.9, throttle: 0.3 });
+    audioService.playSFX('fanfare', { volume: 0.9, throttle: 0.3 });
     const started = performance.now();
     let frame = 0;
     const animate = (now: number) => {
@@ -56,13 +66,13 @@ export function StageClearScreen({
             <Star size={46} fill="#ffc83d" stroke="#ffe599" className="stage-clear-star stage-clear-star--center" />
             <Star size={34} fill="#ffc83d" stroke="#ffe599" className="stage-clear-star" />
           </div>
-          <span className="eyebrow victory-eyebrow">VICTORY ACHIEVED</span>
-          <h1 className="stage-clear-title">STAGE CLEAR</h1>
-          <p className="stage-clear-sub">The darkness recedes before your power.</p>
+          <span className="eyebrow victory-eyebrow">BRAWL-TASTIC VICTORY! 👑</span>
+          <h1 className="stage-clear-title">STAR PLAYER!</h1>
+          <p className="stage-clear-sub">{victoryQuote}</p>
 
           {hasAnyUnlocks && (
             <div className="stage-clear-unlocks-container">
-              <span className="eyebrow unlocks-eyebrow">NEW UNLOCKS</span>
+              <span className="eyebrow unlocks-eyebrow">NEW BRAWL UNLOCKS! ⭐</span>
 
               {unlockedAbility && (
                 <div className={`stage-clear-ability-reward ability-reward--${unlockedAbility.id}`}>
@@ -81,8 +91,8 @@ export function StageClearScreen({
                 <div className="stage-clear-survival-reward">
                   <Flame size={20} className="survival-reward__icon" />
                   <div className="survival-reward__details">
-                    <strong className="survival-reward__name">SURVIVAL MODE UNLOCKED</strong>
-                    <span className="survival-reward__desc">Endless escalating hordes are now available.</span>
+                    <strong className="survival-reward__name">SURVIVAL SHOWDOWN UNLOCKED</strong>
+                    <span className="survival-reward__desc">Endless escalating hordes are ready to brawl.</span>
                   </div>
                 </div>
               )}
@@ -106,21 +116,21 @@ export function StageClearScreen({
         <div className="stage-clear-right-stats">
           <div className="stage-clear-stats-grid">
             <ResultStat icon={<Timer size={14} />} label="CLEAR TIME" value={formatTime(result.time)} />
-            <ResultStat icon={<Skull size={14} />} label="KILLS" value={result.kills.toLocaleString()} />
-            <ResultStat icon={<Sparkles size={14} />} label="LEVEL" value={`Lv. ${result.highestLevel}`} />
-            <ResultStat icon={<Coins size={14} />} label="GOLD EARNED" value={`+${coinsCount.toLocaleString()}`} reward />
+            <ResultStat icon={<Skull size={14} />} label="KNOCKOUTS" value={result.kills.toLocaleString()} />
+            <ResultStat icon={<Sparkles size={14} />} label="BRAWLER LEVEL" value={`Lv. ${result.highestLevel}`} />
+            <ResultStat icon={<Coins size={14} />} label="COINS EARNED" value={`+${coinsCount.toLocaleString()}`} reward />
           </div>
 
           <div className="stage-clear-actions-landscape">
             <button type="button" className="stage-clear-btn stage-clear-btn--primary" onClick={isFinalCampaign ? onHome : onNext}>
               <Play size={18} fill="currentColor" />
-              <span>{isFinalCampaign ? 'RETURN HOME' : 'NEXT STAGE'}</span>
+              <span>{isFinalCampaign ? 'RETURN HOME' : 'NEXT BRAWL! ⚔️'}</span>
             </button>
             <button type="button" className="stage-clear-btn stage-clear-btn--secondary" onClick={onReplay}>
-              <RotateCw size={16} /><span>REPLAY</span>
+              <RotateCw size={16} /><span>BRAWL AGAIN! 🔄</span>
             </button>
             <button type="button" className="stage-clear-btn stage-clear-btn--secondary" onClick={onHome}>
-              <Home size={16} /><span>SANCTUARY</span>
+              <Home size={16} /><span>LOBBY</span>
             </button>
           </div>
         </div>

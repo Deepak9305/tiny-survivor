@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Heart, Pause, Play, Shield, Skull, Zap } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Gem, Heart, Pause, Play, Shield, Skull, Zap } from 'lucide-react';
 import { getActiveThreeGame, mountThreeGame, destroyThreeGame } from '../game3d/ThreeGame';
 import { TwinStickControls } from '../components/TwinStickControls';
 import { AbilityControls } from '../components/AbilityControls';
@@ -15,7 +15,8 @@ import {
   type CombatWaveAnnouncement,
 } from '../game/systems/CombatTargeting';
 import { GameOverScreen } from './GameOverScreen';
-import type { GameSnapshot, RunMode, RunResult, SaveData, Settings, StageDefinition, UpgradeChoice } from '../types';
+import { TreasureChestModal } from '../components/TreasureChestModal';
+import type { ChestReward, GameSnapshot, RunMode, RunResult, SaveData, Settings, StageDefinition, UpgradeChoice } from '../types';
 
 interface GameScreenProps {
   stage: StageDefinition;
@@ -71,6 +72,7 @@ export function GameScreen({
 
   const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
   const [upgradeChoices, setUpgradeChoices] = useState<UpgradeChoice[] | undefined>();
+  const [activeChestRewards, setActiveChestRewards] = useState<ChestReward | undefined>();
   const [paused, setPaused] = useState(false);
   const [warning, setWarning] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(true);
@@ -91,6 +93,8 @@ export function GameScreen({
   const killTimer = useRef<number | undefined>(undefined);
   const wasOverdrive = useRef(false);
   const lastKillMilestone = useRef(0);
+  const dashCooldownRatio = snapshot.dashCooldownRatio ?? 0;
+  const isDashing = snapshot.isDashing ?? false;
 
   useEffect(() => {
     callbacks.current = { onStageClear, onGameOver };
@@ -144,6 +148,7 @@ export function GameScreen({
             if (hitTimer.current) window.clearTimeout(hitTimer.current);
             hitTimer.current = window.setTimeout(() => setHitVignette(false), 220);
           },
+          onChestOpened: setActiveChestRewards,
           onRendererError: setRendererError,
         },
         initialMode,
@@ -205,9 +210,21 @@ export function GameScreen({
     const milestone = Math.floor(snapshot.kills / 25) * 25;
     if (milestone < 25 || milestone <= lastKillMilestone.current) return;
     lastKillMilestone.current = milestone;
-    setKillCallout(milestone >= 100 ? `ONSLAUGHT · ${milestone} KILLS` : `RAMPAGE · ${milestone} KILLS`);
+    setKillCallout(
+      milestone >= 200
+        ? `ABSOLUTE BANANAS! · ${milestone} KILLS 🍌`
+        : milestone >= 150
+        ? `GIGA BONK GOD! · ${milestone} KILLS 👑`
+        : milestone >= 100
+        ? `TOTAL KNOCKOUT! · ${milestone} KILLS 🚀`
+        : milestone >= 75
+        ? `SLAP-TASTIC! · ${milestone} KILLS 💥`
+        : milestone >= 50
+        ? `MEGA DERP! · ${milestone} KILLS 🤪`
+        : `BONK FEVER! · ${milestone} KILLS 🔨`
+    );
     if (killTimer.current) window.clearTimeout(killTimer.current);
-    killTimer.current = window.setTimeout(() => setKillCallout(undefined), 1350);
+    killTimer.current = window.setTimeout(() => setKillCallout(undefined), 1400);
   }, [snapshot.kills]);
 
   useEffect(() => () => {
@@ -236,7 +253,7 @@ export function GameScreen({
   const heroSigil = HERO_SIGILS[heroId];
 
   return (
-    <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}${flow.overdrive ? ' game-screen--overdrive' : ''}`}>
+    <main className={`game-screen${hpPercent < 30 ? ' game-screen--low-health' : ''}${flow.overdrive ? ' game-screen--overdrive' : ''}${snapshot.bloodMoonActive ? ' game-screen--blood-moon' : ''}`}>
       <div ref={gameRoot} className="three-root" />
       {isLoading && <StagePreloadScreen stage={stage} progress={preloadProgress} />}
       {hitVignette && <div className="game-hit-vignette" aria-hidden="true" />}
@@ -264,7 +281,9 @@ export function GameScreen({
                 </div>
               </div>
               <div className="game-level-xp">
-                <span className="game-level-text">Lv. {snapshot.level}</span>
+                <span className="game-level-text" title="XP Crystals increase Hero Level">
+                  <Gem size={12} className="game-xp-gem-icon" /> Lv. {snapshot.level}
+                </span>
                 <div className="game-progress__track"><i style={{ width: `${xpPercent}%` }} /></div>
               </div>
             </div>
@@ -278,6 +297,15 @@ export function GameScreen({
           </div>
 
           <div className="game-actions">
+            {(snapshot.gems ?? 0) > 0 && (
+              <div className="game-diamonds" aria-label={`${snapshot.gems} diamonds collected`}>
+                <Gem size={15} className="game-diamonds__icon" />
+                <div className="game-diamonds__text">
+                  <span className="game-diamonds__label">Gems</span>
+                  <strong className="game-diamonds__num">{snapshot.gems}</strong>
+                </div>
+              </div>
+            )}
             <div className="game-kills" aria-label={`${snapshot.kills} enemies defeated`}>
               <Skull size={18} />
               <div className="game-kills__text">
@@ -300,12 +328,29 @@ export function GameScreen({
         </div>
 
         <div className={`game-flow-hud${flow.overdrive ? ' game-flow-hud--overdrive' : ''}${flow.meter <= 0 ? ' game-flow-hud--empty' : ''}`}>
-          <span className="game-flow-hud__label"><Zap size={11} fill="currentColor" /> {flow.overdrive ? 'OVERDRIVE' : 'FLOW'}</span>
+          <span className="game-flow-hud__label"><Zap size={11} fill="currentColor" /> {flow.overdrive ? 'SUPER ACTIVE! ⭐' : 'SUPER CHARGE'}</span>
           <div className="game-flow-hud__track"><i style={{ width: `${flow.meter}%` }} /></div>
           <strong className="game-flow-hud__value">
-            {flow.overdrive ? `${flow.overdriveRemaining.toFixed(1)}s` : flow.streak >= 3 ? `x${flow.streak}` : `${Math.round(flow.meter)}%`}
+            {flow.overdrive ? `${flow.overdriveRemaining.toFixed(1)}s` : flow.streak >= 3 ? `x${flow.streak} BRAWL` : `${Math.round(flow.meter)}%`}
           </strong>
         </div>
+
+        {snapshot.comboStreak && snapshot.comboStreak >= 6 && (
+          <div className="game-combo-callout" role="status">
+            <span className="game-combo-callout__count">{snapshot.comboStreak}x</span>
+            <span className="game-combo-callout__title">
+              {snapshot.comboStreak >= 50
+                ? 'ULTIMATE SHOWDOWN! 👑'
+                : snapshot.comboStreak >= 25
+                ? 'MEGA BONK SPREE! 🔨'
+                : snapshot.comboStreak >= 15
+                ? 'BRAWL-TASTIC! ⭐'
+                : snapshot.comboStreak >= 10
+                ? 'DOUBLE BRAWL! 💥'
+                : 'BONK COMBO! 🎯'}
+            </span>
+          </div>
+        )}
 
         {snapshot.boss && (
           <div className="boss-hud">
@@ -344,14 +389,61 @@ export function GameScreen({
         )}
       </div>
 
-      <TwinStickControls disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
-      <AbilityControls abilities={snapshot.abilities} disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver)} />
+      <TwinStickControls disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver) || Boolean(activeChestRewards)} />
+      <AbilityControls abilities={snapshot.abilities} disabled={paused || Boolean(upgradeChoices) || Boolean(gameOver) || Boolean(activeChestRewards)} />
 
-      {upgradeChoices && (
-        <LevelUpOverlay choices={upgradeChoices} playerLevel={snapshot.level} onChoose={chooseUpgrade} />
+      {/* Dash Button — floating between movement zone and fire zone */}
+      {!paused && !upgradeChoices && !gameOver && !activeChestRewards && (
+        <button
+          type="button"
+          id="game-dash-btn"
+          className={`game-dash-btn${isDashing ? ' is-dashing' : ''}${dashCooldownRatio > 0 ? ' is-cooldown' : ' is-ready'}`}
+          style={{ '--dash-cd': dashCooldownRatio } as React.CSSProperties}
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); getActiveThreeGame()?.triggerPlayerDash(); }}
+          aria-label={`Dash / Dodge Roll${dashCooldownRatio > 0 ? ' (cooling down)' : ' (ready)'}`}
+        >
+          <svg className="game-dash-btn__arc" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(56,189,248,0.18)" strokeWidth="3"/>
+            <circle
+              cx="20" cy="20" r="17" fill="none"
+              stroke="rgba(56,189,248,0.82)" strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${(1 - dashCooldownRatio) * 106.8} 106.8`}
+              strokeDashoffset="26.7"
+              transform="rotate(-90 20 20)"
+            />
+          </svg>
+          <span className="game-dash-btn__icon" aria-hidden="true">⚡</span>
+          <span className="game-dash-btn__label">DASH</span>
+        </button>
       )}
 
-      {paused && !upgradeChoices && !gameOver && (
+      {upgradeChoices && (
+        <LevelUpOverlay
+          choices={upgradeChoices}
+          playerLevel={snapshot.level}
+          rerollsRemaining={snapshot.rerollsRemaining ?? 2}
+          onChoose={chooseUpgrade}
+          onReroll={() => getActiveThreeGame()?.rerollUpgrades()}
+          onSkip={() => {
+            getActiveThreeGame()?.skipUpgrade();
+            setUpgradeChoices(undefined);
+          }}
+        />
+      )}
+
+      {activeChestRewards && (
+        <TreasureChestModal
+          rewards={activeChestRewards}
+          onClaim={() => {
+            const game = getActiveThreeGame();
+            if (game) game.claimChestReward(activeChestRewards);
+            setActiveChestRewards(undefined);
+          }}
+        />
+      )}
+
+      {paused && !upgradeChoices && !gameOver && !activeChestRewards && (
         <PauseOverlay
           snapshot={snapshot}
           stage={stage}

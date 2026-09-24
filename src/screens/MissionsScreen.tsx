@@ -8,15 +8,15 @@ interface MissionsScreenProps {
 }
 
 const fallbackMissions: MissionProgress[] = [
-  { id: 'daily-kills', title: 'Defeat 500 enemies', target: 500, progress: 0, reward: 100, claimed: false },
+  { id: 'daily-kills', title: 'Bonk 500 monsters', target: 500, progress: 0, reward: 100, claimed: false },
   { id: 'daily-survive', title: 'Survive for 10 minutes', target: 600, progress: 0, reward: 150, claimed: false },
-  { id: 'daily-clear', title: 'Clear a boss stage', target: 1, progress: 0, reward: 200, claimed: false },
+  { id: 'daily-clear', title: 'Clobber a World Boss', target: 1, progress: 0, reward: 200, claimed: false },
 ];
 
 const MISSION_METAS: Record<string, { subtitle: string; art: string; icon: typeof Swords }> = {
-  'daily-kills': { subtitle: 'Cut through the darkness.', art: '/assets/images/mission_skeletons.jpg', icon: Swords },
-  'daily-survive': { subtitle: 'Endure and become stronger.', art: '/assets/images/mission_hourglass.jpg', icon: Hourglass },
-  'daily-clear': { subtitle: 'Break a world ruler.', art: '/assets/images/mission_boss.jpg', icon: Skull },
+  'daily-kills': { subtitle: 'Whack \'em right on the noggin! 🔨', art: '/assets/images/mission_skeletons.jpg', icon: Swords },
+  'daily-survive': { subtitle: 'Keep running, dodging, and snacking! 🌯', art: '/assets/images/mission_hourglass.jpg', icon: Hourglass },
+  'daily-clear': { subtitle: 'Send a big boss packing! 👑', art: '/assets/images/mission_boss.jpg', icon: Skull },
 };
 
 export function MissionsScreen({ save, onBack, onClaim }: MissionsScreenProps) {
@@ -27,7 +27,7 @@ export function MissionsScreen({ save, onBack, onClaim }: MissionsScreenProps) {
       <header className="missions-header">
         <button type="button" className="missions-back-btn" onClick={onBack} aria-label="Back to previous screen"><ChevronLeft size={24} /></button>
         <div className="missions-title-wrap">
-          <h1 className="missions-main-title">MISSIONS</h1>
+          <h1 className="missions-main-title">DAILY BOUNTIES</h1>
           <div className="missions-title-ornament"><span className="missions-title-diamond" /></div>
         </div>
         <div className="missions-daily-badge"><Sparkles size={14} className="missions-daily-badge__sparkle" /><span>DAILY</span></div>
@@ -49,13 +49,13 @@ export function MissionsScreen({ save, onBack, onClaim }: MissionsScreenProps) {
                 </svg>
               </div>
               <div className="missions-top-banner__text">
-                <span className="missions-top-banner__kicker">TODAY'S OBJECTIVES</span>
-                <h2 className="missions-top-banner__headline">Make every run count.</h2>
-                <p className="missions-top-banner__sub">Refreshes daily &bull; Progress saved locally</p>
+                <span className="missions-top-banner__kicker">DAILY BOUNTY BOARD</span>
+                <h2 className="missions-top-banner__headline">Bonk mobs. Collect loot. Repeat! ⭐</h2>
+                <p className="missions-top-banner__sub">Refreshes every 24 hours &bull; Free gold coins</p>
               </div>
             </div>
             <div className="missions-top-banner__right">
-              <blockquote className="missions-top-banner__quote">&ldquo;SMALL VICTORIES. PERMANENT POWER.&rdquo;</blockquote>
+              <blockquote className="missions-top-banner__quote">&ldquo;MORE BONKS = MORE STRENGTH!&rdquo;</blockquote>
             </div>
           </div>
         </section>

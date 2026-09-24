@@ -4,6 +4,7 @@ import {
   isPrimaryFireActive,
   resetCombatTargeting,
   setPrimaryFireActive,
+  toggleAutoFire,
 } from '../../game/systems/CombatTargeting';
 
 export class InputController {
@@ -14,15 +15,21 @@ export class InputController {
   private aimActive = false;
   private readonly onBackground: () => void;
   private readonly onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void;
+  private readonly onDash?: () => void;
 
   constructor(
     onBackground: () => void,
-    onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void
+    onAbilityKey?: (slot: 1 | 2 | 3 | 4) => void,
+    onDash?: () => void
   ) {
     this.onBackground = onBackground;
     this.onAbilityKey = onAbilityKey;
+    this.onDash = onDash;
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('mousedown', this.handleMouseDown);
+    window.addEventListener('mouseup', this.handleMouseUp);
+    window.addEventListener('contextmenu', this.handleContextMenu);
     window.addEventListener('blur', this.handleBlur);
     document.addEventListener('visibilitychange', this.handleVisibility);
   }
@@ -113,13 +120,44 @@ export class InputController {
   dispose(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('mousedown', this.handleMouseDown);
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    window.removeEventListener('contextmenu', this.handleContextMenu);
     window.removeEventListener('blur', this.handleBlur);
     document.removeEventListener('visibilitychange', this.handleVisibility);
     this.reset();
   }
 
+  private readonly handleContextMenu = (event: MouseEvent): void => {
+    event.preventDefault();
+  };
+
+  private readonly handleMouseDown = (event: MouseEvent): void => {
+    if (event.button === 0) setPrimaryFireActive(true);
+    else if (event.button === 2) {
+      event.preventDefault();
+      this.onDash?.();
+    }
+  };
+
+  private readonly handleMouseUp = (event: MouseEvent): void => {
+    if (event.button === 0) setPrimaryFireActive(false);
+  };
+
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
+
+    if (key === 'c' || key === 't' || key === 'q') {
+      toggleAutoFire();
+      event.preventDefault();
+      return;
+    }
+
+    if (event.code === 'Space' || key === 'shift' || key === 'e') {
+      this.onDash?.();
+      event.preventDefault();
+      return;
+    }
 
     if (key === '1') {
       this.onAbilityKey?.(1);
@@ -142,7 +180,7 @@ export class InputController {
       return;
     }
 
-    if (event.code === 'Space' || key === 'f') {
+    if (key === 'f') {
       setPrimaryFireActive(true);
       event.preventDefault();
       return;
@@ -172,7 +210,7 @@ export class InputController {
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     this.keys.delete(key);
-    if (event.code === 'Space' || key === 'f') {
+    if (key === 'f') {
       setPrimaryFireActive(false);
     }
   };

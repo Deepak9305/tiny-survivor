@@ -65,13 +65,13 @@ export function createArena(
   const outerGround = new THREE.Mesh(resources.plane('arena-outer-ground', 130, 100), outerTerrainMat);
   outerGround.rotation.x = -Math.PI / 2;
   outerGround.position.y = -0.024;
-  outerGround.receiveShadow = false;
+  outerGround.receiveShadow = !lowPerformanceMode;
   arena.add(outerGround);
 
   const ground = new THREE.Mesh(resources.plane('arena-ground', ARENA_WIDTH + 2.0, ARENA_DEPTH + 2.0), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.015;
-  ground.receiveShadow = false;
+  ground.receiveShadow = !lowPerformanceMode;
   arena.add(ground);
 
   const skyGroup = createDistantSky(arena, resources, theme, stage.worldId);

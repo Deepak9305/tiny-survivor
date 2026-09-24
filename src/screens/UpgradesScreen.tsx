@@ -5,7 +5,7 @@ import type { SaveData } from '../types';
 interface UpgradesScreenProps {
   save: SaveData;
   onBack: () => void;
-  onUpgrade: (id: string) => void;
+  onUpgrade: (id: string, useGems?: boolean) => void;
 }
 
 interface TalentMeta {
@@ -80,8 +80,10 @@ export function UpgradesScreen({ save, onBack, onUpgrade }: UpgradesScreenProps)
             const Icon = talent.icon;
             const level = save.permanentUpgrades[talent.id] ?? 0;
             const cost = getPermanentUpgradeCost(talent.id, level);
+            const gemCost = Math.max(4, Math.round(cost / 40));
             const maxed = level >= 5;
-            const affordable = save.coins >= cost;
+            const affordableCoins = save.coins >= cost;
+            const affordableGems = save.gems >= gemCost;
 
             return (
               <div key={talent.id} className={`talent-card ${maxed ? 'is-maxed' : ''}`} style={{ backgroundImage: `url(${talent.art})` }}>
@@ -97,15 +99,41 @@ export function UpgradesScreen({ save, onBack, onUpgrade }: UpgradesScreenProps)
                     </div>
                   </div>
                   <div className="talent-card__action">
-                    <button
-                      type="button"
-                      className={`talent-price-btn ${maxed ? 'is-maxed' : affordable ? 'is-affordable' : 'is-unaffordable'}`}
-                      disabled={maxed || !affordable}
-                      onClick={() => onUpgrade(talent.id)}
-                      aria-label={`${talent.title} upgrade, ${maxed ? 'Maxed' : `Cost ${cost} coins`}`}
-                    >
-                      {maxed ? 'MAX' : <><Coins size={14} className="talent-price-btn__coin" /><span className="talent-price-btn__text">{cost}</span></>}
-                    </button>
+                    {maxed ? (
+                      <button
+                        type="button"
+                        className="talent-price-btn is-maxed"
+                        disabled
+                        aria-label={`${talent.title} upgrade, Maxed`}
+                      >
+                        MAX
+                      </button>
+                    ) : (
+                      <div className="talent-actions-dual">
+                        <button
+                          type="button"
+                          className={`talent-price-btn ${affordableCoins ? 'is-affordable' : 'is-unaffordable'}`}
+                          disabled={!affordableCoins}
+                          onClick={() => onUpgrade(talent.id, false)}
+                          aria-label={`${talent.title} upgrade with Coins, Cost ${cost} coins`}
+                          title="Upgrade with Gold Coins"
+                        >
+                          <Coins size={13} className="talent-price-btn__coin" />
+                          <span className="talent-price-btn__text">{cost}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`talent-price-btn talent-price-btn--gem ${affordableGems ? 'is-affordable' : 'is-unaffordable'}`}
+                          disabled={!affordableGems}
+                          onClick={() => onUpgrade(talent.id, true)}
+                          aria-label={`${talent.title} upgrade with Diamonds, Cost ${gemCost} gems`}
+                          title="Forge immediately with Diamonds"
+                        >
+                          <Gem size={13} className="talent-price-btn__coin" />
+                          <span className="talent-price-btn__text">{gemCost}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

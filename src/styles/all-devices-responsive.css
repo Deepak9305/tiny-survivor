@@ -1,0 +1,777 @@
+/*
+ * all-devices-responsive.css
+ * Tiny Survivor — Universal Cross-Device Responsive Overhaul
+ * Supports: Mobile Portrait, Mobile Landscape (compact/notch), Tablets (Portrait & Landscape), Desktop & Ultrawide
+ */
+
+/* =========================================================================
+   1. GLOBAL VIEWPORT & SAFE AREA VARIABLES
+   ========================================================================= */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --app-max-w: 1560px;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom sleek scrollbar for dark fantasy UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(4, 12, 22, 0.6);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.65);
+}
+
+/* Ensure all interactive elements have comfortable touch areas */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* =========================================================================
+   2. DESKTOP & ULTRAWIDE (min-width: 1200px)
+   ========================================================================= */
+@media (min-width: 1200px) {
+  /* Center menu screens on wide monitors */
+  .home-landscape-screen,
+  .hero-deck-screen,
+  .meta-screen,
+  .campaign-map-screen,
+  .result-overlay-landscape,
+  .stage-clear-landscape-screen {
+    max-width: var(--app-max-w);
+    margin: 0 auto;
+    position: relative;
+    box-shadow: 0 0 70px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Center the HUD on wide monitors while keeping arena full-bleed */
+  .game-ui .game-topbar {
+    max-width: 1380px;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
+  }
+
+  .game-flow-hud {
+    max-width: 440px;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
+  }
+
+  /* Keyboard shortcut hint badges */
+  .desktop-key-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 5px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-left: 6px;
+    pointer-events: none;
+  }
+
+  /* Desktop hover enhancements */
+  .nav-rail__btn:hover:not(.is-active) {
+    background: rgba(56, 189, 248, 0.08);
+    transform: translateX(3px);
+  }
+
+  .home-battle-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 10px 32px rgba(245, 158, 11, 0.45);
+  }
+
+  .shop-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(56, 189, 248, 0.55);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .talent-card:hover:not(.is-maxed) {
+    transform: translateY(-2px);
+    border-color: rgba(244, 195, 78, 0.5);
+  }
+}
+
+/* =========================================================================
+   3. TABLETS (Portrait & Landscape: 601px to 1199px)
+   ========================================================================= */
+@media (min-width: 601px) and (max-width: 1199px) {
+  /* Tablet Landscape */
+  @media (orientation: landscape) {
+    .home-landscape-screen {
+      --home-rail-w: 62px;
+      --home-gap: 10px;
+    }
+    .hero-deck-layout {
+      grid-template-columns: minmax(280px, 42%) minmax(0, 1fr);
+      gap: 10px;
+    }
+    .talents-body-container {
+      grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+    }
+    .talents-grid-section {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .shop-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+  }
+
+  /* Tablet Portrait (e.g. iPad portrait 768px - 1024px) */
+  @media (orientation: portrait) {
+    /* Home Screen Tablet Portrait */
+    .home-landscape-screen {
+      overflow-y: auto;
+    }
+    .home-landscape-screen > .nav-rail {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: calc(64px + var(--sab));
+      padding-bottom: var(--sab);
+      flex-direction: row;
+      justify-content: space-around;
+      background: rgba(4, 12, 22, 0.96);
+      border-top: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 0;
+      z-index: 50;
+    }
+    .home-landscape-screen .nav-rail__items {
+      flex-direction: row;
+      width: 100%;
+      justify-content: space-around;
+      gap: 8px;
+    }
+    .home-landscape-screen .nav-rail__btn {
+      flex: 1;
+      height: 48px;
+      min-height: 44px;
+    }
+    .home-landscape-body {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      margin: 0;
+      padding-bottom: calc(76px + var(--sab));
+      overflow-y: auto;
+    }
+    .home-brand-panel {
+      border-right: none;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.16);
+      min-height: 320px;
+    }
+    .home-brand-panel__content {
+      align-items: center;
+      text-align: center;
+      padding: 24px 20px;
+    }
+
+    /* Heroes Screen Tablet Portrait */
+    .hero-deck-layout {
+      display: flex;
+      flex-direction: column;
+      height: calc(100dvh - 54px);
+      overflow-y: auto;
+      padding: 12px;
+      gap: 14px;
+    }
+    .hero-deck-feature {
+      flex: 0 0 320px;
+      height: 320px;
+    }
+    .hero-deck-detail {
+      overflow-y: visible;
+    }
+
+    /* Upgrades Screen Tablet Portrait */
+    .talents-body-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100dvh - 54px);
+      overflow-y: auto;
+      padding: 12px;
+      gap: 14px;
+    }
+    .talents-forge-panel {
+      flex: 0 0 auto;
+      width: 100%;
+    }
+    .talents-grid-section {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      overflow-y: visible;
+      gap: 10px;
+    }
+
+    /* Settings Screen Tablet Portrait */
+    .settings-landscape-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* Stage Detail & Survival Tablet Portrait */
+    .stage-detail-landscape-grid,
+    .survival-landscape-container {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      gap: 14px;
+    }
+    .stage-landscape-art {
+      flex: 0 0 260px;
+      height: 260px;
+    }
+  }
+}
+
+/* =========================================================================
+   4. MOBILE PORTRAIT (Phones held vertically: max-width: 600px)
+   ========================================================================= */
+@media (max-width: 600px) and (orientation: portrait) {
+  /* --- HOME SCREEN ON MOBILE PORTRAIT --- */
+  .home-landscape-screen {
+    width: 100vw;
+    height: 100dvh;
+    overflow-y: auto;
+    background-position: center top !important;
+  }
+
+  /* Clean bottom navigation bar for mobile portrait */
+  .home-landscape-screen > .nav-rail,
+  .nav-rail {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: calc(56px + var(--sab)) !important;
+    padding: 4px 6px var(--sab) !important;
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    background: rgba(3, 10, 18, 0.98) !important;
+    border-top: 1px solid rgba(56, 189, 248, 0.28) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6) !important;
+    z-index: 90 !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  .home-landscape-screen .nav-rail__items,
+  .nav-rail__items {
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: space-around !important;
+    gap: 4px !important;
+  }
+
+  .home-landscape-screen .nav-rail__btn,
+  .nav-rail__btn {
+    flex: 1 !important;
+    min-height: 46px !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+    padding: 3px 0 !important;
+    gap: 2px !important;
+  }
+
+  .nav-rail__label {
+    font-size: 8px !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  .home-landscape-body {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: max(8px, var(--sat)) 10px calc(66px + var(--sab)) !important;
+    overflow-y: auto !important;
+    min-height: 100% !important;
+  }
+
+  .home-brand-panel {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.18) !important;
+    padding-bottom: 12px !important;
+    min-height: auto !important;
+  }
+
+  .home-brand-panel__content {
+    align-items: center !important;
+    text-align: center !important;
+    padding: 10px 8px !important;
+    gap: 10px !important;
+  }
+
+  .home-brand-panel__logo-box {
+    align-items: center !important;
+  }
+
+  .home-brand-panel__subtag {
+    font-size: 8.5px !important;
+    text-align: center !important;
+  }
+
+  .home-world-pill {
+    padding: 6px 14px !important;
+    font-size: 10px !important;
+    border-radius: 999px !important;
+  }
+
+  .home-action-panel {
+    padding: 12px 0 0 !important;
+    gap: 12px !important;
+  }
+
+  .home-action-panel__header {
+    width: 100% !important;
+  }
+
+  .home-stage-card {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .home-battle-btn {
+    min-height: 52px !important;
+    font-size: 15px !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  /* --- HEROES SCREEN ON MOBILE PORTRAIT --- */
+  .hero-deck-screen {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .hero-deck-header {
+    padding: max(8px, var(--sat)) 12px 8px;
+    height: auto;
+    min-height: 48px;
+  }
+
+  .hero-deck-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100dvh - 54px - var(--sat)) !important;
+    overflow-y: auto !important;
+    padding: 8px 10px max(12px, var(--sab)) !important;
+    gap: 12px !important;
+  }
+
+  .hero-deck-feature {
+    flex: 0 0 250px !important;
+    height: 250px !important;
+    width: 100% !important;
+  }
+
+  .hero-deck-feature__model-stage {
+    height: 100% !important;
+  }
+
+  .hero-deck-detail {
+    overflow-y: visible !important;
+    gap: 10px !important;
+  }
+
+  .hero-deck-slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .hero-deck-roster-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .hero-deck-pill-btn {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-height: 44px !important;
+  }
+
+  /* --- SHOP SCREEN ON MOBILE PORTRAIT --- */
+  .shop-landscape-container {
+    padding: 6px 10px max(10px, var(--sab)) !important;
+    gap: 8px !important;
+    height: calc(100dvh - 50px - var(--sat)) !important;
+  }
+
+  .shop-tabs-bar {
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    padding: 4px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shop-tab-btn {
+    min-width: max-content !important;
+    min-height: 42px !important;
+    padding: 0 14px !important;
+    font-size: 11px !important;
+  }
+
+  .shop-grid {
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .shop-card {
+    padding: 8px !important;
+  }
+
+  .shop-buy-btn,
+  .shop-owned-tag {
+    min-height: 44px !important;
+    font-size: 10px !important;
+  }
+
+  /* --- UPGRADES / TALENTS SCREEN ON MOBILE PORTRAIT --- */
+  .talents-body-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100dvh - 52px - var(--sat)) !important;
+    overflow-y: auto !important;
+    padding: 8px 10px max(12px, var(--sab)) !important;
+    gap: 12px !important;
+  }
+
+  .talents-forge-panel {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+  }
+
+  .talents-forge-panel__inner {
+    padding: 12px !important;
+  }
+
+  .talents-forge-art-box {
+    height: 90px !important;
+  }
+
+  .talents-grid-section {
+    grid-template-columns: 1fr !important;
+    overflow-y: visible !important;
+    gap: 8px !important;
+  }
+
+  .talent-card {
+    min-height: 80px !important;
+    padding: 10px !important;
+  }
+
+  /* --- BESTIARY ON MOBILE PORTRAIT --- */
+  .codex-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100dvh - 52px - var(--sat)) !important;
+    overflow-y: auto !important;
+    padding: 8px 10px max(12px, var(--sab)) !important;
+    gap: 10px !important;
+  }
+
+  .codex-feature {
+    flex: 0 0 240px !important;
+    height: 240px !important;
+  }
+
+  .codex-filter-bar {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    padding: 4px 0 !important;
+  }
+
+  .codex-grid-section {
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important;
+    overflow-y: visible !important;
+    gap: 8px !important;
+  }
+
+  /* --- SETTINGS SCREEN ON MOBILE PORTRAIT --- */
+  .settings-landscape-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 8px 10px max(14px, var(--sab)) !important;
+    overflow-y: auto !important;
+    height: calc(100dvh - 52px - var(--sat)) !important;
+  }
+
+  /* --- MISSIONS SCREEN ON MOBILE PORTRAIT --- */
+  .missions-body-container {
+    padding: 8px 10px max(14px, var(--sab)) !important;
+    height: calc(100dvh - 52px - var(--sat)) !important;
+    overflow-y: auto !important;
+    gap: 10px !important;
+  }
+
+  .missions-top-banner__content {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .mission-card {
+    padding: 10px !important;
+  }
+
+  .mission-claim-btn {
+    min-height: 44px !important;
+    min-width: 100px !important;
+  }
+
+  /* --- WORLD MAP ON MOBILE PORTRAIT --- */
+  .campaign-map-frame {
+    height: calc(100dvh - 52px - var(--sat)) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .campaign-map-title {
+    top: 10px !important;
+    left: 12px !important;
+  }
+
+  .campaign-map-title h1 {
+    font-size: 20px !important;
+  }
+
+  .campaign-map-route {
+    min-width: 680px !important;
+    height: 100% !important;
+  }
+
+  /* --- RESULTS & GAME OVER ON MOBILE PORTRAIT --- */
+  .run-over-container-landscape,
+  .stage-clear-landscape-container {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 94dvh !important;
+    overflow-y: auto !important;
+    padding: 14px 12px !important;
+    gap: 12px !important;
+  }
+
+  .run-over-left-diorama,
+  .stage-clear-left-victory {
+    flex: 0 0 auto !important;
+    padding: 10px !important;
+    text-align: center !important;
+  }
+
+  .run-over-right-stats,
+  .stage-clear-right-stats {
+    flex: 1 1 auto !important;
+    overflow-y: visible !important;
+  }
+
+  .run-over-stats-grid,
+  .stage-clear-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .run-over-actions-row,
+  .stage-clear-actions-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .run-over-actions-row button,
+  .stage-clear-actions-row button {
+    width: 100% !important;
+    min-height: 48px !important;
+  }
+}
+
+/* =========================================================================
+   5. COMPACT MOBILE LANDSCAPE (Short phones: height <= 450px)
+   ========================================================================= */
+@media (orientation: landscape) and (max-height: 450px) {
+  /* Safe area padding */
+  .game-topbar {
+    padding: max(4px, var(--sat)) max(10px, var(--sar)) 0 max(10px, var(--sal)) !important;
+    gap: 6px !important;
+  }
+
+  .game-stage-time {
+    font-size: 16px !important;
+  }
+
+  .game-health__track {
+    height: 16px !important;
+  }
+
+  .game-health__value {
+    font-size: 9px !important;
+  }
+
+  .game-pause {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  /* Level up cards fit cleanly without vertical scrolling */
+  .level-up-modal {
+    padding: 4px 8px 6px !important;
+    max-height: 98dvh !important;
+    width: min(96vw, 860px) !important;
+  }
+
+  .level-up-heading {
+    font-size: 16px !important;
+  }
+
+  .level-up-choices-grid {
+    gap: 6px !important;
+  }
+
+  .power-card {
+    padding: 5px !important;
+    gap: 3px !important;
+    border-radius: 8px !important;
+  }
+
+  .power-card__medallion {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .power-medallion-inner svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .power-card__title {
+    font-size: 11px !important;
+  }
+
+  .power-card__desc {
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+  }
+
+  .power-card__next {
+    font-size: 7.5px !important;
+  }
+
+  .power-select-btn {
+    min-height: 28px !important;
+    font-size: 9px !important;
+    padding: 3px 0 !important;
+  }
+
+  .level-up-footer-actions {
+    margin-top: 4px !important;
+    gap: 8px !important;
+  }
+
+  .level-up-action-btn {
+    min-height: 28px !important;
+    font-size: 9px !important;
+    padding: 3px 10px !important;
+  }
+
+  /* Pause Overlay in Compact Landscape */
+  .pause-modal-card {
+    max-height: 96dvh !important;
+    padding: 8px 12px !important;
+  }
+
+  .pause-panes-nav {
+    min-height: 34px !important;
+  }
+
+  .pause-tab-btn {
+    min-height: 30px !important;
+    font-size: 9px !important;
+  }
+
+  /* Game Over & Stage Clear Compact Landscape */
+  .run-over-container-landscape,
+  .stage-clear-landscape-container {
+    max-height: 96dvh !important;
+    padding: 6px 12px !important;
+  }
+
+  .run-over-left-diorama,
+  .stage-clear-left-victory {
+    padding: 6px !important;
+  }
+
+  .run-over-title,
+  .stage-clear-title {
+    font-size: 18px !important;
+  }
+
+  .run-over-stats-grid,
+  .stage-clear-stats-grid {
+    gap: 5px !important;
+  }
+
+  .run-over-stat-card,
+  .stage-clear-stat-card {
+    padding: 5px 8px !important;
+  }
+
+  .run-over-actions-row button,
+  .stage-clear-actions-row button {
+    min-height: 38px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* =========================================================================
+   6. SAFE AREA NOTCH & DYNAMIC ISLAND HANDLING
+   ========================================================================= */
+@supports (padding: max(0px)) {
+  .home-landscape-screen,
+  .meta-screen,
+  .hero-deck-screen,
+  .campaign-map-screen,
+  .game-screen {
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+  }
+}

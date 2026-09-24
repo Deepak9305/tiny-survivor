@@ -4,11 +4,11 @@ import { getBossDefinition } from '../data/bosses';
 import { getMonsterDefinition } from '../data/monsters';
 import { generateUpgradeChoices } from '../data/upgrades';
 import { resolvePlayerStats, type ResolvedPlayerStats } from '../data/statsResolver';
-import type { BossAttack, BossId, DamageType, EnemyKind, GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId, AbilityId } from '../types';
+import type { BossAttack, BossId, ChestReward, DamageType, EnemyKind, GameSnapshot, RunMode, RunResult, SaveData, StageDefinition, UpgradeChoice, WeaponId, AbilityId } from '../types';
 import { ALL_ABILITY_IDS } from '../data/abilities';
 import { isWorldCleared, getSurvivalEnemyPool } from '../data/stages';
 import { HapticsService } from '../services/hapticsService';
-import { audioService } from '../services/audioService';
+import { audioService, type SfxId } from '../services/audioService';
 import { AbilitySystem } from '../game/systems/AbilitySystem';
 import { BossSystem } from '../game/systems/BossSystem';
 import { calculateDamage } from '../game/systems/DamageSystem';
@@ -24,6 +24,11 @@ import { Boss3D } from './entities/Boss3D';
 import { BossEcho3D } from './entities/BossEcho3D';
 import { Projectile3D } from './entities/Projectile3D';
 import { XPPickup3D } from './entities/XPPickup3D';
+import { DiamondPickup3D } from './entities/DiamondPickup3D';
+import { ArenaRune3D, type ArenaRuneKind } from './entities/ArenaRune3D';
+import { TreasureGoblin3D } from './entities/TreasureGoblin3D';
+import { TreasureChest3D } from './entities/TreasureChest3D';
+import { announceCombatWave, setCombatFlowState, getCombatFlowState } from '../game/systems/CombatTargeting';
 import { InputController } from './input/InputController';
 import { CameraController } from './scene/CameraController';
 import { createArena } from './scene/Arena3D';
@@ -106,6 +111,27 @@ export class SurvivorGame3D {
   private primaryShotCounter = 0;
   private survivalBossTimer = 240;
   private survivalEscalationTimer = 60;
+  private readonly diamondPickups: DiamondPickup3D[] = [];
+  private readonly arenaRunes: ArenaRune3D[] = [];
+  private readonly activeChests: TreasureChest3D[] = [];
+  private activeTreasureGoblin?: TreasureGoblin3D;
+  private collectedDiamonds = 0;
+  private rerollsRemaining = 2;
+  private runeSpawnTimer = 20.0;
+  private goblinSpawnTimer = 34.0;
+  private bloodMoonTimer = 70.0;
+  private isBloodMoonActive = false;
+  private bloodMoonRemaining = 0;
+  private meteorShowerTimer = 110.0;
+  private isMeteorShowerActive = false;
+  private meteorShowerRemaining = 0;
+  private nextMeteorDropTimer = 0;
+  private recentKillTimestamps: number[] = [];
+  private lastAnnouncedCombo = 0;
+  private hitStopFrames = 0;
+  private hasteBuffTimer = 0;
+  private readonly dashedEnemiesThisDash = new Set<string>();
+  private overdriveAuraTimer = 0;
 
   constructor({ parent, stage, save, callbacks, mode = 'campaign' }: Game3DOptions) {
     this.parent = parent;
@@ -118,7 +144,11 @@ export class SurvivorGame3D {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.16;
+    if (!this.lowPerformanceMode) {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.lowPerformanceMode ? 1 : 1.5));
     this.renderer.setClearColor(theme.background, 1);
     this.renderer.domElement.className = 'three-canvas';
@@ -141,7 +171,8 @@ export class SurvivorGame3D {
         const ids: AbilityId[] = ['fireball', 'freeze', 'heal', 'arcane-beam'];
         const abilityId = ids[slot - 1];
         if (abilityId) this.activateAbility(abilityId);
-      }
+      },
+      () => this.triggerPlayerDash()
     );
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.parent);
@@ -161,6 +192,17 @@ export class SurvivorGame3D {
   setMovementVector(x: number, y: number): void { this.input.setMovementVector(x, y); }
   setAimVector(x: number, y: number): void { this.input.setAimVector(x, y); }
 
+  /** Called by the UI dash button and keyboard/mouse (Space, Shift, RightClick). */
+  triggerPlayerDash(): boolean {
+    if (this.isRunPaused || this.isFinished || this.levelUpOpen || !this.player) return false;
+    const didDash = this.player.triggerDash((x, y, dirX, dirY) => {
+      const color = 0x38bdf8;
+      this.effects.dashStreak(x, y, dirX, dirY, color);
+    });
+    if (didDash) this.cameraController.triggerShake(0.06, 0.12);
+    return didDash;
+  }
+
   activateAbility(id: AbilityId): boolean {
     if (this.isRunPaused || this.isFinished || this.levelUpOpen) return false;
     const aim = this.input.getAimVector();
@@ -174,7 +216,7 @@ export class SurvivorGame3D {
     if (!this.levelUpOpen || this.isFinished) return;
     if (ALL_ABILITY_IDS.includes(id as AbilityId)) {
       this.abilitySystem.upgradeAbility(id as AbilityId);
-    } else if (id in this.weaponSystem.getLevels() || ['magic-bolt', 'orbiting-blades', 'chain-lightning'].includes(id)) {
+    } else if (id in this.weaponSystem.getLevels() || ['magic-bolt', 'orbiting-blades', 'chain-lightning', 'fire-orb'].includes(id)) {
       const weaponId = id as WeaponId;
       if (this.weaponSystem.getWeaponLevel(weaponId) < 5) this.weaponSystem.upgradeWeapon(weaponId);
     } else {
@@ -193,6 +235,80 @@ export class SurvivorGame3D {
     audioService.restoreMusicVolume();
     this.isRunPaused = false;
     this.runController.resumeRun();
+    this.callbacks.onPaused(false);
+    this.callbacks.onSnapshot(this.getSnapshot());
+  }
+
+  rerollUpgrades(): void {
+    if (this.rerollsRemaining <= 0 || !this.levelUpOpen || this.isFinished) return;
+    this.rerollsRemaining -= 1;
+    audioService.playSFX('reroll', { pitch: 1.0 });
+    const choices = generateUpgradeChoices(
+      this.weaponSystem.getLevels(),
+      this.passiveLevels,
+      this.abilitySystem.getLevels(),
+      this.save.unlockedAbilities,
+      3
+    );
+    this.callbacks.onLevelUp(choices);
+    this.callbacks.onSnapshot(this.getSnapshot());
+  }
+
+  skipUpgrade(): void {
+    if (!this.levelUpOpen || this.isFinished) return;
+    this.save.coins += 60;
+    this.player.stats.currentHP = Math.min(this.player.stats.maxHP, this.player.stats.currentHP + 30);
+    this.effects.burst(this.player.x, this.player.y, 0x22c55e);
+    this.spawnDamageNumber(this.player.x, this.player.y - 35, 30, false, 0x22c55e);
+    audioService.playSFX('skip-heal', { pitch: 1.0 });
+
+    this.xpSystem.processQueuedLevelUps();
+    this.levelUpOpen = false;
+    if (this.xpSystem.checkLevelUp()) {
+      this.levelUpOpen = true;
+      audioService.playSFX('upgrade');
+      this.callbacks.onLevelUp(
+        generateUpgradeChoices(
+          this.weaponSystem.getLevels(),
+          this.passiveLevels,
+          this.abilitySystem.getLevels(),
+          this.save.unlockedAbilities,
+          3
+        )
+      );
+      return;
+    }
+    audioService.restoreMusicVolume();
+    this.isRunPaused = false;
+    this.runController.resumeRun();
+    this.callbacks.onPaused(false);
+    this.callbacks.onSnapshot(this.getSnapshot());
+  }
+
+  claimChestReward(reward: ChestReward): void {
+    for (const up of reward.upgrades) {
+      if (ALL_ABILITY_IDS.includes(up.id as AbilityId)) {
+        this.abilitySystem.upgradeAbility(up.id as AbilityId);
+      } else if (
+        up.id in this.weaponSystem.getLevels() ||
+        ['magic-bolt', 'orbiting-blades', 'chain-lightning', 'fire-orb'].includes(up.id)
+      ) {
+        this.weaponSystem.upgradeWeapon(up.id as WeaponId);
+      } else {
+        const level = Math.min(5, (this.passiveLevels[up.id] ?? 0) + 1);
+        this.passiveLevels[up.id] = level;
+        this.applyPassive(up.id, level);
+      }
+    }
+
+    this.save.coins += reward.coins;
+    this.collectedDiamonds += reward.gems;
+
+    this.effects.burst(this.player.x, this.player.y, 0xfbbf24);
+    this.effects.levelUp(this.player.x, this.player.y);
+    audioService.playSFX('upgrade', { pitch: 1.2 });
+
+    this.resumeRun();
     this.callbacks.onPaused(false);
     this.callbacks.onSnapshot(this.getSnapshot());
   }
@@ -277,6 +393,12 @@ export class SurvivorGame3D {
         cooldownMultiplier: this.player.stats.cooldownMultiplier,
       } : undefined,
       boss: bossState ? { name: bossState.name, hp: bossState.hp, maxHp: bossState.maxHp, phase: bossState.phase } : undefined,
+      dashCooldownRatio: this.player ? this.player.getDashCooldownRatio() : 0,
+      isDashing: this.player ? this.player.isDashing() : false,
+      gems: this.collectedDiamonds,
+      comboStreak: this.recentKillTimestamps.length,
+      bloodMoonActive: this.isBloodMoonActive,
+      rerollsRemaining: this.rerollsRemaining,
     };
   }
 
@@ -295,6 +417,11 @@ export class SurvivorGame3D {
     for (const projectile of this.projectiles) projectile.destroy();
     for (const projectile of this.enemyProjectiles) projectile.destroy();
     for (const pickup of this.xpPickups) pickup.destroy();
+    for (const diamond of this.diamondPickups) diamond.destroy();
+    for (const rune of this.arenaRunes) rune.destroy();
+    for (const chest of this.activeChests) chest.destroy();
+    this.activeChests.length = 0;
+    this.activeTreasureGoblin?.destroy();
     this.boss?.destroy();
     this.currentBossEcho?.destroy();
     this.queuedEcho = undefined;
@@ -310,7 +437,11 @@ export class SurvivorGame3D {
   private readonly frame = (): void => {
     if (this.destroyed) return;
     const delta = Math.min(0.034, Math.max(0.001, this.clock.getDelta()));
-    if (!this.isRunPaused && !this.isFinished) this.update(delta);
+    if (this.hitStopFrames > 0) {
+      this.hitStopFrames -= 1;
+    } else if (!this.isRunPaused && !this.isFinished) {
+      this.update(delta);
+    }
     if (this.isFinished && this.boss) this.boss.update(delta);
     this.effects.update(delta);
     this.telegraphs.update(delta);
@@ -382,13 +513,24 @@ export class SurvivorGame3D {
       findTargetsInRadius: (x, y, radius) =>
         this.spatialGrid.queryRadius(x, y, radius).map((enemy) => ({ id: enemy.id, x: enemy.x, y: enemy.y })),
       fireProjectile: (spec) => this.fireProjectile(spec),
-      dealAreaDamage: (x, y, radius, damage, color, damageType) =>
-        this.dealAreaDamage(x, y, radius, damage, color, damageType),
+      dealAreaDamage: (x, y, radius, damage, color, damageType, maxTargets, knockbackForce) =>
+        this.dealAreaDamage(x, y, radius, damage, color, damageType, maxTargets, knockbackForce),
       dealOrbitDamage: (x, y, radius, damage, damageType) =>
         this.dealOrbitDamage(x, y, radius, damage, damageType),
       getPrimaryDamageMultiplier: () => this.player.stats.damageMultiplier * this.resolvedStats.primaryDamageMultiplier,
       getAutoWeaponDamageMultiplier: () => this.player.stats.damageMultiplier * this.resolvedStats.autoWeaponDamageMultiplier,
       getCooldownMultiplier: () => (this.player.stats.cooldownMultiplier * this.resolvedStats.primaryCooldownMultiplier) / this.resolvedStats.primaryFireRateMultiplier,
+      triggerMeleeSwing: (originX, originY, dirX, dirY, reach, color, empowered) => {
+        this.player.triggerAttack();
+        const heroId = this.save.selectedHero ?? 'shadow';
+        this.effects.heroMeleeStrike(heroId, originX, originY, dirX, dirY, reach, color, empowered);
+        const sfx =
+          heroId === 'warrior' ? 'sword-cleave' :
+          heroId === 'monk' ? 'chi-punch' :
+          heroId === 'gunslinger' ? 'shotgun-blast' : 'scythe-slash';
+        audioService.playSFX(sfx, { throttle: 0.08 });
+        this.cameraController.triggerShake(empowered ? 0.045 : 0.025, 0.09);
+      },
     });
     this.abilitySystem = new AbilitySystem({
       onFireball: (dirX, dirY, level) => this.triggerFireball(dirX, dirY, level),
@@ -410,6 +552,7 @@ export class SurvivorGame3D {
     this.abilitySystem.setUnlockedAbilities(this.save.unlockedAbilities || []);
     this.enemySpawner = new EnemySpawner({
       getPlayerPosition: () => this.player.getPosition(),
+      getPlayerVelocity: () => this.player.getVelocity(),
       getWorldSize: () => ({ width: WORLD_WIDTH, height: WORLD_HEIGHT }),
       getAliveCount: () => this.enemies.length,
       spawnEnemy: (type, x, y, elite) => this.spawnEnemy(type, x, y, elite),
@@ -462,12 +605,86 @@ export class SurvivorGame3D {
     this.spatialGrid.clear();
     for (const enemy of this.enemies) this.spatialGrid.insert(enemy);
     if (this.isFinished) return;
+
+    // Tactical Dash Strike & Projectile Deflection
+    if (this.player.isDashing()) {
+      const pX = this.player.x;
+      const pY = this.player.y;
+      const flow = getCombatFlowState();
+
+      // Dash Strike slicing damage through enemy contacts
+      const nearbyEnemies = this.spatialGrid.queryRadius(pX, pY, 36);
+      for (const enemy of nearbyEnemies) {
+        if (!this.dashedEnemiesThisDash.has(enemy.id)) {
+          this.dashedEnemiesThisDash.add(enemy.id);
+          const dashDamage = Math.round(
+            38 * this.player.stats.damageMultiplier * (flow.overdrive ? 1.5 : 1.0)
+          );
+          this.damageEnemy(enemy, dashDamage, 0x38bdf8, 'physical', pX, pY);
+          this.effects.ring(enemy.x, enemy.y, 0.42, 0x38bdf8);
+          this.effects.burst(enemy.x, enemy.y, 0x7dd3fc, false);
+          audioService.playSFX('hit', { pitch: 1.3, throttle: 0.08 });
+        }
+      }
+
+      // Dash Projectile Deflect & Cleanse
+      for (let i = this.enemyProjectiles.length - 1; i >= 0; i--) {
+        const proj = this.enemyProjectiles[i];
+        const dist = Math.hypot(pX - proj.x, pY - proj.y);
+        if (dist < 34) {
+          proj.destroy();
+          this.enemyProjectiles.splice(i, 1);
+          this.effects.ring(proj.x, proj.y, 0.55, 0x67e8f9);
+          this.effects.burst(proj.x, proj.y, 0xffffff, true);
+          this.cameraController.triggerShake(0.04, 0.1);
+          audioService.playSFX('dash', { pitch: 1.45, throttle: 0.1 });
+          this.weaponSystem.onPrimaryHit(pX, pY);
+        }
+      }
+    } else {
+      this.dashedEnemiesThisDash.clear();
+    }
+
+    // Overdrive Mode Active Surges & Super Magnet
+    const flow = getCombatFlowState();
+    if (flow.overdrive) {
+      this.overdriveAuraTimer -= delta;
+      if (this.overdriveAuraTimer <= 0) {
+        this.overdriveAuraTimer = 0.75;
+        const pX = this.player.x;
+        const pY = this.player.y;
+        this.effects.ring(pX, pY, 2.2, 0xffd166);
+        this.effects.burst(pX, pY, 0xffe277, false);
+        audioService.playSFX('combo-stinger', { pitch: 1.25, volume: 0.7, throttle: 0.3 });
+        this.dealAreaDamage(
+          pX,
+          pY,
+          85,
+          32 * this.player.stats.damageMultiplier,
+          0xffd166,
+          'arcane'
+        );
+      }
+      for (const xp of this.xpPickups) {
+        const dist = Math.hypot(this.player.x - xp.x, this.player.y - xp.y);
+        if (dist < 260) {
+          xp.speed = Math.max(xp.speed, 620);
+        }
+      }
+    } else {
+      this.overdriveAuraTimer = 0;
+    }
+
     this.lastLightningPoint = undefined;
     this.weaponSystem.update(delta);
     this.abilitySystem.update(delta, this.isRunPaused || this.levelUpOpen);
     this.updateProjectiles(delta);
     this.updateEnemyProjectiles(delta);
     this.updatePickups(delta);
+    this.updateDiamonds(delta);
+    this.updateArenaRunes(delta);
+    this.updateChests(delta);
+    this.updateDynamicEvents(delta);
     this.updateOrbitVisuals();
 
     // Survival Mode escalation & periodic bosses
@@ -557,34 +774,49 @@ export class SurvivorGame3D {
       }
     }
 
-    for (let index = this.enemies.length - 1; index >= 0; index -= 1) {
-      const enemy = this.enemies[index];
-
-      // Inexpensive pairwise local separation against nearest neighbors
-      const neighbors = this.spatialGrid.queryRadius(enemy.x, enemy.y, enemy.radius * 2.1);
+    // High-performance Swarm Dispersion Pass:
+    // Prevents enemy clumping and spreads the swarm into an encircling net around player
+    for (let i = 0; i < this.enemies.length; i += 1) {
+      const enemy = this.enemies[i];
+      const sepRadius = Math.max(36, enemy.radius * 2.4);
+      const neighbors = this.spatialGrid.queryRadius(enemy.x, enemy.y, sepRadius);
+      let pushX = 0;
+      let pushY = 0;
       for (let n = 0; n < neighbors.length; n += 1) {
         const other = neighbors[n];
         if (other !== enemy) {
-          const sepX = enemy.x - other.x;
-          const sepY = enemy.y - other.y;
-          const distSq = sepX * sepX + sepY * sepY;
-          const minDist = enemy.radius + other.radius;
-          if (distSq > 0.001 && distSq < minDist * minDist) {
+          const dx = enemy.x - other.x;
+          const dy = enemy.y - other.y;
+          const distSq = dx * dx + dy * dy;
+          const idealDist = enemy.radius + other.radius + 18;
+          if (distSq > 0.001 && distSq < idealDist * idealDist) {
             const dist = Math.sqrt(distSq);
-            const push = (minDist - dist) * 0.45 * 16 * delta;
-            enemy.x += (sepX / dist) * push;
-            enemy.y += (sepY / dist) * push;
+            const factor = (idealDist - dist) / idealDist;
+            const force = factor * 110;
+            pushX += (dx / dist) * force;
+            pushY += (dy / dist) * force;
           }
         }
       }
+      if (pushX !== 0 || pushY !== 0) {
+        enemy.x += pushX * delta;
+        enemy.y += pushY * delta;
+      }
+    }
+
+    for (let index = this.enemies.length - 1; index >= 0; index -= 1) {
+      const enemy = this.enemies[index];
 
       // Execute combat state machine and receive any emitted attack event
+      const playerVel = this.player.getVelocity();
       const attackEvent = enemy.update(
         playerX,
         playerY,
         delta,
         this.gameTime,
-        () => highThreatActiveCount < 3
+        () => highThreatActiveCount < 3,
+        playerVel.x,
+        playerVel.y
       );
 
       if (attackEvent) {
@@ -602,11 +834,12 @@ export class SurvivorGame3D {
             attackEvent.color
           );
         } else if (attackEvent.type === 'explosion') {
+          // Chain reaction: imp explosions deal amplified damage to surrounding hordes!
           this.dealAreaDamage(
             attackEvent.originX,
             attackEvent.originY,
-            attackEvent.radius,
-            attackEvent.damage,
+            attackEvent.radius * 1.15,
+            Math.max(attackEvent.damage * 4.2, 85 * this.player.stats.damageMultiplier),
             attackEvent.color,
             'fire'
           );
@@ -627,7 +860,7 @@ export class SurvivorGame3D {
             }
           }
           this.removeEnemy(enemy, false);
-          this.onEnemyKilled(enemy.kind, enemy.elite);
+          this.onEnemyKilled(enemy.kind, enemy.elite, enemy.x, enemy.y);
         } else {
           // Melee, dive, leap
           const hitDist = Math.hypot(playerX - attackEvent.targetX, playerY - attackEvent.targetY);
@@ -656,7 +889,9 @@ export class SurvivorGame3D {
     }
   }
 
-  private getPlayerDamage(amount: number): number { return Math.max(1, amount * 0.68 * (1 - Math.min(0.75, this.player.stats.armor))); }
+  private getPlayerDamage(amount: number): number {
+    return Math.max(1, Math.round(amount * 0.88 * (1 - Math.min(0.70, this.player.stats.armor))));
+  }
 
   private spawnEnemy(type: EnemyKind, x: number, y: number, elite: boolean): void {
     this.encounteredEnemies.add(type);
@@ -664,12 +899,12 @@ export class SurvivorGame3D {
     let damageMultiplier: number;
     if (this.mode === 'survival') {
       const minutes = this.gameTime / 60;
-      hpMultiplier = 1 + minutes * 0.16;
-      damageMultiplier = 1 + minutes * 0.11;
+      hpMultiplier = 1 + minutes * 0.28;
+      damageMultiplier = 1 + minutes * 0.18;
     } else {
       const progress = Math.min(1, this.gameTime / Math.max(1, this.stage.duration));
-      hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.96 + progress * 0.16);
-      damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.96 + progress * 0.12);
+      hpMultiplier = this.stage.difficulty.enemyHpMultiplier * (0.95 + progress * 0.45);
+      damageMultiplier = this.stage.difficulty.enemyDamageMultiplier * (0.95 + progress * 0.25);
     }
     const safe = resolveSafeSpawnPosition(x, y, 16, this.stage.worldId);
     const enemy = new Enemy3D(this.actors, type, safe.x, safe.y, this.resources, elite, hpMultiplier, damageMultiplier, this.stage.worldId);
@@ -758,6 +993,24 @@ export class SurvivorGame3D {
       }
     }
 
+    if (this.activeTreasureGoblin && !this.activeTreasureGoblin.isDead && !this.activeTreasureGoblin.hasEscaped) {
+      const dx = this.activeTreasureGoblin.x - originX;
+      const dy = this.activeTreasureGoblin.y - originY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= maxDist * maxDist) {
+        const dist = Math.sqrt(distSq);
+        const dot = (dx / dist) * dirX + (dy / dist) * dirY;
+        const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+        if (angle <= maxAngleRad) {
+          const score = angle * 2.0 + (dist / maxDist) - 0.25;
+          if (score < bestScore) {
+            bestScore = score;
+            bestTarget = { id: 'treasure-goblin', x: this.activeTreasureGoblin.x, y: this.activeTreasureGoblin.y };
+          }
+        }
+      }
+    }
+
     return bestTarget;
   }
 
@@ -827,6 +1080,27 @@ export class SurvivorGame3D {
           projectile.canPierce();
         }
       }
+      if (!hit && this.activeTreasureGoblin && !this.activeTreasureGoblin.isDead && !this.activeTreasureGoblin.hasEscaped) {
+        const dx = projectile.x - this.activeTreasureGoblin.x;
+        const dy = projectile.y - this.activeTreasureGoblin.y;
+        if (Math.hypot(dx, dy) < this.activeTreasureGoblin.radius + projectile.spec.radius + 3) {
+          const killed = this.activeTreasureGoblin.damage(projectile.spec.damage);
+          const kx = this.activeTreasureGoblin.x - projectile.x;
+          const ky = this.activeTreasureGoblin.y - projectile.y;
+          const kDist = Math.max(1, Math.hypot(kx, ky));
+          this.activeTreasureGoblin.applyKnockback(kx / kDist, ky / kDist, 60);
+          this.spawnDamageNumber(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y - 30, Math.round(projectile.spec.damage), true, 0xfacc15);
+          this.effects.burst(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y, 0xfacc15);
+          audioService.playSFX(killed ? 'event-fanfare' : 'hit', { pitch: 1.25 });
+          if (killed) {
+            this.onGoblinDefeated(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y);
+            this.activeTreasureGoblin.destroy();
+            this.activeTreasureGoblin = undefined;
+          }
+          hit = true;
+          projectile.canPierce();
+        }
+      }
       if (!hit) {
         for (const enemy of [...this.enemies].reverse()) {
           const dx = projectile.x - enemy.x;
@@ -880,17 +1154,37 @@ export class SurvivorGame3D {
       critMultiplier: this.player.stats.critMultiplier,
     });
     const killed = enemy.damage(result.finalDamage);
+    const originX = sourceX ?? this.player.x;
+    const originY = sourceY ?? this.player.y;
+    const kx = enemy.x - originX;
+    const ky = enemy.y - originY;
+    const kDist = Math.max(1, Math.hypot(kx, ky));
+    const force = damageType === 'physical' ? 95 : 62;
+    enemy.applyKnockback(kx / kDist, ky / kDist, force * (result.critical ? 1.35 : 1.0));
+    if (result.critical || enemy.elite) {
+      this.hitStopFrames = 2;
+      this.cameraController.triggerShake(result.critical ? 0.055 : 0.12, 0.14);
+    }
     this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, result.critical ? 0xffd37c : color);
     this.effects.burst(enemy.x, enemy.y, result.critical ? 0xffd37c : color, result.critical);
     audioService.playSFX(killed ? 'death' : 'hit', { pitch: result.critical ? 1.2 : 1, throttle: killed ? 0.05 : 0.08 });
     if (killed) {
       this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
       this.removeEnemy(enemy, true);
-      this.onEnemyKilled(enemy.kind, enemy.elite);
+      this.onEnemyKilled(enemy.kind, enemy.elite, enemy.x, enemy.y);
     }
   }
 
-  private dealAreaDamage(x: number, y: number, radius: number, damage: number, color: number, damageType: DamageType): void {
+  private dealAreaDamage(
+    x: number,
+    y: number,
+    radius: number,
+    damage: number,
+    color: number,
+    damageType: DamageType,
+    maxTargets?: number,
+    knockbackForceOverride?: number
+  ): void {
     if (color === 0x9f8cff) {
       const isFirstChainHit = !this.lastLightningPoint;
       const from = this.lastLightningPoint ?? this.player.getPosition();
@@ -907,19 +1201,53 @@ export class SurvivorGame3D {
       }
     }
 
-    const targets = [...this.spatialGrid.queryRadius(x, y, radius)];
+    if (this.activeTreasureGoblin && !this.activeTreasureGoblin.isDead && !this.activeTreasureGoblin.hasEscaped) {
+      const dist = Math.hypot(this.activeTreasureGoblin.x - x, this.activeTreasureGoblin.y - y);
+      if (dist <= radius + this.activeTreasureGoblin.radius) {
+        const killed = this.activeTreasureGoblin.damage(damage);
+        this.spawnDamageNumber(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y - 28, Math.round(damage), true, 0xfacc15);
+        this.effects.burst(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y, 0xfacc15);
+        if (killed) {
+          this.onGoblinDefeated(this.activeTreasureGoblin.x, this.activeTreasureGoblin.y);
+          this.activeTreasureGoblin.destroy();
+          this.activeTreasureGoblin = undefined;
+        }
+      }
+    }
+
+    const queried = [...this.spatialGrid.queryRadius(x, y, radius)];
+    if (maxTargets && queried.length > maxTargets) {
+      queried.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+    }
+    const targets = maxTargets ? queried.slice(0, maxTargets) : queried;
+
+    const defaultForce = damageType === 'physical' ? 52 : damageType === 'fire' ? 45 : 38;
+    const baseForce = knockbackForceOverride ?? defaultForce;
+
     for (const enemy of targets) {
       if (!this.enemies.includes(enemy)) continue;
       const monster = getMonsterDefinition(enemy.kind);
-      const result = calculateDamage({ baseDamage: damage, damageType, weakness: monster.weakness, resistance: monster.resistance, canCrit: true, critChance: this.player.stats.critChance, critMultiplier: this.player.stats.critMultiplier });
+      const result = calculateDamage({
+        baseDamage: damage,
+        damageType,
+        weakness: monster.weakness,
+        resistance: monster.resistance,
+        canCrit: true,
+        critChance: this.player.stats.critChance,
+        critMultiplier: this.player.stats.critMultiplier,
+      });
       if (enemy.kind === 'slime') enemy.applySlow(0.82, 1.5, this.gameTime);
       const killed = enemy.damage(result.finalDamage);
+      const kx = enemy.x - x;
+      const ky = enemy.y - y;
+      const kDist = Math.max(1, Math.hypot(kx, ky));
+      enemy.applyKnockback(kx / kDist, ky / kDist, baseForce * (result.critical ? 1.25 : 1.0));
       this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, result.finalDamage, result.critical, color);
       if (killed) {
         this.effects.enemyDeath(enemy.x, enemy.y, color, enemy.elite);
         audioService.playSFX('death', { throttle: 0.08 });
         this.removeEnemy(enemy, true);
-        this.onEnemyKilled(enemy.kind, enemy.elite);
+        this.onEnemyKilled(enemy.kind, enemy.elite, enemy.x, enemy.y);
       }
     }
   }
@@ -1097,7 +1425,8 @@ export class SurvivorGame3D {
 
   private spawnXP(x: number, y: number, value: number): void {
     if (this.xpPickups.length > 260) return;
-    const pickup = new XPPickup3D(`xp-${this.pickupSequence += 1}`, this.actors, x, y, value, this.resources);
+    const finalValue = this.isBloodMoonActive ? value * 2 : value;
+    const pickup = new XPPickup3D(`xp-${this.pickupSequence += 1}`, this.actors, x, y, finalValue, this.resources);
     this.xpPickups.push(pickup);
   }
 
@@ -1121,6 +1450,397 @@ export class SurvivorGame3D {
         void HapticsService.success(this.save.settings.haptics);
       }
     }
+  }
+
+  private spawnDiamond(x: number, y: number, value = 1): void {
+    const safe = resolveSafeSpawnPosition(x, y, 16, this.stage.worldId);
+    const diamond = new DiamondPickup3D(
+      `diamond-${this.pickupSequence += 1}`,
+      this.actors,
+      safe.x,
+      safe.y,
+      value,
+      this.resources
+    );
+    this.diamondPickups.push(diamond);
+    this.effects.burst(safe.x, safe.y, 0x38bdf8, false);
+  }
+
+  private updateDiamonds(delta: number): void {
+    const playerX = this.player.x;
+    const playerY = this.player.y;
+    for (let index = this.diamondPickups.length - 1; index >= 0; index -= 1) {
+      const diamond = this.diamondPickups[index];
+      if (!diamond.update(delta, this.gameTime, playerX, playerY, this.player.stats.pickupRadius)) continue;
+      this.collectedDiamonds += diamond.value;
+      this.effects.burst(diamond.x, diamond.y, 0x38bdf8, true);
+      this.effects.ring(diamond.x, diamond.y, 0.65, 0x38bdf8);
+      this.spawnDamageNumber(diamond.x, diamond.y - 28, diamond.value, true, 0x38bdf8);
+      audioService.playSFX('gem-chime');
+      void HapticsService.light(this.save.settings.haptics);
+      diamond.destroy();
+      this.diamondPickups.splice(index, 1);
+      this.callbacks.onSnapshot(this.getSnapshot());
+    }
+  }
+
+  private spawnArenaRune(kind?: ArenaRuneKind): void {
+    const kinds: ArenaRuneKind[] = ['bomb', 'magnet', 'freeze', 'haste'];
+    const chosenKind = kind ?? kinds[Math.floor(Math.random() * kinds.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 140 + Math.random() * 140;
+    const rawX = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * dist, 80, WORLD_WIDTH - 80);
+    const rawY = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * dist, 80, WORLD_HEIGHT - 80);
+    const safe = resolveSafeSpawnPosition(rawX, rawY, 22, this.stage.worldId);
+    const rune = new ArenaRune3D(
+      `rune-${this.pickupSequence += 1}`,
+      this.actors,
+      safe.x,
+      safe.y,
+      chosenKind,
+      this.resources
+    );
+    this.arenaRunes.push(rune);
+    this.effects.levelUp(safe.x, safe.y);
+    audioService.playSFX('rune-pickup', { pitch: 1.3, volume: 0.8 });
+  }
+
+  private updateArenaRunes(delta: number): void {
+    const playerX = this.player.x;
+    const playerY = this.player.y;
+    for (let index = this.arenaRunes.length - 1; index >= 0; index -= 1) {
+      const rune = this.arenaRunes[index];
+      const collected = rune.update(delta, this.gameTime, playerX, playerY);
+      if (collected) {
+        this.activateRune(rune);
+        rune.destroy();
+        this.arenaRunes.splice(index, 1);
+      } else if (rune.hasExpired()) {
+        rune.destroy();
+        this.arenaRunes.splice(index, 1);
+      }
+    }
+  }
+
+  spawnChest(x: number, y: number): void {
+    const id = `chest-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const chest = new TreasureChest3D(id, this.actors, x, y, this.resources);
+    this.activeChests.push(chest);
+    audioService.playSFX('chest-drop');
+    this.effects.burst(x, y, 0xfbbf24, true);
+    announceCombatWave({
+      label: 'TREASURE CHEST DROPPED! 🎁',
+      detail: 'Touch the golden chest to claim elite spoils!',
+      tone: 'elite',
+    });
+  }
+
+  private updateChests(delta: number): void {
+    const playerX = this.player.x;
+    const playerY = this.player.y;
+    for (let index = this.activeChests.length - 1; index >= 0; index -= 1) {
+      const chest = this.activeChests[index];
+      const opened = chest.update(delta, this.gameTime, playerX, playerY);
+      if (opened) {
+        this.activeChests.splice(index, 1);
+        chest.destroy();
+        this.openChest(chest);
+        break;
+      }
+    }
+  }
+
+  private openChest(chest: TreasureChest3D): void {
+    const possibleUpgrades = generateUpgradeChoices(
+      this.weaponSystem.getLevels(),
+      this.passiveLevels,
+      this.abilitySystem.getLevels(),
+      this.save.unlockedAbilities,
+      3
+    );
+
+    const count = Math.min(possibleUpgrades.length, Math.random() < 0.45 ? 2 : 1);
+    const selectedUpgrades = possibleUpgrades.slice(0, count);
+    const bonusCoins = 120 + Math.floor(Math.random() * 140);
+    const bonusGems = Math.random() < 0.6 ? 1 : 0;
+
+    const reward: ChestReward = {
+      upgrades: selectedUpgrades,
+      coins: bonusCoins,
+      gems: bonusGems,
+    };
+
+    this.isRunPaused = true;
+    this.runController.pauseRun();
+    this.callbacks.onPaused(true);
+    this.callbacks.onChestOpened?.(reward);
+  }
+
+  private activateRune(rune: ArenaRune3D): void {
+    audioService.playSFX('rune-pickup');
+    this.effects.levelUp(rune.x, rune.y);
+    this.spawnDamageNumber(rune.x, rune.y - 32, 1, true, rune.definition.color);
+    announceCombatWave({
+      label: `${rune.definition.name.toUpperCase()}!`,
+      detail:
+        rune.kind === 'bomb'
+          ? 'Cataclysmic shockwave obliterating the horde!'
+          : rune.kind === 'magnet'
+          ? 'Vortex pulling all XP & Diamonds to your hero!'
+          : rune.kind === 'freeze'
+          ? 'Absolute zero! All enemies frozen solid!'
+          : 'Solar frenzy! Maximum attack and movement speed!',
+      tone: 'elite',
+    });
+
+    if (rune.kind === 'bomb') {
+      this.detonateBombRune(rune.x, rune.y);
+    } else if (rune.kind === 'magnet') {
+      this.vacuumAllPickups();
+    } else if (rune.kind === 'freeze') {
+      this.triggerFreeze(5);
+    } else if (rune.kind === 'haste') {
+      this.triggerHasteRune();
+    }
+  }
+
+  private detonateBombRune(originX: number, originY: number): void {
+    audioService.playSFX('imp-explode', { volume: 1.3 });
+    this.effects.meteorBlast(originX, originY, 150);
+    this.cameraController.triggerShake(0.25, 0.32);
+    for (const enemy of [...this.enemies]) {
+      const damage = enemy.elite ? 1200 : 9999;
+      this.damageEnemy(enemy, damage, 0xff3b30, 'fire', originX, originY);
+    }
+    if (this.boss && this.bossSpawned) {
+      this.damageBoss(800, 'fire');
+    }
+  }
+
+  private vacuumAllPickups(): void {
+    for (const xp of this.xpPickups) {
+      xp.speed = 680;
+    }
+    for (const diamond of this.diamondPickups) {
+      diamond.speed = 780;
+    }
+    this.effects.levelUp(this.player.x, this.player.y);
+    this.cameraController.triggerShake(0.08, 0.18);
+  }
+
+  private triggerHasteRune(): void {
+    this.hasteBuffTimer = 8.0;
+    this.player.applyInvulnerability(this.gameTime, 8.0);
+    audioService.playSFX('event-fanfare', { pitch: 1.2 });
+    this.effects.levelUp(this.player.x, this.player.y);
+    setCombatFlowState({
+      meter: 100,
+      overdrive: true,
+      overdriveRemaining: 8.0,
+      streak: Math.max(10, getCombatFlowState().streak),
+    });
+  }
+
+  private spawnTreasureGoblin(): void {
+    if (this.activeTreasureGoblin && !this.activeTreasureGoblin.isDead && !this.activeTreasureGoblin.hasEscaped) return;
+    const angle = Math.random() * Math.PI * 2;
+    const spawnDist = 220;
+    const rawX = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * spawnDist, 100, WORLD_WIDTH - 100);
+    const rawY = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * spawnDist, 100, WORLD_HEIGHT - 100);
+    const safe = resolveSafeSpawnPosition(rawX, rawY, 24, this.stage.worldId);
+    this.activeTreasureGoblin = new TreasureGoblin3D(
+      this.actors,
+      safe.x,
+      safe.y,
+      this.resources,
+      this.stage.worldId,
+      this.stage.difficulty.enemyHpMultiplier
+    );
+    this.effects.bossArrival(safe.x, safe.y);
+    audioService.playSFX('event-fanfare', { pitch: 1.1 });
+    announceCombatWave({
+      label: 'TREASURE GOBLIN!',
+      detail: 'Hunt the greedy goblin before it portals away with the diamonds!',
+      tone: 'elite',
+    });
+  }
+
+  private onGoblinDefeated(x: number, y: number): void {
+    const diamondCount = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < diamondCount; i++) {
+      const angle = (i / diamondCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const dist = 24 + Math.random() * 20;
+      this.spawnDiamond(x + Math.cos(angle) * dist, y + Math.sin(angle) * dist, 1);
+    }
+    this.spawnXP(x, y, 180);
+    this.spawnChest(x, y);
+    this.effects.burst(x, y, 0x38bdf8, true);
+    this.effects.burst(x, y, 0xffd700, true);
+    this.effects.levelUp(x, y);
+    this.cameraController.triggerShake(0.2, 0.28);
+    this.cameraController.triggerPullback(1.5, 0.9);
+    audioService.playSFX('event-fanfare', { pitch: 1.15 });
+    announceCombatWave({
+      label: 'GOBLIN VANQUISHED!',
+      detail: `Fountain of loot! Recovered ${diamondCount} sparkling Diamonds!`,
+      tone: 'elite',
+    });
+  }
+
+  private updateDynamicEvents(delta: number): void {
+    // 1. Treasure Goblin hunt
+    if (!this.activeTreasureGoblin) {
+      this.goblinSpawnTimer -= delta;
+      if (this.goblinSpawnTimer <= 0) {
+        this.goblinSpawnTimer = this.mode === 'survival' ? 85 : 115;
+        this.spawnTreasureGoblin();
+      }
+    } else {
+      const g = this.activeTreasureGoblin;
+      const escaped = g.update(delta, this.gameTime, this.player.x, this.player.y, (cx, cy) => {
+        if (Math.random() < 0.45) {
+          this.effects.burst(cx, cy, 0xffd700, false);
+        }
+      });
+      if (g.isDead) {
+        this.onGoblinDefeated(g.x, g.y);
+        g.destroy();
+        this.activeTreasureGoblin = undefined;
+      } else if (escaped || g.hasEscaped) {
+        this.effects.ring(g.x, g.y, 1.2, 0xa855f7);
+        audioService.playSFX('ghost-phase');
+        announceCombatWave({
+          label: 'GOBLIN ESCAPED!',
+          detail: 'The greedy goblin portaled away with its loot!',
+          tone: 'danger',
+        });
+        g.destroy();
+        this.activeTreasureGoblin = undefined;
+      }
+    }
+
+    // 2. Arena Runes
+    this.runeSpawnTimer -= delta;
+    if (this.runeSpawnTimer <= 0 && this.arenaRunes.length < 2) {
+      this.runeSpawnTimer = 34 + Math.random() * 12;
+      this.spawnArenaRune();
+    }
+
+    // 3. Blood Moon Surge (every ~75s)
+    if (!this.isBloodMoonActive) {
+      this.bloodMoonTimer -= delta;
+      if (this.bloodMoonTimer <= 0) {
+        this.startBloodMoon();
+      }
+    } else {
+      this.bloodMoonRemaining -= delta;
+      if (this.bloodMoonRemaining <= 0) {
+        this.endBloodMoon();
+      }
+    }
+
+    // 4. Arcane Meteor Shower (every ~110s)
+    if (!this.isMeteorShowerActive) {
+      this.meteorShowerTimer -= delta;
+      if (this.meteorShowerTimer <= 0) {
+        this.startMeteorShower();
+      }
+    } else {
+      this.meteorShowerRemaining -= delta;
+      this.nextMeteorDropTimer -= delta;
+      if (this.nextMeteorDropTimer <= 0) {
+        this.nextMeteorDropTimer = 1.35;
+        this.dropArcaneMeteor();
+      }
+      if (this.meteorShowerRemaining <= 0) {
+        this.isMeteorShowerActive = false;
+        this.meteorShowerTimer = this.mode === 'survival' ? 100 : 120;
+      }
+    }
+
+    // 5. Haste buff decay
+    if (this.hasteBuffTimer > 0) {
+      this.hasteBuffTimer -= delta;
+      this.effects.dustPuff(this.player.x, this.player.y, 1);
+    }
+  }
+
+  private startBloodMoon(): void {
+    this.isBloodMoonActive = true;
+    this.bloodMoonRemaining = 18.0;
+    this.cameraController.triggerPullback(1.5, 1.2);
+    this.cameraController.triggerShake(0.15, 0.25);
+    audioService.playSFX('frenzy-horn');
+    announceCombatWave({
+      label: 'BLOOD MOON RISES!',
+      detail: 'Blood Frenzy! Enemies are hyper-aggressive — 2X XP & DOUBLE GOLD drops!',
+      tone: 'danger',
+    });
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.setHex(0x550a0a);
+    }
+    this.scene.background = new THREE.Color(0x280505);
+  }
+
+  private endBloodMoon(): void {
+    this.isBloodMoonActive = false;
+    this.bloodMoonTimer = this.mode === 'survival' ? 75 : 95;
+    const theme = biomeThemeFor(this.stage);
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.setHex(theme.fog);
+    }
+    this.scene.background = new THREE.Color(theme.background);
+  }
+
+  private startMeteorShower(): void {
+    this.isMeteorShowerActive = true;
+    this.meteorShowerRemaining = 12.0;
+    this.nextMeteorDropTimer = 0.5;
+    audioService.playSFX('boss-warning', { throttle: 0.2 });
+    announceCombatWave({
+      label: 'METEOR SHOWER!',
+      detail: 'Cataclysmic arcane meteors incoming! Dodge the impact circles!',
+      tone: 'danger',
+    });
+  }
+
+  private dropArcaneMeteor(): void {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 150;
+    const mx = THREE.MathUtils.clamp(this.player.x + Math.cos(angle) * dist, 70, WORLD_WIDTH - 70);
+    const my = THREE.MathUtils.clamp(this.player.y + Math.sin(angle) * dist, 70, WORLD_HEIGHT - 70);
+
+    this.telegraphs.show('meteor', mx, my, mx, my);
+    window.setTimeout(() => {
+      if (this.destroyed || this.isFinished) return;
+      audioService.playSFX('meteor-fall');
+      this.effects.meteorBlast(mx, my, 85);
+      this.cameraController.triggerShake(0.16, 0.22);
+
+      const radius = 90;
+      const targets = this.spatialGrid.queryRadius(mx, my, radius);
+      for (const enemy of targets) {
+        if (!this.enemies.includes(enemy)) continue;
+        this.damageEnemy(enemy, 360 * this.player.stats.damageMultiplier, 0xf97316, 'fire', mx, my);
+      }
+
+      const distToPlayer = Math.hypot(this.player.x - mx, this.player.y - my);
+      if (distToPlayer < radius * 0.75) {
+        if (this.player.takeDamage(this.getPlayerDamage(22), this.gameTime, 0.7)) {
+          this.spawnDamageNumber(this.player.x, this.player.y - 30, 22, true, 0xf97316);
+          audioService.playSFX('hurt');
+          this.callbacks.onPlayerHit?.();
+        }
+      }
+    }, 1100);
+  }
+
+  private spawnMiniEnemy(type: EnemyKind, x: number, y: number): void {
+    const safe = resolveSafeSpawnPosition(x, y, 12, this.stage.worldId);
+    const enemy = new Enemy3D(this.actors, type, safe.x, safe.y, this.resources, false, 0.45, 0.65, this.stage.worldId, true);
+    this.enemies.push(enemy);
+    this.spatialGrid.insert(enemy);
+    this.effects.ring(safe.x, safe.y, 0.45, 0x22c55e);
   }
 
   private checkQueuedLevelUp(): void {
@@ -1169,7 +1889,7 @@ export class SurvivorGame3D {
       this.player.stats.xpMultiplier = Number((this.resolvedStats.xpMultiplier * (1 + level * 0.10)).toFixed(2));
     }
     if (id === 'armor') {
-      this.player.stats.armor = Math.min(0.75, this.resolvedStats.armor + level * 0.05);
+      this.player.stats.armor = Math.min(0.70, this.resolvedStats.armor + level * 0.05);
     }
   }
 
@@ -1324,10 +2044,19 @@ export class SurvivorGame3D {
         this.boss?.destroy();
         this.boss = undefined;
         this.spawnXP(this.player.x, this.player.y, 160);
+        for (let i = 0; i < 3; i++) {
+          const angle = (i / 3) * Math.PI * 2;
+          this.spawnDiamond(this.player.x + Math.cos(angle) * 36, this.player.y + Math.sin(angle) * 36, 1);
+        }
+        this.spawnChest(this.player.x, this.player.y);
         audioService.crossfadeMusic('run', 1.0);
         return;
       }
 
+      for (let i = 0; i < 3; i++) {
+        const angle = (i / 3) * Math.PI * 2;
+        if (this.boss) this.spawnDiamond(this.boss.x + Math.cos(angle) * 36, this.boss.y + Math.sin(angle) * 36, 1);
+      }
       this.finishStageClear();
     }
   }
@@ -1477,12 +2206,87 @@ export class SurvivorGame3D {
     }
   }
 
-  private onEnemyKilled(kind: EnemyKind, elite: boolean): void {
+  private onEnemyKilled(kind: EnemyKind, elite: boolean, x?: number, y?: number): void {
     this.kills += 1;
     if (elite) this.eliteKills += 1;
     this.enemyKillsByKind[kind] = (this.enemyKillsByKind[kind] ?? 0) + 1;
     this.effects.burst(this.player.x, this.player.y, elite ? 0xffba58 : 0x5ddcff);
     this.runController.updateStats({ kills: this.kills, eliteKills: this.eliteKills, highestLevel: this.xpSystem.level });
+
+    const posX = x ?? this.player.x;
+    const posY = y ?? this.player.y;
+
+    // 1. Diamond drop chances: 35% on elite, plus extra chance during blood moon
+    if (elite && Math.random() < 0.35) {
+      this.spawnDiamond(posX, posY, 1);
+    } else if (this.isBloodMoonActive && Math.random() < 0.04) {
+      this.spawnDiamond(posX, posY, 1);
+    }
+
+    // 1b. Treasure Chest drop: 70% chance from Elites!
+    if (elite && Math.random() < 0.70) {
+      this.spawnChest(posX, posY);
+    }
+
+    // 2. Slime splitting into mini-slimes
+    if (kind === 'slime' && !elite && this.enemies.length < 85 && Math.random() < 0.55) {
+      for (let i = 0; i < 2; i++) {
+        const offsetAngle = (i === 0 ? -1 : 1) * (0.45 + Math.random() * 0.3);
+        const miniX = THREE.MathUtils.clamp(posX + Math.cos(offsetAngle) * 22, 60, WORLD_WIDTH - 60);
+        const miniY = THREE.MathUtils.clamp(posY + Math.sin(offsetAngle) * 22, 60, WORLD_HEIGHT - 60);
+        this.spawnMiniEnemy('slime', miniX, miniY);
+      }
+    }
+
+    // 2b. Exploding Imp Chain Reaction on Death
+    if (kind === 'imp') {
+      this.effects.explosion(posX, posY, 1.6, 0xf97316);
+      this.cameraController.triggerShake(0.12, 0.18);
+      audioService.playSFX('imp-explode', { volume: 0.9, pitch: 1.15, throttle: 0.1 });
+      this.dealAreaDamage(posX, posY, 82, 68 * this.player.stats.damageMultiplier, 0xf97316, 'fire');
+    }
+
+    // 3. Multi-Kill Streak Announcer & Goofy Combat Combo Perks
+    const goofySounds: SfxId[] = ['squeak', 'splat', 'boing', 'honk'];
+    if (Math.random() < 0.35) {
+      const sound = goofySounds[Math.floor(Math.random() * goofySounds.length)];
+      audioService.playSFX(sound, { pitch: 0.9 + Math.random() * 0.3, volume: 0.7, throttle: 0.08 });
+    }
+
+    const now = this.gameTime;
+    this.recentKillTimestamps.push(now);
+    this.recentKillTimestamps = this.recentKillTimestamps.filter((t) => now - t <= 3.2);
+    const combo = this.recentKillTimestamps.length;
+
+    if (combo >= 10 && this.lastAnnouncedCombo < 10) {
+      this.lastAnnouncedCombo = 10;
+      audioService.playSFX('honk', { pitch: 1.1 });
+      announceCombatWave({ label: 'BONK SPREE x10! 🔨', detail: 'Haste Turbo Activated! +15 Flow Meter!', tone: 'elite' });
+      this.weaponSystem.onPrimaryHit(this.player.x, this.player.y);
+      this.hasteBuffTimer = Math.max(this.hasteBuffTimer, 3.5);
+    } else if (combo >= 25 && this.lastAnnouncedCombo < 25) {
+      this.lastAnnouncedCombo = 25;
+      audioService.playSFX('boing', { pitch: 1.2 });
+      announceCombatWave({ label: 'SLAP-TASTIC x25! 🤪', detail: '+18 HP Snack Heal & Frenzy Speed!', tone: 'elite' });
+      this.player.heal(18);
+      this.spawnDamageNumber(this.player.x, this.player.y - 32, 18, false, 0x22c55e);
+      this.effects.burst(this.player.x, this.player.y, 0x22c55e, false);
+    } else if (combo >= 50 && this.lastAnnouncedCombo < 50) {
+      this.lastAnnouncedCombo = 50;
+      audioService.playSFX('fanfare', { pitch: 1.2 });
+      this.cameraController.triggerPullback(1.4, 0.9);
+      announceCombatWave({ label: 'GIGA BONK GOD x50!! 👑', detail: 'Instant OVERDRIVE Madness!', tone: 'danger' });
+      this.effects.meteorBlast(this.player.x, this.player.y, 140);
+      setCombatFlowState({
+        meter: 100,
+        overdrive: true,
+        overdriveRemaining: 7.0,
+        streak: combo,
+      });
+      this.spawnDiamond(posX, posY, 2);
+    } else if (combo < 5) {
+      this.lastAnnouncedCombo = 0;
+    }
   }
 
   private spawnDamageNumber(x: number, y: number, damage: number, critical: boolean, color: number): void {
@@ -1535,6 +2339,7 @@ export class SurvivorGame3D {
       eliteKills: this.eliteKills,
       bossKills,
       coins,
+      gems: this.collectedDiamonds,
       xpCollected: this.xpCollected,
       highestLevel: this.xpSystem.level,
       mode: this.mode,

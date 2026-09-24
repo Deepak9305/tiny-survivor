@@ -72,6 +72,13 @@ export class Player3D {
   private armBaseRotZ: number[] = [-0.32, 0.32];
   private lastFootstepPhase = 0;
   private readonly onFootstep?: (x: number, y: number) => void;
+  private dashTime = 0;
+  private readonly dashDuration = 0.22;
+  private dashCooldown = 0;
+  private readonly maxDashCooldown = 1.35;
+  private dashDirX = 0;
+  private dashDirY = 1;
+  private dashSpeed = 0;
   x: number;
   y: number;
 
@@ -114,6 +121,11 @@ export class Player3D {
     this.group.add(this.shadow);
     this.group.add(this.aura);
     this.group.add(this.character);
+    this.character.traverse((child) => {
+      if (child instanceof THREE.Mesh && !child.name.includes('shadow') && !child.name.includes('halo') && !child.name.includes('aura')) {
+        child.castShadow = true;
+      }
+    });
 
     if (loadout?.relic) {
       const relicMesh = createRelicAccent(loadout.relic, resources);
@@ -130,9 +142,9 @@ export class Player3D {
     this.detailRig = createPremiumHeroDetailRig(heroId, resources);
     this.character.add(this.detailRig.root);
 
-    this.heroLight = new THREE.PointLight(heroColor, 0.82, 5.2, 1.75);
+    this.heroLight = new THREE.PointLight(heroColor, 1.25, 7.8, 1.8);
     this.heroLight.name = `hero-point-light-${heroId}`;
-    this.heroLight.position.set(0, 1.15, 0.18);
+    this.heroLight.position.set(0, 0.92, 0.18);
     this.group.add(this.heroLight);
 
     this.powerHalo = addMesh(
@@ -144,7 +156,7 @@ export class Player3D {
         depthWrite: false,
       })
     );
-    this.powerHalo.position.y = 1.08;
+    this.powerHalo.position.y = 0.72;
     this.powerHalo.rotation.x = Math.PI / 2;
     this.powerHalo.scale.setScalar(0.62);
 
@@ -244,6 +256,29 @@ export class Player3D {
       if (this.chillTimer <= 0) this.chillMultiplier = 1.0;
     }
 
+    this.dashCooldown = Math.max(0, this.dashCooldown - delta);
+    const flowState = getCombatFlowState();
+    if (flowState.overdrive) {
+      this.chillTimer = 0;
+      this.chillMultiplier = 1.0;
+    }
+
+    if (this.dashTime > 0) {
+      this.dashTime = Math.max(0, this.dashTime - delta);
+      const nextX = THREE.MathUtils.clamp(this.x + this.dashDirX * this.dashSpeed * delta, 48, worldWidth - 48);
+      const nextY = THREE.MathUtils.clamp(this.y + this.dashDirY * this.dashSpeed * delta, 64, worldHeight - 64);
+      const resolved = resolveObstacleCollision(nextX, nextY, 18, this.worldId);
+      this.x = resolved.x;
+      this.y = resolved.y;
+      this.direction = Math.atan2(this.dashDirX, this.dashDirY);
+      this.syncPosition();
+      this.visualTime += delta;
+      this.onFootstep?.(this.x, this.y);
+      this.character.rotation.x = 0.38;
+      this.character.rotation.y = this.direction;
+      return;
+    }
+
     const rawLen = this.movement.length();
     let targetSpeed = 0;
     const targetVel = new THREE.Vector2(0, 0);
@@ -252,7 +287,8 @@ export class Player3D {
     if (rawLen > DEADZONE) {
       const normalizedMagnitude = Math.min(1, (rawLen - DEADZONE) / (1 - DEADZONE));
       const curve = normalizedMagnitude * (0.35 + 0.65 * normalizedMagnitude);
-      const topSpeed = this.stats.moveSpeed * this.chillMultiplier;
+      const overdriveSpeedMultiplier = flowState.overdrive ? 1.20 : 1.0;
+      const topSpeed = this.stats.moveSpeed * this.chillMultiplier * overdriveSpeedMultiplier;
       targetSpeed = topSpeed * curve;
       targetVel.set((this.movement.x / rawLen) * targetSpeed, (this.movement.y / rawLen) * targetSpeed);
     }
@@ -320,9 +356,20 @@ export class Player3D {
       }
     }
 
-    const bounce = Math.abs(Math.sin(this.stridePhase)) * 0.040 * speedRatio;
+    const bounce = Math.abs(Math.sin(this.stridePhase)) * 0.055 * speedRatio;
     const idleBreathe = Math.sin(this.visualTime * 3.2) * 0.016 * (1 - Math.min(1, speedRatio * 1.6));
     this.character.position.y = bounce + idleBreathe;
+
+    // Goofy Brawl Stars cartoon squash & stretch on stride + hit recoil
+    const isHit = this.hitFlash > 0;
+    const hitSquishX = isHit ? 1.18 : 1.0;
+    const hitSquishY = isHit ? 0.82 : 1.0;
+    const strideSquish = moving ? 1.0 + Math.sin(this.stridePhase * 2) * 0.07 * speedRatio : 1.0;
+    this.character.scale.set(
+      (this.baseCharacterScale / Math.sqrt(strideSquish)) * hitSquishX,
+      this.baseCharacterScale * strideSquish * hitSquishY,
+      (this.baseCharacterScale / Math.sqrt(strideSquish)) * hitSquishX
+    );
 
     this.shadow.position.y = 0.006;
     const shadowContract = Math.max(0, bounce * 1.5);
@@ -453,8 +500,9 @@ export class Player3D {
     const flow = getCombatFlowState();
     const flowRatio = flow.meter / 100;
     const overdrive = flow.overdrive;
-    this.heroLight.intensity = 0.78 + flowRatio * 0.48 + (overdrive ? 0.72 : 0);
-    this.heroLight.distance = overdrive ? 6.2 : 5.2;
+    const breath = Math.sin(this.visualTime * 3.5) * 0.15;
+    this.heroLight.intensity = 1.25 + breath + flowRatio * 0.65 + (overdrive ? 1.15 : 0) + (this.isDashing() ? 0.8 : 0);
+    this.heroLight.distance = overdrive ? 11.2 : 8.2;
 
     const haloMaterial = this.powerHalo.material;
     if (haloMaterial instanceof THREE.Material && 'opacity' in haloMaterial) {
@@ -472,7 +520,7 @@ export class Player3D {
       const angle = baseAngle + this.visualTime * (1.4 + flowRatio * 1.8 + (overdrive ? 2.2 : 0));
       shard.position.set(
         Math.cos(angle) * accentRadius,
-        1.02 + Math.sin(angle * 1.7) * 0.16,
+        0.72 + Math.sin(angle * 1.7) * 0.16,
         Math.sin(angle) * accentRadius
       );
       shard.rotation.x += delta * 3.4;
@@ -571,6 +619,42 @@ export class Player3D {
   isInvulnerable(now: number): boolean { return now < this.invulnerableUntil; }
   setMoveSpeed(value: number): void { this.stats.moveSpeed = Math.max(40, value); }
   resetPlayer(): void { this.initializePlayer(); }
+
+  triggerDash(onDashVisual?: (x: number, y: number, dirX: number, dirY: number) => void): boolean {
+    if (this.dashCooldown > 0 || this.dashTime > 0) return false;
+    let dirX = this.movement.x;
+    let dirY = this.movement.y;
+    const len = Math.hypot(dirX, dirY);
+    if (len > 0.08) {
+      dirX /= len;
+      dirY /= len;
+    } else {
+      dirX = Math.sin(this.direction);
+      dirY = Math.cos(this.direction);
+      if (Math.hypot(dirX, dirY) < 0.01) {
+        dirX = 0;
+        dirY = 1;
+      }
+    }
+    this.dashDirX = dirX;
+    this.dashDirY = dirY;
+    this.dashTime = this.dashDuration;
+    const flow = getCombatFlowState();
+    this.dashCooldown = flow.overdrive ? this.maxDashCooldown * 0.6 : this.maxDashCooldown;
+    this.dashSpeed = Math.max(340, this.stats.moveSpeed * 3.4);
+    // Invulnerability frames throughout the entire dash
+    this.applyInvulnerability(performance.now() * 0.001, this.dashDuration + 0.08);
+    onDashVisual?.(this.x, this.y, dirX, dirY);
+    return true;
+  }
+
+  getDashCooldownRatio(): number {
+    return Math.min(1, Math.max(0, this.dashCooldown / this.maxDashCooldown));
+  }
+
+  isDashing(): boolean {
+    return this.dashTime > 0;
+  }
 
   private syncPosition(): void { setLogicalPosition(this.group, this.x, this.y); }
   destroy(): void {

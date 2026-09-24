@@ -19,24 +19,24 @@ export interface BossDefinition {
 
 export const BOSS_DEFINITIONS: Record<BossId, BossDefinition> = {
   'skeleton-king': {
-    id: 'skeleton-king', name: 'Skeleton King', hp: 1800, damage: 24, speed: 30, radius: 42, worldId: 1,
+    id: 'skeleton-king', name: 'King Calcium', hp: 2400, damage: 26, speed: 32, radius: 42, worldId: 1,
     weakness: ['physical'], resistance: [], attackSet: ['slam', 'bone-ring', 'summon', 'charge'], phaseThreshold: 0.5,
-    visualTheme: 'bone', description: 'The crowned dead command every grave in the first world.', summonKind: 'skeleton',
+    visualTheme: 'bone', description: 'Lord of bad posture and 100% fortified calcium. Wears a slightly crooked crown.', summonKind: 'skeleton',
   },
   'forest-witch': {
-    id: 'forest-witch', name: 'Forest Witch', hp: 2100, damage: 23, speed: 38, radius: 38, worldId: 2,
+    id: 'forest-witch', name: 'Wicked Broccoli', hp: 3100, damage: 28, speed: 40, radius: 38, worldId: 2,
     weakness: ['fire'], resistance: ['lightning'], attackSet: ['thorn-circle', 'spirit-volley', 'summon', 'blink'], phaseThreshold: 0.5,
-    visualTheme: 'forest', description: 'A corrupted spirit that turns roots and memories against intruders.', summonKind: 'ghost',
+    visualTheme: 'forest', description: 'A grumpy salad witch who is furious that you didn\'t eat your green vegetables.', summonKind: 'ghost',
   },
   'frost-golem': {
-    id: 'frost-golem', name: 'Frost Golem', hp: 2500, damage: 29, speed: 22, radius: 48, worldId: 3,
+    id: 'frost-golem', name: 'Big Chilly', hp: 3900, damage: 32, speed: 24, radius: 48, worldId: 3,
     weakness: ['fire'], resistance: ['physical'], attackSet: ['ground-slam', 'ice-shard-fan', 'frost-zones', 'charge'], phaseThreshold: 0.5,
-    visualTheme: 'frost', description: 'An ancient guardian assembled from frozen temple stone.', summonKind: 'ghost',
+    visualTheme: 'frost', description: 'An angry walking glacier who gives giant freezing high-fives whether you want them or not.', summonKind: 'ghost',
   },
   'demon-lord': {
-    id: 'demon-lord', name: 'Demon King', hp: 3200, damage: 34, speed: 34, radius: 46, worldId: 4,
+    id: 'demon-lord', name: 'Lord Spicy Pants', hp: 5200, damage: 38, speed: 36, radius: 46, worldId: 4,
     weakness: ['arcane'], resistance: ['fire'], attackSet: ['fire-wave', 'meteor', 'demon-charge'], phaseThreshold: 0.5,
-    visualTheme: 'infernal', description: 'The sovereign of the burning keep who summons spectral echoes of conquered rulers.', summonKind: 'imp',
+    visualTheme: 'infernal', description: 'Sovereign of the lava keep. Extremely cranky because his palace has zero air conditioning.', summonKind: 'imp',
   },
 };
 

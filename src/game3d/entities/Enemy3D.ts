@@ -51,24 +51,24 @@ type EnemyProfile = {
 };
 
 const PROFILES: Record<EnemyKind, EnemyProfile> = {
-  skeleton: { style: 'melee', engage: 56, windup: .40, attack: .18, recover: .52, cooldown: 1.75, reach: 44, radius: 47, damage: 1.0, color: 0xdfe7ef },
-  zombie: { style: 'melee', engage: 66, windup: .62, attack: .24, recover: .72, cooldown: 2.15, reach: 48, radius: 62, damage: 1.28, color: 0x9fb48c },
-  'bone-mage': { style: 'ranged', engage: 280, preferred: 220, windup: .72, attack: .12, recover: .55, cooldown: 2.55, reach: 300, radius: 14, damage: 1.0, color: 0xc084fc, highThreat: true },
-  bat: { style: 'dash', engage: 145, windup: .42, attack: .28, recover: .42, cooldown: 2.05, reach: 0, radius: 36, damage: 1.1, color: 0xa855f7, highThreat: true },
-  slime: { style: 'leap', engage: 165, windup: .52, attack: .38, recover: .58, cooldown: 2.35, reach: 0, radius: 52, damage: 1.18, color: 0x22c55e, highThreat: true, slow: true },
-  ghost: { style: 'dash', engage: 180, windup: .42, attack: .28, recover: .46, cooldown: 2.20, reach: 0, radius: 40, damage: 1.0, color: 0x7dd3fc, highThreat: true },
-  archer: { style: 'ranged', engage: 300, preferred: 205, windup: .62, attack: .12, recover: .48, cooldown: 2.35, reach: 300, radius: 13, damage: .96, color: 0x93c5fd, highThreat: true },
-  knight: { style: 'melee', engage: 62, windup: .50, attack: .22, recover: .74, cooldown: 2.25, reach: 52, radius: 60, damage: 1.34, color: 0x60a5fa },
-  demon: { style: 'melee', engage: 64, windup: .32, attack: .20, recover: .48, cooldown: 1.65, reach: 50, radius: 54, damage: 1.16, color: 0xef4444 },
-  'demon-warrior': { style: 'melee', engage: 78, windup: .70, attack: .26, recover: .90, cooldown: 2.55, reach: 62, radius: 76, damage: 1.48, color: 0xff5b4f, highThreat: true },
-  imp: { style: 'explode', engage: 76, windup: .88, attack: .08, recover: .05, cooldown: 99, reach: 0, radius: 80, damage: 1.46, color: 0xf97316, highThreat: true },
-  'cursed-wolf': { style: 'dash', engage: 150, windup: .36, attack: .25, recover: .38, cooldown: 1.85, reach: 0, radius: 34, damage: 1.16, color: 0xd97706, highThreat: true },
-  thornling: { style: 'ranged', engage: 250, preferred: 178, windup: .54, attack: .12, recover: .42, cooldown: 2.20, reach: 260, radius: 12, damage: .94, color: 0x84cc16, highThreat: true },
-  'forest-mage': { style: 'ranged', engage: 290, preferred: 218, windup: .78, attack: .12, recover: .60, cooldown: 2.70, reach: 300, radius: 18, damage: 1.08, color: 0xb875df, highThreat: true },
-  'forest-guardian': { style: 'melee', engage: 74, windup: .62, attack: .25, recover: .82, cooldown: 2.45, reach: 58, radius: 70, damage: 1.34, color: 0x78a95b, highThreat: true },
-  treant: { style: 'slam', engage: 78, windup: .72, attack: .25, recover: .92, cooldown: 3.05, reach: 22, radius: 76, damage: 1.46, color: 0x4d7c0f, highThreat: true },
-  'frost-wraith': { style: 'dash', engage: 170, windup: .42, attack: .27, recover: .42, cooldown: 2.08, reach: 0, radius: 38, damage: 1.14, color: 0x38bdf8, highThreat: true, slow: true },
-  'ice-mage': { style: 'ranged', engage: 300, preferred: 225, windup: .70, attack: .12, recover: .58, cooldown: 2.50, reach: 310, radius: 15, damage: 1.06, color: 0x67e8f9, highThreat: true },
+  skeleton: { style: 'melee', engage: 58, windup: .24, attack: .14, recover: .24, cooldown: .95, reach: 48, radius: 47, damage: 1.0, color: 0xdfe7ef },
+  zombie: { style: 'melee', engage: 68, windup: .36, attack: .18, recover: .32, cooldown: 1.15, reach: 52, radius: 62, damage: 1.28, color: 0x9fb48c },
+  'bone-mage': { style: 'ranged', engage: 280, preferred: 220, windup: .48, attack: .12, recover: .34, cooldown: 1.75, reach: 300, radius: 14, damage: 1.0, color: 0xc084fc, highThreat: true },
+  bat: { style: 'dash', engage: 155, windup: .20, attack: .22, recover: .20, cooldown: 1.05, reach: 0, radius: 36, damage: 1.1, color: 0xa855f7, highThreat: true },
+  slime: { style: 'leap', engage: 165, windup: .30, attack: .26, recover: .26, cooldown: 1.15, reach: 0, radius: 52, damage: 1.18, color: 0x22c55e, highThreat: true, slow: true },
+  ghost: { style: 'dash', engage: 180, windup: .24, attack: .22, recover: .26, cooldown: 1.15, reach: 0, radius: 40, damage: 1.0, color: 0x7dd3fc, highThreat: true },
+  archer: { style: 'ranged', engage: 300, preferred: 205, windup: .42, attack: .12, recover: .30, cooldown: 1.55, reach: 300, radius: 13, damage: .96, color: 0x93c5fd, highThreat: true },
+  knight: { style: 'dash', engage: 155, windup: .28, attack: .22, recover: .24, cooldown: 1.25, reach: 0, radius: 52, damage: 1.34, color: 0x60a5fa, highThreat: true },
+  demon: { style: 'melee', engage: 66, windup: .22, attack: .16, recover: .24, cooldown: .85, reach: 52, radius: 54, damage: 1.16, color: 0xef4444 },
+  'demon-warrior': { style: 'dash', engage: 165, windup: .32, attack: .22, recover: .34, cooldown: 1.45, reach: 0, radius: 68, damage: 1.48, color: 0xff5b4f, highThreat: true },
+  imp: { style: 'explode', engage: 80, windup: .58, attack: .08, recover: .05, cooldown: 99, reach: 0, radius: 80, damage: 1.46, color: 0xf97316, highThreat: true },
+  'cursed-wolf': { style: 'dash', engage: 160, windup: .22, attack: .20, recover: .20, cooldown: .95, reach: 0, radius: 34, damage: 1.16, color: 0xd97706, highThreat: true },
+  thornling: { style: 'ranged', engage: 250, preferred: 178, windup: .36, attack: .12, recover: .26, cooldown: 1.45, reach: 260, radius: 12, damage: .94, color: 0x84cc16, highThreat: true },
+  'forest-mage': { style: 'ranged', engage: 290, preferred: 218, windup: .50, attack: .12, recover: .36, cooldown: 1.75, reach: 300, radius: 18, damage: 1.08, color: 0xb875df, highThreat: true },
+  'forest-guardian': { style: 'melee', engage: 76, windup: .42, attack: .20, recover: .42, cooldown: 1.45, reach: 60, radius: 70, damage: 1.34, color: 0x78a95b, highThreat: true },
+  treant: { style: 'slam', engage: 80, windup: .48, attack: .20, recover: .48, cooldown: 1.65, reach: 24, radius: 76, damage: 1.46, color: 0x4d7c0f, highThreat: true },
+  'frost-wraith': { style: 'dash', engage: 170, windup: .26, attack: .22, recover: .24, cooldown: 1.15, reach: 0, radius: 38, damage: 1.14, color: 0x38bdf8, highThreat: true, slow: true },
+  'ice-mage': { style: 'ranged', engage: 300, preferred: 225, windup: .46, attack: .12, recover: .34, cooldown: 1.65, reach: 310, radius: 15, damage: 1.06, color: 0x67e8f9, highThreat: true },
 };
 
 function telegraphAccent(kind: EnemyKind): number { return PROFILES[kind].color; }
@@ -98,11 +98,12 @@ export class Enemy3D implements SpatialEntity {
   private readonly telegraphMesh: THREE.Mesh;
   private readonly telegraphRing: THREE.Mesh;
   private readonly frostMesh: THREE.Mesh;
+  private readonly flashMesh: THREE.Mesh;
   private readonly shadowMesh: THREE.Mesh;
   private readonly eliteAura?: THREE.Mesh;
   private readonly profile: EnemyProfile;
   private readonly baseVisualScale: number;
-  private readonly baseModelScale = 0.88;
+  private readonly baseModelScale = 1.38;
   private hp: number;
   private slowMultiplier = 1;
   private slowUntil = 0;
@@ -111,6 +112,9 @@ export class Enemy3D implements SpatialEntity {
   private spawnAge = 0;
   private readonly spawnDuration: number;
   private hitPulse = 0;
+  private hitFlashTimer = 0;
+  private knockbackX = 0;
+  private knockbackY = 0;
   private healthBarLife = 0;
   private stateTimer = 0;
   private attackCooldown = 0.35 + (enemySequence % 7) * .12;
@@ -123,20 +127,31 @@ export class Enemy3D implements SpatialEntity {
   private leapStartX = 0;
   private leapStartY = 0;
   private orbitSign = enemySequence % 2 === 0 ? 1 : -1;
+  private surgeTimer = 0;
+  private surgeCooldown = 1.2 + (enemySequence % 5) * 0.4;
+  private readonly swayOffset = (enemySequence * 1.618) % (Math.PI * 2);
+  private readonly tacticalRole: 'interceptor' | 'flanker_cw' | 'flanker_ccw' | 'direct_charger' =
+    enemySequence % 4 === 0
+      ? 'interceptor'
+      : enemySequence % 4 === 1
+      ? 'flanker_cw'
+      : enemySequence % 4 === 2
+      ? 'flanker_ccw'
+      : 'direct_charger';
 
-  constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1) {
+  constructor(parent: THREE.Object3D, kind: EnemyKind, x: number, y: number, resources: SharedResources, elite = false, hpMultiplier = 1, damageMultiplier = hpMultiplier, worldId = 1, isMini = false) {
     const balance = ENEMY_BALANCE[kind];
     this.id = `enemy-${enemySequence += 1}`;
     this.kind = kind;
     this.elite = elite;
     this.worldId = worldId;
     this.profile = PROFILES[kind];
-    this.radius = balance.radius * (elite ? 1.25 : 1);
-    this.maxHP = balance.hp * hpMultiplier * (elite ? 2.15 : 1);
+    this.radius = balance.radius * (elite ? 1.25 : (isMini ? 0.65 : 1));
+    this.maxHP = balance.hp * hpMultiplier * (elite ? 2.15 : (isMini ? 0.42 : 1));
     this.hp = this.maxHP;
-    this.baseSpeed = balance.speed * (elite ? 1.07 : 1);
-    this.contactDamage = balance.damage * damageMultiplier * (elite ? 1.18 : 1);
-    this.xpValue = balance.xp * (elite ? 4 : 1);
+    this.baseSpeed = balance.speed * (elite ? 1.07 : (isMini ? 1.25 : 1));
+    this.contactDamage = balance.damage * damageMultiplier * (elite ? 1.18 : (isMini ? 0.65 : 1));
+    this.xpValue = balance.xp * (elite ? 4 : (isMini ? 0.5 : 1));
     this.spawnDuration = elite ? .42 : .28;
     this.phaseTime = (enemySequence * 1.618) % 6;
     this.x = x;
@@ -147,13 +162,16 @@ export class Enemy3D implements SpatialEntity {
     this.model = isSpecialistEnemy(kind) ? createSpecialistEnemyModel(kind, resources) : createEnemyModel(kind, balance.color, resources, worldId);
     const visualScale = (this.radius * LOGICAL_SCALE) / .38;
     this.baseVisualScale = visualScale;
-    this.model.scale.setScalar(visualScale * this.baseModelScale * .58);
+    this.model.scale.setScalar(visualScale * this.baseModelScale);
     this.model.position.y = .16;
     this.group.add(this.model);
+    this.model.traverse((child) => {
+      if (child instanceof THREE.Mesh) child.castShadow = true;
+    });
     if (elite) addEliteAccent(this.model, resources);
 
     this.shadowMesh = resources.createContactShadow('enemy-contact-shadow', 1, 1, .62);
-    this.shadowMesh.scale.set(visualScale * 1.18, visualScale * .72, 1);
+    this.shadowMesh.scale.set(visualScale * 1.45, visualScale * 0.95, 1);
     this.group.add(this.shadowMesh);
 
     if (elite) {
@@ -172,8 +190,11 @@ export class Enemy3D implements SpatialEntity {
     this.frostMesh = addMesh(this.group, resources.octa('enemy-frost-crystal'), resources.standardMaterial('enemy-frost-mat', 0xa8f0ff, { transparent: true, opacity: .68, roughness: .15, metalness: .25, emissive: 0x3ac8ff, emissiveIntensity: .85 }));
     this.frostMesh.scale.set(visualScale * 1.15, visualScale * 1.35, visualScale * 1.15); this.frostMesh.position.set(0, .72 * visualScale, 0); this.frostMesh.visible = false;
 
+    this.flashMesh = addMesh(this.group, resources.octa('enemy-hit-flash'), resources.basicMaterial('enemy-hit-flash-mat', 0xffffff, { transparent: true, opacity: 0.88, depthWrite: false }));
+    this.flashMesh.scale.set(visualScale * 0.95, visualScale * 1.35, visualScale * 0.95); this.flashMesh.position.set(0, 0.48 * visualScale, 0); this.flashMesh.visible = false;
+
     this.healthBar = createHealthBar(resources, elite);
-    this.healthBar.position.set(0, 1.72 * visualScale, .42 * visualScale);
+    this.healthBar.position.set(0, 2.36 * visualScale, 0.28 * visualScale);
     this.healthFill = this.healthBar.children[1] as THREE.Mesh;
     this.group.add(this.healthBar);
     parent.add(this.group);
@@ -192,13 +213,33 @@ export class Enemy3D implements SpatialEntity {
     return (dx / dist) * fx + (dy / dist) * fy > .38;
   }
 
-  update(playerX: number, playerY: number, delta: number, now: number, canInitiateHighThreat: () => boolean = () => true): EnemyAttackEvent | undefined {
+  update(
+    playerX: number,
+    playerY: number,
+    delta: number,
+    now: number,
+    canInitiateHighThreat: () => boolean = () => true,
+    playerVx = 0,
+    playerVy = 0
+  ): EnemyAttackEvent | undefined {
     this.phaseTime += delta;
     this.spawnAge = Math.min(this.spawnDuration, this.spawnAge + delta);
     this.attackCooldown = Math.max(0, this.attackCooldown - delta);
     this.hitPulse = Math.max(0, this.hitPulse - delta);
+    this.hitFlashTimer = Math.max(0, this.hitFlashTimer - delta);
+    this.surgeTimer = Math.max(0, this.surgeTimer - delta);
+    this.surgeCooldown = Math.max(0, this.surgeCooldown - delta);
+    this.flashMesh.visible = this.hitFlashTimer > 0;
     this.healthBarLife = Math.max(0, this.healthBarLife - delta);
     this.updateHealthBar();
+
+    if (Math.hypot(this.knockbackX, this.knockbackY) > 0.5) {
+      this.x += this.knockbackX * delta;
+      this.y += this.knockbackY * delta;
+      const decay = Math.exp(-delta * 13);
+      this.knockbackX *= decay;
+      this.knockbackY *= decay;
+    }
 
     if (this.eliteAura) { this.eliteAura.rotation.z += delta * .7; this.eliteAura.scale.setScalar(this.baseVisualScale * 1.5 * (1 + Math.sin(this.phaseTime * 2.8) * .06)); }
     if (now < this.freezeUntil) { this.frostMesh.visible = true; this.frostMesh.rotation.y += delta * 1.8; this.syncPosition(); return undefined; }
@@ -207,21 +248,32 @@ export class Enemy3D implements SpatialEntity {
     const dx = playerX - this.x; const dy = playerY - this.y; const distance = Math.max(1, Math.hypot(dx, dy));
     let event: EnemyAttackEvent | undefined;
 
+    // Trigger sudden unpredictable sprint surge when in range
+    if (this.state === 'approach' && this.surgeCooldown <= 0 && distance >= 60 && distance <= 260) {
+      const surgeChance = this.tacticalRole === 'interceptor' ? 0.65 : 0.45;
+      if (Math.random() < surgeChance) {
+        this.surgeTimer = 0.85;
+        this.surgeCooldown = 1.8 + Math.random() * 1.8;
+      } else {
+        this.surgeCooldown = 1.0;
+      }
+    }
+
     if (distance > 410 && this.state === 'approach') {
-      this.moveToward(playerX, playerY, delta, now, 1.12);
+      this.moveToward(playerX, playerY, delta, now, 1.15, 0, playerVx, playerVy);
       this.animate(delta, false);
       return undefined;
     }
 
     if (this.state === 'approach') {
       this.telegraphGroup.visible = false;
-      this.moveTactically(playerX, playerY, distance, delta, now);
+      this.moveTactically(playerX, playerY, distance, delta, now, playerVx, playerVy);
       const allowed = !this.profile.highThreat || canInitiateHighThreat();
       if (allowed && this.attackCooldown <= 0 && distance <= this.profile.engage) this.enterWindup(playerX, playerY);
     } else if (this.state === 'windup') {
       this.stateTimer -= delta;
       this.showTelegraph();
-      if (this.kind === 'imp') this.moveToward(playerX, playerY, delta, now, .22);
+      if (this.kind === 'imp') this.moveToward(playerX, playerY, delta, now, .42, 0, playerVx, playerVy);
       if (this.stateTimer <= 0) {
         if (this.profile.style === 'leap') { this.leapStartX = this.x; this.leapStartY = this.y; }
         this.state = 'attack'; this.stateTimer = this.profile.attack; this.emittedAttack = false;
@@ -234,7 +286,7 @@ export class Enemy3D implements SpatialEntity {
     } else {
       this.stateTimer -= delta;
       this.telegraphGroup.visible = false;
-      if (isRanged(this.kind)) this.strafe(playerX, playerY, distance, delta, now, .35);
+      if (isRanged(this.kind)) this.strafe(playerX, playerY, distance, delta, now, .45);
       if (this.stateTimer <= 0) { this.state = 'approach'; this.attackCooldown = this.profile.cooldown * (this.elite ? .86 : 1); this.orbitSign *= -1; }
     }
 
@@ -244,32 +296,112 @@ export class Enemy3D implements SpatialEntity {
     return event;
   }
 
-  private moveTactically(playerX: number, playerY: number, distance: number, delta: number, now: number): void {
+  private moveTactically(
+    playerX: number,
+    playerY: number,
+    distance: number,
+    delta: number,
+    now: number,
+    playerVx = 0,
+    playerVy = 0
+  ): void {
     const preferred = this.profile.preferred;
     if (preferred) {
-      if (distance < preferred * .74) this.moveAway(playerX, playerY, delta, now, 1.02);
-      else if (distance > preferred * 1.14) this.moveToward(playerX, playerY, delta, now, .92);
-      else this.strafe(playerX, playerY, distance, delta, now, .82);
+      if (distance < preferred * 0.72) {
+        this.moveAway(playerX, playerY, delta, now, 1.05);
+      } else if (distance > preferred * 1.12) {
+        this.moveToward(playerX, playerY, delta, now, 1.02, 0, playerVx, playerVy);
+      } else {
+        this.strafe(playerX, playerY, distance, delta, now, 0.95);
+      }
       return;
     }
 
-    if (this.kind === 'cursed-wolf' || this.kind === 'ghost' || this.kind === 'frost-wraith' || this.kind === 'bat') {
-      if (distance > 105) this.strafe(playerX, playerY, distance, delta, now, .82, true);
-      else this.moveAway(playerX, playerY, delta, now, .38);
+    // Fast agile hunters: wolves, bats, ghosts, frost-wraiths
+    if (this.kind === 'cursed-wolf' || this.kind === 'bat' || this.kind === 'ghost' || this.kind === 'frost-wraith') {
+      const playerSpeed = Math.hypot(playerVx, playerVy);
+      // If player is running away, agile hunters DO NOT leisurely strafe: sprint and intercept!
+      if (playerSpeed > 30) {
+        this.moveToward(playerX, playerY, delta, now, 1.35, 0, playerVx, playerVy);
+      } else if (distance > 120) {
+        this.strafe(playerX, playerY, distance, delta, now, 1.15, true);
+      } else {
+        const lungeSpeed = this.kind === 'cursed-wolf' ? 1.50 : 1.35;
+        this.moveToward(playerX, playerY, delta, now, lungeSpeed, 0, playerVx, playerVy);
+      }
       return;
     }
 
-    const flank = this.kind === 'demon' || this.kind === 'skeleton' ? .28 : this.kind === 'zombie' || this.kind === 'treant' ? .06 : .15;
-    this.moveToward(playerX, playerY, delta, now, 1, flank);
+    // Dynamic role-based flanking and interception
+    let flank = 0;
+    if (this.tacticalRole === 'flanker_cw') {
+      flank = 0.58 + Math.sin(this.phaseTime * 2.8 + this.swayOffset) * 0.22;
+    } else if (this.tacticalRole === 'flanker_ccw') {
+      flank = -(0.58 + Math.sin(this.phaseTime * 2.8 + this.swayOffset) * 0.22);
+    } else if (this.tacticalRole === 'direct_charger') {
+      flank = Math.sin(this.phaseTime * 3.6 + this.swayOffset) * 0.15;
+    } else {
+      // Interceptor: minimal sway, pure lead interception
+      flank = Math.sin(this.phaseTime * 2.0 + this.swayOffset) * 0.10;
+    }
+
+    const speedFactor = this.surgeTimer > 0 ? 1.48 : (this.tacticalRole === 'interceptor' ? 1.14 : 1.0);
+    this.moveToward(playerX, playerY, delta, now, speedFactor, flank, playerVx, playerVy);
   }
 
-  private moveToward(playerX: number, playerY: number, delta: number, now: number, factor = 1, flank = 0): void {
-    const dx = playerX - this.x; const dy = playerY - this.y; const dist = Math.max(1, Math.hypot(dx, dy));
-    let dirX = dx / dist; let dirY = dy / dist;
-    if (flank !== 0 && dist > 90) { const sx = -dirY * this.orbitSign; const sy = dirX * this.orbitSign; dirX += sx * flank; dirY += sy * flank; const l = Math.hypot(dirX, dirY); dirX /= l; dirY /= l; }
-    const steer = steerAroundObstacles(this.x, this.y, dirX, dirY, this.worldId); dirX = steer.dirX; dirY = steer.dirY;
+  private moveToward(
+    playerX: number,
+    playerY: number,
+    delta: number,
+    now: number,
+    factor = 1,
+    flank = 0,
+    playerVx = 0,
+    playerVy = 0
+  ): void {
+    // Interception calculation: aim toward where player is moving to cut them off
+    const distToPlayer = Math.max(1, Math.hypot(playerX - this.x, playerY - this.y));
+    const isInterceptor = this.tacticalRole === 'interceptor' || this.kind === 'cursed-wolf' || this.kind === 'bat';
+    const leadTime = Math.min(1.75, distToPlayer / Math.max(65, this.baseSpeed));
+    const leadWeight = isInterceptor ? 1.45 : 0.60;
+    let aimX = playerX + playerVx * leadTime * leadWeight;
+    let aimY = playerY + playerVy * leadTime * leadWeight;
+
+    // Edge corridor interception: if player is near perimeter, cut off runway ahead
+    const edgeMargin = 175;
+    const isPlayerNearEdge =
+      playerX < edgeMargin || playerX > WORLD_WIDTH - edgeMargin ||
+      playerY < edgeMargin || playerY > WORLD_HEIGHT - edgeMargin;
+
+    if (isPlayerNearEdge && isInterceptor && Math.hypot(playerVx, playerVy) > 25) {
+      aimX = THREE.MathUtils.clamp(aimX, 55, WORLD_WIDTH - 55);
+      aimY = THREE.MathUtils.clamp(aimY, 65, WORLD_HEIGHT - 65);
+    }
+
+    const dx = aimX - this.x;
+    const dy = aimY - this.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    let dirX = dx / dist;
+    let dirY = dy / dist;
+
+    if (flank !== 0 && dist > 50) {
+      const sx = -dirY;
+      const sy = dirX;
+      dirX += sx * flank;
+      dirY += sy * flank;
+      const l = Math.hypot(dirX, dirY);
+      dirX /= l;
+      dirY /= l;
+    }
+
+    const steer = steerAroundObstacles(this.x, this.y, dirX, dirY, this.worldId);
+    dirX = steer.dirX;
+    dirY = steer.dirY;
+
     const speed = this.baseSpeed * (now < this.slowUntil ? this.slowMultiplier : 1) * factor;
-    this.x += dirX * speed * delta; this.y += dirY * speed * delta; this.face(dirX, dirY, delta);
+    this.x += dirX * speed * delta;
+    this.y += dirY * speed * delta;
+    this.face(dirX, dirY, delta);
   }
 
   private moveAway(playerX: number, playerY: number, delta: number, now: number, factor: number): void {
@@ -311,6 +443,7 @@ export class Enemy3D implements SpatialEntity {
     this.facingAngle = Math.atan2(this.attackDirectionX, this.attackDirectionY);
     if (this.kind === 'bat') audioService.playSFX('bat-dive', { throttle: .35 });
     else if (this.kind === 'slime') audioService.playSFX('slime-jump', { throttle: .35 });
+    else if (this.kind === 'knight' || this.kind === 'demon-warrior') audioService.playSFX('knight-charge', { throttle: .3 });
     else if (this.kind === 'archer' || isRanged(this.kind)) audioService.playSFX('archer-charge', { throttle: .28 });
     else if (this.kind === 'imp') audioService.playSFX('imp-fuse', { throttle: .25 });
   }
@@ -323,8 +456,8 @@ export class Enemy3D implements SpatialEntity {
     }
     if ((p.style === 'melee' || p.style === 'slam') && !this.emittedAttack) {
       this.emittedAttack = true;
-      if (this.kind === 'skeleton' || this.kind === 'knight') audioService.playSFX('skeleton-slash', { throttle: .2 });
-      else if (this.kind === 'demon' || this.kind === 'demon-warrior') audioService.playSFX('demon-slash', { throttle: .2 });
+      if (this.kind === 'skeleton') audioService.playSFX('skeleton-slash', { throttle: .2 });
+      else if (this.kind === 'demon') audioService.playSFX('demon-slash', { throttle: .2 });
       return this.event('melee', this.x, this.y, this.x + this.attackDirectionX * p.reach, this.y + this.attackDirectionY * p.reach, p.radius * (this.elite ? 1.18 : 1), p.damage, p.color, p.slow);
     }
     if (p.style === 'explode' && !this.emittedAttack) {
@@ -340,7 +473,7 @@ export class Enemy3D implements SpatialEntity {
       return undefined;
     }
     if (p.style === 'dash') {
-      const dashSpeed = this.kind === 'cursed-wolf' ? 2.9 : this.kind === 'bat' ? 2.8 : 2.55;
+      const dashSpeed = this.kind === 'cursed-wolf' ? 2.9 : this.kind === 'knight' ? 2.8 : this.kind === 'demon-warrior' ? 2.7 : this.kind === 'bat' ? 2.8 : 2.55;
       this.x += this.attackDirectionX * this.baseSpeed * dashSpeed * delta;
       this.y += this.attackDirectionY * this.baseSpeed * dashSpeed * delta;
       if (!this.emittedAttack && distance < this.radius + 25) {
@@ -386,20 +519,52 @@ export class Enemy3D implements SpatialEntity {
   private animate(delta: number, winding: boolean): void {
     const parts = this.model.userData.parts as Record<string, THREE.Object3D | THREE.Object3D[]> | undefined;
     const flying = isFlying(this.kind);
-    if (flying) { this.model.position.y = .45 + Math.sin(this.phaseTime * 3.4) * .12; this.shadowMesh.scale.set(this.baseVisualScale * .9, this.baseVisualScale * .55, 1); }
-    else if (this.kind !== 'slime') { this.model.position.y = Math.abs(Math.sin(this.phaseTime * (this.kind === 'imp' ? 8.5 : 5.5))) * .035; this.shadowMesh.scale.set(this.baseVisualScale * 1.1, this.baseVisualScale * .68, 1); }
+    if (flying) {
+      this.model.position.y = .45 + Math.sin(this.phaseTime * 3.4) * .12;
+      this.shadowMesh.scale.set(this.baseVisualScale * .9, this.baseVisualScale * .55, 1);
+    } else if (this.kind === 'slime') {
+      const hopPhase = this.phaseTime * 6.5;
+      const hop = Math.max(0, Math.sin(hopPhase));
+      this.model.position.y = hop * 0.35;
+      const squish = hop > 0.05 ? 0.85 + hop * 0.4 : 1.25;
+      this.model.scale.set(
+        this.baseVisualScale * this.baseModelScale * (1 / Math.sqrt(squish)),
+        this.baseVisualScale * this.baseModelScale * squish,
+        this.baseVisualScale * this.baseModelScale * (1 / Math.sqrt(squish))
+      );
+    } else {
+      this.model.position.y = Math.abs(Math.sin(this.phaseTime * (this.kind === 'imp' ? 8.5 : 5.5))) * .045;
+      this.shadowMesh.scale.set(this.baseVisualScale * 1.1, this.baseVisualScale * .68, 1);
+    }
     this.shadowMesh.position.y = .006;
 
     const spawn = THREE.MathUtils.clamp(easeOutBack(Math.min(1, this.spawnAge / this.spawnDuration)), .58, 1.06);
-    const hit = this.hitPulse > 0 ? 1 + Math.sin((1 - this.hitPulse / .16) * Math.PI) * .13 : 1;
+    const isHit = this.hitPulse > 0;
+    const hit = isHit ? 1.0 - (this.hitPulse / 0.18) * 0.22 : 1;
+    const hitSquishX = isHit ? 1.22 : 1.0;
+    const hitSquishY = isHit ? 0.78 : 1.0;
     const wind = winding ? 1 + Math.sin(this.phaseTime * 14) * .05 : 1;
-    this.model.scale.setScalar(this.baseVisualScale * this.baseModelScale * spawn * hit * wind * (this.elite ? 1.035 : 1));
+    if (this.kind !== 'slime') {
+      this.model.scale.set(
+        this.baseVisualScale * this.baseModelScale * spawn * hit * hitSquishX * wind * (this.elite ? 1.30 : 1),
+        this.baseVisualScale * this.baseModelScale * spawn * hit * hitSquishY * wind * (this.elite ? 1.30 : 1),
+        this.baseVisualScale * this.baseModelScale * spawn * hit * hitSquishX * wind * (this.elite ? 1.30 : 1)
+      );
+    }
 
     const moving = this.state === 'approach';
+    const isSurging = this.surgeTimer > 0;
+    const targetPitch = isSurging ? -0.10 : -0.22;
+    // Goofy waddle roll on stride
+    const waddleRoll = moving && !flying ? Math.sin(this.phaseTime * (this.kind === 'imp' ? 10 : 6)) * (this.kind === 'imp' ? 0.16 : 0.08) : 0;
+    this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, targetPitch, Math.min(1, delta * 10));
+    this.model.rotation.z = THREE.MathUtils.lerp(this.model.rotation.z, waddleRoll, Math.min(1, delta * 12));
+
     if (parts?.legs instanceof Array && parts.legs.length >= 2) {
-      const cadence = this.kind === 'zombie' ? 4.6 : this.kind === 'demon-warrior' || this.kind === 'forest-guardian' ? 5.2 : 7.5;
-      const stride = moving ? Math.sin(this.phaseTime * cadence) * (this.kind === 'zombie' ? .42 : .60) : 0;
-      for (let i = 0; i < parts.legs.length; i += 1) parts.legs[i].rotation.x = THREE.MathUtils.lerp(parts.legs[i].rotation.x, i % 2 === 0 ? stride : -stride, Math.min(1, delta * 14));
+      const baseCadence = this.kind === 'zombie' ? 5.2 : this.kind === 'demon-warrior' || this.kind === 'forest-guardian' ? 5.8 : 8.2;
+      const cadence = isSurging ? baseCadence * 1.45 : baseCadence;
+      const stride = moving ? Math.sin(this.phaseTime * cadence) * (this.kind === 'zombie' ? .52 : .70) : 0;
+      for (let i = 0; i < parts.legs.length; i += 1) parts.legs[i].rotation.x = THREE.MathUtils.lerp(parts.legs[i].rotation.x, i % 2 === 0 ? stride : -stride, Math.min(1, delta * 16));
     }
     if (parts?.arms instanceof Array && parts.arms.length >= 2) {
       const attack = this.state === 'attack' ? .95 : winding ? -.85 : 0;
@@ -426,7 +591,19 @@ export class Enemy3D implements SpatialEntity {
 
   applySlow(multiplier: number, duration: number, now: number): void { this.slowMultiplier = Math.min(this.slowMultiplier, multiplier); this.slowUntil = Math.max(this.slowUntil, now + duration); }
   applyFreeze(duration: number, now: number, postSlowDuration = 2.2): void { const effective = this.elite ? duration * .5 : duration; this.freezeUntil = Math.max(this.freezeUntil, now + effective); this.applySlow(.55, effective + postSlowDuration, now); }
-  damage(amount: number): boolean { this.hp = Math.max(0, this.hp - amount); this.hitPulse = .16; this.healthBarLife = 2.4; this.updateHealthBar(); return this.hp <= 0; }
+  applyKnockback(dirX: number, dirY: number, force: number): void {
+    const resist = this.elite ? 0.38 : this.kind === 'demon-warrior' || this.kind === 'forest-guardian' || this.kind === 'treant' ? 0.32 : 1.0;
+    this.knockbackX += dirX * force * resist;
+    this.knockbackY += dirY * force * resist;
+  }
+  damage(amount: number): boolean {
+    this.hp = Math.max(0, this.hp - amount);
+    this.hitPulse = 0.18;
+    this.hitFlashTimer = 0.10;
+    this.healthBarLife = 2.4;
+    this.updateHealthBar();
+    return this.hp <= 0;
+  }
   private updateHealthBar(): void { const pct = Math.max(0, Math.min(1, this.hp / this.maxHP)); this.healthFill.scale.x = pct; this.healthFill.position.x = (-.5 * (1 - pct)) * .6; this.healthBar.visible = this.healthBarLife > 0 && this.hp < this.maxHP; }
   private syncPosition(): void { setLogicalPosition(this.group, this.x, this.y); }
   destroy(): void { this.group.removeFromParent(); }

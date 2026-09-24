@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Heart, Home, Play, RotateCw, Skull, Sparkles, Timer } from 'lucide-react';
 import { audioService } from '../services/audioService';
 import type { RunResult } from '../types';
@@ -16,6 +16,17 @@ export function formatTime(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
 
+const GOOFY_DEFEAT_QUOTES = [
+  'Did you try turning it off and on again? 🔌',
+  'The floor looked super comfy anyway. 😴',
+  '10/10 graceful flop! Solid form! 🤸',
+  'Bonk counter reached maximum capacity! 🔨',
+  'Emotional damage: 9999 📉',
+  'Skill issue? Never heard of her. 💅',
+  'Sent directly to the Shadow Realm! 👻',
+  'That wasn\'t a defeat, that was tactical resting! 🛋️',
+];
+
 export function GameOverScreen({
   result,
   onRevive,
@@ -24,8 +35,10 @@ export function GameOverScreen({
   onRetry,
   onHome,
 }: GameOverScreenProps) {
+  const [defeatQuote] = useState(() => GOOFY_DEFEAT_QUOTES[Math.floor(Math.random() * GOOFY_DEFEAT_QUOTES.length)]);
+
   useEffect(() => {
-    audioService.playSFX('game-over', { volume: 0.9, throttle: 0.3 });
+    audioService.playSFX('wah-wah', { volume: 0.9, throttle: 0.3 });
   }, []);
 
   return (
@@ -36,14 +49,14 @@ export function GameOverScreen({
           <div className="run-over-skull-glow">
             <Skull size={52} className="skull-danger-icon" />
           </div>
-          <span className="run-over-eyebrow">SANCTUARY FALLEN</span>
-          <h1 className="run-over-title">DEFEATED</h1>
+          <span className="run-over-eyebrow">OOPS! YOU GOT BONKED! 💥</span>
+          <h1 className="run-over-title">KNOCKED OUT!</h1>
           {result.isNewBest && (
             <div className="run-over-new-best-badge">
-              <Sparkles size={14} /> NEW BEST RECORD!
+              <Sparkles size={14} /> NEW TROPHY RECORD! 🏆
             </div>
           )}
-          <p className="run-over-tagline">Your soul returns to the sanctuary...</p>
+          <p className="run-over-tagline">{defeatQuote}</p>
         </div>
 
         {/* Right ~55%: Stats & Actions */}
@@ -58,21 +71,21 @@ export function GameOverScreen({
 
             <div className="run-over-stat-card">
               <span className="run-over-stat-label">
-                <Skull size={14} /> FOES SLAIN
+                <Skull size={14} /> BRAWL KNOCKOUTS
               </span>
               <strong className="run-over-stat-val">{result.kills.toLocaleString()}</strong>
             </div>
 
             <div className="run-over-stat-card">
               <span className="run-over-stat-label">
-                <Sparkles size={14} /> LEVEL REACHED
+                <Sparkles size={14} /> BRAWLER LEVEL
               </span>
               <strong className="run-over-stat-val">Lv. {result.highestLevel}</strong>
             </div>
 
             <div className="run-over-stat-card">
               <span className="run-over-stat-label">
-                <Heart size={14} /> COINS COLLECTED
+                <Heart size={14} /> COINS EARNED
               </span>
               <strong className="run-over-stat-val">+{result.coins.toLocaleString()}</strong>
             </div>
@@ -86,7 +99,7 @@ export function GameOverScreen({
               disabled={reviveLoading}
             >
               <Play size={18} fill="currentColor" />
-              <span>{reviveLoading ? 'Loading Ad...' : 'REVIVE WITH AD'}</span>
+              <span>{reviveLoading ? 'Loading Ad...' : 'ONE MORE CHANCE! 🎬'}</span>
             </button>
 
             <button
@@ -95,7 +108,7 @@ export function GameOverScreen({
               onClick={onRetry}
             >
               <RotateCw size={16} />
-              <span>RETRY</span>
+              <span>BRAWL AGAIN! 🔄</span>
             </button>
 
             <button
@@ -104,7 +117,7 @@ export function GameOverScreen({
               onClick={onHome}
             >
               <Home size={16} />
-              <span>SANCTUARY</span>
+              <span>LOBBY</span>
             </button>
           </div>
 

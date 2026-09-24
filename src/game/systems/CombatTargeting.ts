@@ -5,6 +5,7 @@ export interface CombatFlowState { meter: number; overdrive: boolean; overdriveR
 export interface CombatWaveAnnouncement { label: string; detail: string; tone: 'danger' | 'elite' | 'boss' }
 
 let primaryFireActive = false;
+let autoFireEnabled = true;
 let activeHeroId: HeroId = 'shadow';
 let autoAim: CombatAimVector | undefined;
 let autoAimUpdatedAt = 0;
@@ -12,6 +13,17 @@ let combatFlowState: CombatFlowState = { meter: 0, overdrive: false, overdriveRe
 
 export function setPrimaryFireActive(active: boolean): void { primaryFireActive = active; }
 export function isPrimaryFireActive(): boolean { return primaryFireActive; }
+export function setAutoFireEnabled(enabled: boolean): void {
+  autoFireEnabled = enabled;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tiny-survivor-autofire', { detail: autoFireEnabled }));
+  }
+}
+export function isAutoFireEnabled(): boolean { return autoFireEnabled; }
+export function toggleAutoFire(): boolean {
+  setAutoFireEnabled(!autoFireEnabled);
+  return autoFireEnabled;
+}
 export function setCombatHeroId(heroId: HeroId): void { activeHeroId = heroId; }
 export function getCombatHeroId(): HeroId { return activeHeroId; }
 

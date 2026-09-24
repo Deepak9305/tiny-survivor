@@ -80,13 +80,13 @@ export function PauseOverlay({
       <div className="pause-modal-landscape">
         <header className="pause-header">
           <div className="pause-header__left">
-            <span className="pause-header__badge">SANCTUARY RESPITE</span>
-            <h2 className="pause-header__title">TACTICAL JOURNAL</h2>
+            <span className="pause-header__badge">TAKE A BREATHER ☕</span>
+            <h2 className="pause-header__title">PAUSE MENU</h2>
           </div>
 
           <div className="pause-header__center">
             <span className="pause-stage-badge">
-              {mode === 'survival' ? 'ENDLESS SURVIVAL' : `WORLD ${stage.worldId} · STAGE ${stage.stageNumber}`}
+              {mode === 'survival' ? 'ENDLESS SURVIVAL 🏆' : `WORLD ${stage.worldId} · STAGE ${stage.stageNumber}`}
             </span>
             <strong className="pause-stage-name">{stage.name}</strong>
           </div>
@@ -198,7 +198,7 @@ export function PauseOverlay({
                 return (
                   <div key={id} className="pause-item-card">
                     <div className="pause-item-icon">
-                      {id === 'orbiting-blades' ? <Swords size={16} /> : id === 'chain-lightning' ? <Zap size={16} /> : <Target size={16} />}
+                      {id === 'orbiting-blades' ? <Swords size={16} /> : id === 'chain-lightning' ? <Zap size={16} /> : id === 'fire-orb' ? <Flame size={16} /> : <Target size={16} />}
                     </div>
                     <div className="pause-item-details">
                       <strong className="pause-item-name">{def?.name ?? id.replaceAll('-', ' ')}</strong>
@@ -296,15 +296,15 @@ export function PauseOverlay({
             <div className="pause-actions-group">
               <button type="button" className="pause-btn-resume" onClick={onResume}>
                 <Play size={18} fill="currentColor" />
-                <span>RESUME BATTLE</span>
+                <span>RESUME BRAWL ▶️</span>
               </button>
               <button type="button" className="pause-btn-bestiary" onClick={onBestiary}>
                 <BookOpen size={17} />
-                <span>MONSTER CODEX / BESTIARY</span>
+                <span>MONSTER CODEX 📖</span>
               </button>
               <button type="button" className="pause-btn-quit" onClick={onHome}>
                 <RotateCw size={16} />
-                <span>ABANDON RUN & RETURN</span>
+                <span>QUIT TO LOBBY 🏠</span>
               </button>
             </div>
           </section>

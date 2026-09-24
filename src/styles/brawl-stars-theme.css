@@ -1,0 +1,613 @@
+/* ============================================================================
+   BRAWL STARS / SUPERCELL GOOFY CARTOON THEME — COMPLETE OVERHAUL
+   ============================================================================ */
+
+/* 1. Global Font Overrides: Lilita One & Fredoka Comic Book Typography */
+:root {
+  --brawl-font: 'Lilita One', 'Fredoka', cursive, -apple-system, BlinkMacSystemFont, sans-serif;
+  --brawl-font-ui: 'Fredoka', 'Lilita One', sans-serif;
+  --brawl-border: 3px solid #0f172a;
+  --brawl-border-thick: 4px solid #0f172a;
+  --brawl-shadow-gold: 0 6px 0 #92400e, 0 10px 18px rgba(0, 0, 0, 0.4);
+  --brawl-shadow-green: 0 6px 0 #14532d, 0 10px 18px rgba(0, 0, 0, 0.4);
+  --brawl-shadow-cyan: 0 6px 0 #0369a1, 0 10px 18px rgba(0, 0, 0, 0.4);
+  --brawl-shadow-red: 0 6px 0 #881337, 0 10px 18px rgba(0, 0, 0, 0.4);
+  --brawl-shadow-purple: 0 6px 0 #581c87, 0 10px 18px rgba(0, 0, 0, 0.4);
+  --brawl-shadow-card: 0 8px 0 rgba(15, 23, 42, 0.95), 0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Comic Book Typography for Headers, Buttons, Stats & Callouts */
+h1, h2, h3, h4, h5, h6,
+.screen-header__title,
+.game-logo,
+.battle-now-gold-btn,
+.home-menu-row__title,
+.home-campaign-card__boss-name,
+.home-brand-panel__subtag,
+.currency-pill__amount,
+.ability-btn__label,
+.game-dash-btn__label,
+.game-wave-callout,
+.boss-warning,
+.boss-hud strong,
+.stage-card__title,
+.upgrades-card__title,
+.heroes-card__name,
+.shop-card__title,
+.primary-btn,
+.level-up-choice__title,
+.chest-modal__title,
+.game-over__title,
+.game-kill-callout,
+.hud-stat__value {
+  font-family: var(--brawl-font) !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase;
+}
+
+body, p, span, div, button, input {
+  font-family: var(--brawl-font-ui), sans-serif;
+}
+
+/* 2. Global Comic Background Sunburst / Vignette across all screens */
+.home-landscape-screen,
+.screen-layout,
+.game-screen,
+.shop-screen,
+.heroes-screen,
+.stage-detail-screen,
+.upgrades-screen,
+.settings-screen,
+.bestiary-screen,
+.survival-screen,
+.world-map-screen {
+  background-color: #1e1035 !important;
+  background-image:
+    radial-gradient(circle at 50% 30%, rgba(245, 158, 11, 0.18) 0%, transparent 65%),
+    repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, 0.025) 0deg 15deg, transparent 15deg 30deg) !important;
+}
+
+/* 3. Chunky Brawl Stars 3D Action Buttons */
+button,
+.primary-btn,
+.battle-now-gold-btn,
+.home-world-pill,
+.currency-pill {
+  border: var(--brawl-border) !important;
+  border-radius: 16px !important;
+  font-family: var(--brawl-font) !important;
+  font-weight: 700 !important;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(4px) !important;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Glossy highlight sheen on all Brawl buttons */
+button::after,
+.primary-btn::after,
+.battle-now-gold-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 13px 13px 60px 60px;
+  pointer-events: none;
+}
+
+/* The Legendary Gold BATTLE NOW Button (Supercell Play Button) */
+.battle-now-gold-btn {
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 50%, #d97706 100%) !important;
+  box-shadow: var(--brawl-shadow-gold) !important;
+  color: #451a03 !important;
+  border: var(--brawl-border-thick) !important;
+  border-radius: 20px !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transform: scale(1.02);
+  animation: brawlButtonPulse 2.8s infinite ease-in-out;
+}
+
+@keyframes brawlButtonPulse {
+  0%, 100% { transform: scale(1.0); }
+  50% { transform: scale(1.035); }
+}
+
+.battle-now-gold-btn .battle-now-gold-btn__text {
+  font-size: 1.35rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+}
+
+/* Primary Green Action Buttons (Play / Level Up / Confirm) */
+.primary-btn,
+.btn--primary,
+.home-menu-row.is-unlocked {
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #16a34a 100%) !important;
+  box-shadow: var(--brawl-shadow-green) !important;
+  color: #ffffff !important;
+  text-shadow: 0 2px 0 #14532d !important;
+}
+
+/* Cyan Utility / Info Buttons */
+.home-world-pill,
+.nav-rail__item.is-active,
+.stage-card.is-active {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+  box-shadow: var(--brawl-shadow-cyan) !important;
+  color: #ffffff !important;
+  text-shadow: 0 2px 0 #0369a1 !important;
+}
+
+/* 4. Chunky Brawl Stars Cards & Panels */
+.home-campaign-card,
+.stage-card,
+.upgrades-card,
+.heroes-card,
+.shop-card,
+.bestiary-card,
+.pause-overlay__panel,
+.level-up-overlay__panel,
+.chest-modal__card,
+.game-over__card {
+  border: var(--brawl-border-thick) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--brawl-shadow-card) !important;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  position: relative;
+}
+
+/* Card Header Cartoon Ribbon Badges */
+.home-campaign-card__kicker,
+.home-campaign-card__portrait-badge,
+.stage-card__badge,
+.heroes-card__badge,
+.shop-card__badge {
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%) !important;
+  color: #451a03 !important;
+  border: 2px solid #0f172a !important;
+  border-radius: 10px !important;
+  box-shadow: 0 3px 0 #92400e !important;
+  font-family: var(--brawl-font) !important;
+  font-weight: 900 !important;
+  transform: rotate(-2deg);
+  display: inline-block;
+  padding: 4px 10px !important;
+}
+
+/* 5. Currency Bar (Gems & Coins like Brawl Stars) */
+.currency-bar {
+  gap: 12px !important;
+}
+
+.currency-pill {
+  border: var(--brawl-border) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4) !important;
+  padding: 4px 14px !important;
+}
+
+.currency-pill--coins {
+  border-color: #f59e0b !important;
+}
+
+.currency-pill--coins .currency-pill__amount {
+  color: #fbbf24 !important;
+  text-shadow: 0 2px 0 #78350f !important;
+}
+
+.currency-pill--gems {
+  border-color: #10b981 !important;
+}
+
+.currency-pill--gems .currency-pill__amount {
+  color: #34d399 !important;
+  text-shadow: 0 2px 0 #064e3b !important;
+}
+
+/* 6. Navigation Rail (Brawl Stars Side Tab Style) */
+.nav-rail {
+  background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%) !important;
+  border-right: var(--brawl-border-thick) !important;
+  box-shadow: 4px 0 0 rgba(0, 0, 0, 0.25) !important;
+}
+
+.nav-rail__item {
+  border-radius: 16px !important;
+  border: 2px solid transparent !important;
+  margin: 6px 8px !important;
+}
+
+.nav-rail__item.is-active {
+  border: 2.5px solid #0f172a !important;
+  transform: scale(1.08);
+}
+
+/* 7. IN-GAME HUD: Authentic Brawl Stars Cartoon Overlay */
+.game-hud {
+  pointer-events: none;
+}
+
+/* Chunky 3D Health Bar */
+.game-hud__hp-bar {
+  height: 22px !important;
+  border: var(--brawl-border-thick) !important;
+  border-radius: 999px !important;
+  background: #09090b !important;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden;
+  position: relative;
+}
+
+.game-hud__hp-bar i,
+.game-hud__hp-fill {
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #16a34a 100%) !important;
+  border-radius: 999px;
+  position: relative;
+}
+
+/* Highlight reflection on HP bar */
+.game-hud__hp-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* Chunky XP Bar */
+.game-hud__xp-bar {
+  height: 14px !important;
+  border: var(--brawl-border) !important;
+  border-radius: 999px !important;
+  background: #0f172a !important;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+.game-hud__xp-bar i,
+.game-hud__xp-fill {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+}
+
+/* Level Star Badge */
+.game-hud__level-badge {
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%) !important;
+  color: #451a03 !important;
+  border: 2px solid #0f172a !important;
+  border-radius: 50% !important;
+  box-shadow: 0 3px 0 #92400e !important;
+  font-family: var(--brawl-font) !important;
+  font-weight: 900 !important;
+}
+
+/* 8. Ability / Special Super Buttons (Brawl Stars Super Attack Style) */
+.ability-btn {
+  border: var(--brawl-border-thick) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 6px 0 #0f172a, 0 10px 18px rgba(0, 0, 0, 0.45) !important;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+  pointer-events: auto;
+}
+
+/* When Special Ability is Charged & Ready (Supercell Rainbow Glow) */
+.ability-btn.is-ready {
+  background: linear-gradient(180deg, #fde047 0%, #e11d48 50%, #9333ea 100%) !important;
+  box-shadow: 0 6px 0 #701a75, 0 0 24px rgba(236, 72, 153, 0.75) !important;
+  animation: brawlSuperReady 1.4s infinite ease-in-out;
+}
+
+@keyframes brawlSuperReady {
+  0%, 100% {
+    transform: scale(1.0) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.08) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.08) rotate(3deg);
+  }
+}
+
+/* Dash Button */
+.game-dash-btn {
+  border: var(--brawl-border-thick) !important;
+  border-radius: 50% !important;
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+  box-shadow: var(--brawl-shadow-cyan) !important;
+  color: #ffffff !important;
+  pointer-events: auto;
+}
+
+.game-dash-btn.is-ready {
+  animation: brawlPulse 2s infinite ease-in-out;
+}
+
+@keyframes brawlPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* 9. Goofy Bouncy Combat Popups & Callouts */
+.game-wave-callout {
+  border: var(--brawl-border-thick) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%) !important;
+  box-shadow: var(--brawl-shadow-gold) !important;
+  color: #451a03 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  animation: brawlBannerPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes brawlBannerPop {
+  0% { transform: translate(-50%, -20px) scale(0.6); opacity: 0; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+.boss-warning {
+  border: var(--brawl-border-thick) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
+  box-shadow: var(--brawl-shadow-red) !important;
+  color: #ffffff !important;
+  text-shadow: 0 3px 0 #450a0a !important;
+  animation: brawlWarningWobble 0.6s infinite ease-in-out;
+}
+
+@keyframes brawlWarningWobble {
+  0%, 100% { transform: translate(-50%, 0) scale(1); }
+  50% { transform: translate(-50%, -4px) scale(1.04); }
+}
+
+/* Goofy Floating Damage Numbers */
+.combat-damage-text,
+.damage-number {
+  font-family: var(--brawl-font) !important;
+  font-weight: 900 !important;
+  -webkit-text-stroke: 1.5px #0f172a;
+  text-shadow: 0 3px 0 #0f172a;
+  animation: brawlDamagePop 0.5s ease-out forwards;
+}
+
+@keyframes brawlDamagePop {
+  0% { transform: scale(0.5); opacity: 0; }
+  40% { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(1.0) translateY(-28px); opacity: 0.9; }
+}
+
+/* 10. Game Logo: Goofy Brawl Stars 3D Title */
+.game-logo {
+  filter: drop-shadow(0 8px 0 #0f172a) drop-shadow(0 14px 20px rgba(0, 0, 0, 0.5)) !important;
+  align-items: center !important;
+}
+
+.game-logo__title-group {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.game-logo__tiny {
+  font-family: var(--brawl-font) !important;
+  font-size: clamp(38px, 6.5vw, 62px) !important;
+  font-weight: 900 !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #fde047 30%, #f59e0b 70%, #d97706 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 3px #0f172a !important;
+  transform: rotate(-3deg) !important;
+  display: inline-block !important;
+  letter-spacing: 2px !important;
+}
+
+.game-logo__survivor {
+  font-family: var(--brawl-font) !important;
+  font-size: clamp(44px, 8vw, 76px) !important;
+  font-weight: 900 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #e0f2fe 30%, #38bdf8 70%, #0284c7 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 3.5px #0f172a !important;
+  transform: rotate(2deg) !important;
+  display: inline-block !important;
+  letter-spacing: 2px !important;
+  margin-top: -8px !important;
+}
+
+.game-logo__tagline {
+  background: #facc15 !important;
+  color: #451a03 !important;
+  font-family: var(--brawl-font) !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  letter-spacing: 1.5px !important;
+  padding: 4px 14px !important;
+  border-radius: 999px !important;
+  border: 2px solid #0f172a !important;
+  box-shadow: 0 3px 0 #92400e !important;
+  margin-top: 6px !important;
+  display: inline-block !important;
+}
+
+/* 11. Joypad & Thumbsticks (Brawl Stars Touch Controls) */
+.twin-stick-left__base,
+.twin-stick-right__base {
+  border: 3.5px solid #0f172a !important;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(15, 23, 42, 0.75) 100%) !important;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5), inset 0 0 16px rgba(56, 189, 248, 0.3) !important;
+}
+
+.twin-stick-left__thumb {
+  background: radial-gradient(circle at 35% 35%, #60a5fa 0%, #2563eb 100%) !important;
+  border: 3px solid #0f172a !important;
+  box-shadow: 0 4px 0 #1e3a8a !important;
+}
+
+.twin-stick-right__thumb {
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 100%) !important;
+  border: 3px solid #0f172a !important;
+  box-shadow: 0 4px 0 #7f1d1d !important;
+}
+
+/* 12. Level Up Overlay — Brawl Stars 3-Card Selection */
+.level-up-overlay__panel {
+  border: 4px solid #0f172a !important;
+  border-radius: 28px !important;
+  background: radial-gradient(circle at 50% 20%, #312e81 0%, #0f172a 100%) !important;
+  box-shadow: 0 12px 0 #0f172a, 0 24px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+.level-up-choice {
+  border: 3.5px solid #0f172a !important;
+  border-radius: 20px !important;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  box-shadow: 0 8px 0 #0f172a, 0 14px 20px rgba(0, 0, 0, 0.4) !important;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease !important;
+}
+
+.level-up-choice:hover {
+  transform: translateY(-6px) scale(1.03) !important;
+  box-shadow: 0 14px 0 #0f172a, 0 0 24px rgba(250, 204, 21, 0.5) !important;
+  border-color: #facc15 !important;
+}
+
+/* 13. Brawl Stars Treasure Chest Modal (Brawl Box Opening) */
+.chest-modal__card {
+  border: 4px solid #0f172a !important;
+  border-radius: 28px !important;
+  background: radial-gradient(circle at 50% 20%, #701a75 0%, #0f172a 100%) !important;
+  box-shadow: 0 12px 0 #0f172a, 0 28px 48px rgba(0, 0, 0, 0.7) !important;
+  animation: brawlBoxEntrance 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes brawlBoxEntrance {
+  0% { transform: scale(0.6) rotate(-4deg); opacity: 0; }
+  100% { transform: scale(1.0) rotate(0deg); opacity: 1; }
+}
+
+/* 14. Victory / Game Over Screen (Showdown Victory Style) */
+.stage-clear-modal,
+.game-over__card {
+  border: 4px solid #0f172a !important;
+  border-radius: 28px !important;
+  background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #09090b 100%) !important;
+  box-shadow: 0 12px 0 #0f172a, 0 24px 44px rgba(0, 0, 0, 0.6) !important;
+}
+
+.stage-clear__banner {
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%) !important;
+  color: #451a03 !important;
+  border: 3.5px solid #0f172a !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 0 #92400e !important;
+  font-family: var(--brawl-font) !important;
+  font-size: 2rem !important;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6) !important;
+  animation: brawlBannerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 15. Heroes Screen Roster (Brawler Select Carousel) */
+.heroes-card {
+  border: 3.5px solid #0f172a !important;
+  border-radius: 20px !important;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.heroes-card:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.heroes-card.is-selected {
+  border-color: #facc15 !important;
+  box-shadow: 0 8px 0 #92400e, 0 0 20px rgba(250, 204, 21, 0.5) !important;
+}
+
+/* 16. Upgrades Talent Tree & Shop */
+.upgrades-card,
+.shop-card {
+  border: 3.5px solid #0f172a !important;
+  border-radius: 20px !important;
+}
+
+.upgrades-card button,
+.shop-card button {
+  border: 2.5px solid #0f172a !important;
+  border-radius: 14px !important;
+}
+
+/* 17. Goofy Comic Combat Callouts (Brawl Popups) */
+.game-combo-callout {
+  position: absolute !important;
+  top: 14% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%) !important;
+  border: 3.5px solid #0f172a !important;
+  border-radius: 999px !important;
+  padding: 6px 20px !important;
+  box-shadow: 0 6px 0 #92400e, 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  animation: brawlComboBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  z-index: 40 !important;
+  pointer-events: none !important;
+}
+
+.game-combo-callout__count {
+  font-family: var(--brawl-font) !important;
+  font-size: 1.4rem !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  -webkit-text-stroke: 1.5px #0f172a !important;
+  text-shadow: 0 2px 0 #0f172a !important;
+}
+
+.game-combo-callout__title {
+  font-family: var(--brawl-font) !important;
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+  color: #451a03 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  letter-spacing: 0.5px !important;
+}
+
+@keyframes brawlComboBounce {
+  0% { transform: translateX(-50%) scale(0.4) rotate(-6deg); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.18) rotate(3deg); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1.0) rotate(0deg); opacity: 1; }
+}
+
+.game-kill-callout {
+  position: absolute !important;
+  top: 20% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(180deg, #ec4899 0%, #be185d 100%) !important;
+  color: #ffffff !important;
+  border: 3.5px solid #0f172a !important;
+  border-radius: 999px !important;
+  padding: 8px 24px !important;
+  box-shadow: 0 6px 0 #831843, 0 12px 28px rgba(0, 0, 0, 0.45) !important;
+  font-family: var(--brawl-font) !important;
+  font-size: 1.25rem !important;
+  font-weight: 900 !important;
+  -webkit-text-stroke: 1px #0f172a !important;
+  animation: brawlComboBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  z-index: 42 !important;
+  pointer-events: none !important;
+}

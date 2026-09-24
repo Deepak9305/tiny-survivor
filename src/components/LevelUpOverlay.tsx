@@ -5,8 +5,11 @@ import {
   Check,
   Compass,
   Dices,
+  FastForward,
   Flame,
+  Gem,
   Heart,
+  RotateCcw,
   Shield,
   Sparkles,
   Swords,
@@ -20,10 +23,20 @@ import { audioService } from '../services/audioService';
 interface LevelUpOverlayProps {
   choices: UpgradeChoice[];
   playerLevel: number;
+  rerollsRemaining?: number;
   onChoose: (choice: UpgradeChoice) => void;
+  onReroll?: () => void;
+  onSkip?: () => void;
 }
 
-export function LevelUpOverlay({ choices, playerLevel, onChoose }: LevelUpOverlayProps) {
+export function LevelUpOverlay({
+  choices,
+  playerLevel,
+  rerollsRemaining = 2,
+  onChoose,
+  onReroll,
+  onSkip,
+}: LevelUpOverlayProps) {
   useEffect(() => {
     audioService.playSFX('level-up', { volume: 0.9, throttle: 0.2 });
 
@@ -31,10 +44,17 @@ export function LevelUpOverlay({ choices, playerLevel, onChoose }: LevelUpOverla
       if (e.key === '1' && choices[0]) onChoose(choices[0]);
       else if (e.key === '2' && choices[1]) onChoose(choices[1]);
       else if (e.key === '3' && choices[2]) onChoose(choices[2]);
+      else if ((e.key === 'r' || e.key === 'R') && rerollsRemaining > 0 && onReroll) {
+        audioService.playSFX('reroll', { pitch: 1.0 });
+        onReroll();
+      } else if ((e.key === 's' || e.key === 'S') && onSkip) {
+        audioService.playSFX('skip-heal', { pitch: 1.0 });
+        onSkip();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [choices, onChoose]);
+  }, [choices, onChoose, onReroll, onSkip, rerollsRemaining]);
 
   return (
     <div className="level-up-overlay" role="dialog" aria-modal="true" aria-label="Level Up Power Selection">
@@ -52,12 +72,12 @@ export function LevelUpOverlay({ choices, playerLevel, onChoose }: LevelUpOverla
             <span className="level-up-crest__wing level-up-crest__wing--right">✦</span>
           </div>
 
-          <span className="level-up-eyebrow">SANCTUARY BLESSING · TACTICAL ASCENSION</span>
+          <span className="level-up-eyebrow">LEVEL UP BLESSING! ⭐</span>
           <h1 className="level-up-heading">
             LEVEL UP! <span className="text-gold">REACHED LV. {playerLevel}</span>
           </h1>
           <p className="level-up-instruction">
-            Select 1 of {choices.length} divine powers to infuse into your arsenal
+            <Gem size={13} className="inline-gem-icon" /> XP harvested! Select 1 power to juice up your arsenal:
           </p>
         </div>
 
@@ -148,6 +168,44 @@ export function LevelUpOverlay({ choices, playerLevel, onChoose }: LevelUpOverla
               </button>
             );
           })}
+        </div>
+
+        {/* Tactical Actions Toolbar: Reroll & Skip */}
+        <div className="level-up-actions-bar">
+          <button
+            type="button"
+            className={`level-up-action-btn level-up-action-btn--reroll${rerollsRemaining <= 0 ? ' is-disabled' : ''}`}
+            onClick={() => {
+              if (rerollsRemaining > 0 && onReroll) {
+                audioService.playSFX('reroll', { pitch: 1.0 });
+                onReroll();
+              }
+            }}
+            disabled={rerollsRemaining <= 0}
+            title={rerollsRemaining > 0 ? 'Reroll upgrade choices' : 'No rerolls remaining'}
+          >
+            <Dices size={16} />
+            <span>REROLL POWERS</span>
+            <span className="level-up-badge">{rerollsRemaining} LEFT</span>
+            <kbd className="level-up-key-hint">[R]</kbd>
+          </button>
+
+          <button
+            type="button"
+            className="level-up-action-btn level-up-action-btn--skip"
+            onClick={() => {
+              if (onSkip) {
+                audioService.playSFX('skip-heal', { pitch: 1.0 });
+                onSkip();
+              }
+            }}
+            title="Skip upgrade: gain +60 Gold and Heal +30 HP"
+          >
+            <FastForward size={16} />
+            <span>SKIP & HEAL</span>
+            <span className="level-up-badge level-up-badge--reward">+60 Gold · +30 HP</span>
+            <kbd className="level-up-key-hint">[S]</kbd>
+          </button>
         </div>
       </div>
     </div>

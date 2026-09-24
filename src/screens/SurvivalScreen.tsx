@@ -59,10 +59,10 @@ export function SurvivalScreen({ save, onBack, onStart, onSelectHero }: Survival
           </div>
 
           <div className="survival-desc-box">
-            <span className="survival-desc-box__kicker">ENDLESS ESCALATION</span>
-            <p className="survival-lead">No finish line. No mercy.</p>
+            <span className="survival-desc-box__kicker">ENDLESS BONK SHOWDOWN</span>
+            <p className="survival-lead">Infinite mobs. Endless chaos! 💥</p>
             <p className="survival-sub">
-              Enemy pressure escalates continuously while conquered world bosses return at intervals. Build fast, move clean, and chase a new record.
+              Monster waves grow endlessly wilder while hilarious world bosses return for rematch bonks! Pick your powers fast, snack often, and set an unbeatable high score! 🏆
             </p>
           </div>
         </div>

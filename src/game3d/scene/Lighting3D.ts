@@ -23,25 +23,44 @@ function createAtmosphereParticles(
   lowPerformanceMode: boolean
 ): void {
   const rng = seeded(stage.mapSeed + stage.worldId * 911);
-  const count = lowPerformanceMode ? 18 : 64;
+  const count = lowPerformanceMode ? 24 : 110;
   const positions = new Float32Array(count * 3);
+  const velocities = new Float32Array(count * 3);
 
   for (let index = 0; index < count; index += 1) {
     const offset = index * 3;
-    positions[offset] = (rng() - 0.5) * 43;
-    positions[offset + 1] = 0.55 + rng() * (stage.worldId === 4 ? 7.2 : 5.6);
-    positions[offset + 2] = (rng() - 0.5) * 29;
+    positions[offset] = (rng() - 0.5) * 44;
+    positions[offset + 1] = 0.2 + rng() * (stage.worldId === 4 ? 6.5 : 5.2);
+    positions[offset + 2] = (rng() - 0.5) * 32;
+
+    if (stage.worldId === 4) {
+      // Lava castle embers rising fast
+      velocities[offset] = (rng() - 0.5) * 0.4;
+      velocities[offset + 1] = 0.6 + rng() * 0.8;
+      velocities[offset + 2] = (rng() - 0.5) * 0.4;
+    } else if (stage.worldId === 3) {
+      // Frozen ruins: snow flurries drifting sideways
+      velocities[offset] = -0.4 - rng() * 0.6;
+      velocities[offset + 1] = -0.3 - rng() * 0.4;
+      velocities[offset + 2] = (rng() - 0.5) * 0.3;
+    } else {
+      // Forest spores / graveyard wisps floating upward
+      velocities[offset] = (rng() - 0.5) * 0.25;
+      velocities[offset + 1] = 0.15 + rng() * 0.35;
+      velocities[offset + 2] = (rng() - 0.5) * 0.25;
+    }
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const positionAttr = new THREE.BufferAttribute(positions, 3);
+  geometry.setAttribute('position', positionAttr);
 
   const material = new THREE.PointsMaterial({
     color: ATMOSPHERE_COLORS[stage.worldId] ?? 0xbbeeff,
-    size: stage.worldId === 4 ? 0.075 : 0.058,
+    size: stage.worldId === 4 ? 0.085 : stage.worldId === 3 ? 0.07 : 0.062,
     sizeAttenuation: true,
     transparent: true,
-    opacity: lowPerformanceMode ? 0.26 : (stage.worldId === 4 ? 0.46 : 0.34),
+    opacity: lowPerformanceMode ? 0.28 : (stage.worldId === 4 ? 0.52 : 0.38),
     depthWrite: false,
     blending: stage.worldId === 4 ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
@@ -50,13 +69,32 @@ function createAtmosphereParticles(
   points.name = 'premium-biome-atmosphere';
   points.frustumCulled = false;
 
-  const baseY = stage.worldId === 4 ? 0.15 : 0;
+  let lastTime = performance.now();
   points.onBeforeRender = () => {
-    const time = performance.now() * 0.001;
-    points.rotation.y = Math.sin(time * 0.08) * 0.05;
-    points.position.x = Math.sin(time * 0.11 + stage.worldId) * 0.22;
-    points.position.y = baseY + Math.sin(time * (stage.worldId === 4 ? 0.7 : 0.28)) * 0.08;
-    material.opacity = (lowPerformanceMode ? 0.24 : (stage.worldId === 4 ? 0.44 : 0.33)) + Math.sin(time * 0.9) * 0.025;
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastTime) * 0.001);
+    lastTime = now;
+    const time = now * 0.001;
+
+    const pos = positionAttr.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      const idx = i * 3;
+      pos[idx] += (velocities[idx] + Math.sin(time * 1.5 + i) * 0.15) * dt;
+      pos[idx + 1] += velocities[idx + 1] * dt;
+      pos[idx + 2] += (velocities[idx + 2] + Math.cos(time * 1.2 + i) * 0.15) * dt;
+
+      if (pos[idx + 1] > 6.8) pos[idx + 1] = 0.15;
+      if (pos[idx + 1] < 0.1) pos[idx + 1] = 6.6;
+      if (pos[idx] > 24) pos[idx] = -24;
+      if (pos[idx] < -24) pos[idx] = 24;
+      if (pos[idx + 2] > 18) pos[idx + 2] = -18;
+      if (pos[idx + 2] < -18) pos[idx + 2] = 18;
+    }
+    positionAttr.needsUpdate = true;
+
+    material.opacity =
+      (lowPerformanceMode ? 0.26 : stage.worldId === 4 ? 0.5 : 0.36) +
+      Math.sin(time * 1.4) * 0.04;
   };
 
   scene.add(points);
@@ -65,27 +103,40 @@ function createAtmosphereParticles(
 export function createLighting(scene: THREE.Scene, stage: StageDefinition, lowPerformanceMode: boolean): void {
   const theme = biomeThemeFor(stage);
 
-  // A filmic three-point rig: stronger shape definition and less flat ambient fill.
-  const key = new THREE.DirectionalLight(theme.keyLight, lowPerformanceMode ? 2.35 : 3.05);
+  // Vibrant, sunny Brawl Stars cartoon lighting with rich contrast and colorful ambient
+  const key = new THREE.DirectionalLight(theme.keyLight, lowPerformanceMode ? 2.85 : 3.65);
   key.name = 'biome-key-light';
   key.position.set(-13, 27, -17);
   key.target.position.set(0, 0, 0);
+  if (!lowPerformanceMode) {
+    key.castShadow = true;
+    key.shadow.mapSize.width = 1024;
+    key.shadow.mapSize.height = 1024;
+    key.shadow.camera.near = 10;
+    key.shadow.camera.far = 65;
+    key.shadow.camera.left = -28;
+    key.shadow.camera.right = 28;
+    key.shadow.camera.top = 28;
+    key.shadow.camera.bottom = -28;
+    key.shadow.bias = -0.0008;
+    key.shadow.normalBias = 0.02;
+  }
   scene.add(key, key.target);
 
   const hemisphere = new THREE.HemisphereLight(
     theme.moon,
     theme.fillLight,
-    lowPerformanceMode ? 0.76 : 0.92
+    lowPerformanceMode ? 1.05 : 1.35
   );
   hemisphere.name = 'biome-hemisphere';
   scene.add(hemisphere);
 
-  const ambient = new THREE.AmbientLight(theme.fillLight, lowPerformanceMode ? 0.23 : 0.28);
+  const ambient = new THREE.AmbientLight(theme.fillLight, lowPerformanceMode ? 0.38 : 0.48);
   ambient.name = 'controlled-world-fill';
   scene.add(ambient);
 
-  // Stronger opposing rim keeps hero/enemy silhouettes readable against every biome.
-  const rim = new THREE.DirectionalLight(theme.accent, lowPerformanceMode ? 0.72 : 1.12);
+  // Strong, saturated cartoon rim keeps characters popping against the arena ground
+  const rim = new THREE.DirectionalLight(theme.accent, lowPerformanceMode ? 0.95 : 1.45);
   rim.name = 'character-rim-light';
   rim.position.set(12, 15, 13);
   rim.target.position.set(0, 0.8, 0);

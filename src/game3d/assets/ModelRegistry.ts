@@ -16,6 +16,7 @@ export type ModelAssetId =
 const MODEL_PATHS: Record<string, string> = {
   'hero:shadow': '/assets/models/heroes/shadow.glb',
   'enemy:skeleton': '/assets/models/enemies/skeleton.glb',
+  'enemy:zombie': '/assets/models/enemies/zombie.glb',
   'enemy:bat': '/assets/models/enemies/bat.glb',
   'enemy:slime': '/assets/models/enemies/slime.glb',
   'enemy:ghost': '/assets/models/enemies/ghost.glb',

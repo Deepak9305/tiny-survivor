@@ -26,23 +26,23 @@ interface CampaignBossMeta {
 
 const CAMPAIGN_BOSS_META: Record<number, CampaignBossMeta> = {
   1: {
-    name: 'SKELETON KING',
-    lore: 'Ancient bones stir beneath moonlit stone. The king is waiting.',
+    name: 'KING CALCIUM',
+    lore: 'Lord of bad posture and 100% fortified calcium. Rattle his bones! 💀',
     portrait: '/assets/images/portrait_skeleton_king.jpg',
   },
   2: {
-    name: 'FOREST WITCH',
-    lore: 'A forgotten forest. A lingering magic. Something watches between the trees.',
+    name: 'WICKED BROCCOLI',
+    lore: 'Grumpy salad sorceress mad that you didn\'t eat your green veggies! 🥦',
     portrait: '/assets/images/boss_forest_witch.jpg',
   },
   3: {
-    name: 'FROST GOLEM',
-    lore: 'The ruins breathe cold. Break the guardian before the storm closes in.',
+    name: 'BIG CHILLY',
+    lore: 'Angry walking glacier who gives giant freezing high-fives! ❄️',
     portrait: '/assets/images/boss_frost_golem.jpg',
   },
   4: {
-    name: 'DEMON KING',
-    lore: 'Beyond the black gates, hell itself is awake. End the infernal reign.',
+    name: 'LORD SPICY PANTS',
+    lore: 'Spicy lava overlord who is super cranky because he has no AC! 🔥',
     portrait: '/assets/images/boss_demon_lord.jpg',
   },
 };
@@ -69,7 +69,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
             <div className="home-brand-panel__logo-box">
               <GameLogo />
               <p className="home-brand-panel__subtag">
-                AUTO-AIM SURVIVOR &bull; DARK FANTASY ACTION ROGUELITE
+                GOOFY CHIBI SURVIVOR &bull; 3D BRAWLER ACTION ROGUELITE ⭐
               </p>
             </div>
 
@@ -193,7 +193,7 @@ export function HomeScreen({ save, onNavigate, onPlay }: HomeScreenProps) {
               <span className="battle-now-gold-btn__glow" aria-hidden="true" />
               <div className="battle-now-gold-btn__content">
                 <Swords size={24} className="battle-now-gold-btn__icon" />
-                <span className="battle-now-gold-btn__text">BATTLE NOW</span>
+                <span className="battle-now-gold-btn__text">BRAWL NOW! ⭐</span>
                 <ChevronRight size={22} className="battle-now-gold-btn__arrow" />
               </div>
             </button>

@@ -6,6 +6,7 @@ export const BASE_WEAPON_ORDER: WeaponId[] = [
   'magic-bolt',
   'orbiting-blades',
   'chain-lightning',
+  'fire-orb',
 ];
 
 export const PASSIVE_ORDER: PassiveId[] = [
@@ -38,21 +39,21 @@ export function makeUpgradeChoice(
   if (isWeapon) {
     const weapon = WEAPON_BALANCE[id as WeaponId];
 
-    // Magic Bolt starts at level 1, so its copy is keyed to the CURRENT level
+    // Primary Melee Strike starts at level 1, so its copy is keyed to the CURRENT level
     // rather than sharing the level-0 auto-weapon acquisition table.
     if (id === 'magic-bolt') {
-      const boltEffects: Record<number, string> = {
-        1: '+10% fire rate · empowered shot every 4th volley',
-        2: '+1 projectile · stronger empowered volleys',
-        3: '+1 pierce · faster fire · empowered every 3rd volley',
-        4: '+1 pierce · OVERDRIVE unlocks triple volleys',
+      const strikeEffects: Record<number, string> = {
+        1: '+12% swing speed · wider bonk arc ⚔️',
+        2: '+18% reach & radius · mega stagger knockback 💥',
+        3: '+24% bonk damage · empowered every 3rd swing ⚡',
+        4: '+30% damage · OVERDRIVE unleashes hyperspeed flurries 🌪️',
       };
       return {
         id,
-        title: weapon.name,
-        description: 'Turn your primary attack into a relentless arcane barrage.',
-        nextEffect: boltEffects[level] ?? '+25% bolt effectiveness',
-        icon: '✦',
+        title: 'Giant Bonker',
+        description: 'Whack monsters right on the noggin with massive cleaves and knockback.',
+        nextEffect: strikeEffects[level] ?? '+25% bonk effectiveness 🔨',
+        icon: '⚔',
         kind: 'weapon',
         rarity: rarityFor(level),
         level,
@@ -61,27 +62,34 @@ export function makeUpgradeChoice(
 
     const effects: Record<string, string[]> = {
       'orbiting-blades': [
-        '+1 orbiting blade',
-        '+25% blade damage',
-        '+15% orbit pressure',
-        '+1 orbiting blade',
-        '+40% blade damage',
+        '+1 fidget blade 🌀',
+        '+25% blade slice damage 🗡️',
+        '+15% faster spinny speed ⚡',
+        '+1 extra fidget blade 🌀',
+        '+40% mega blade carnage 💥',
       ],
       'chain-lightning': [
-        'Unlock lightning chains',
-        '+1 chain · faster proc',
-        '+25% lightning damage',
-        '+1 chain · faster proc',
-        'Massive five-target storm',
+        'Unlock Zap-O-Matic ⚡',
+        '+1 lightning chain target ϟ',
+        '+25% electric shock damage ⚡',
+        '+1 lightning chain target ϟ',
+        'Five-target thunderstorm chaos 🌩️',
+      ],
+      'fire-orb': [
+        'Hurl spicy flaming meatballs 🔥',
+        '+30% bigger spicy blast 💣',
+        '+1 spicy meatball per volley ☄️',
+        '+35% fire explosion damage 💥',
+        'Infernal triple giant meatball barrage! ☄️',
       ],
     };
 
     return {
       id,
       title: weapon.name,
-      description: level === 0 ? 'Add a new automatic weapon.' : 'Evolve this weapon into a stronger crowd-control tool.',
-      nextEffect: effects[id]?.[Math.min(level, 4)] ?? '+20% effectiveness',
-      icon: id === 'orbiting-blades' ? '◈' : 'ϟ',
+      description: level === 0 ? `Equip ${weapon.name} to zap and clobber mobs.` : `Upgrade ${weapon.name} for maximum chaos.`,
+      nextEffect: effects[id]?.[Math.min(level, 4)] ?? '+20% power ⚡',
+      icon: id === 'orbiting-blades' ? '◈' : id === 'chain-lightning' ? 'ϟ' : '🔥',
       kind: 'weapon',
       rarity: rarityFor(level),
       level,
@@ -90,20 +98,20 @@ export function makeUpgradeChoice(
 
   const passive = PASSIVE_BALANCE[id as PassiveId];
   const effects: Record<PassiveId, string[]> = {
-    power: ['+12% damage', '+24% damage', '+36% damage', '+50% damage', '+70% damage'],
-    vitality: ['+15% max HP', '+30% max HP', '+45% max HP', '+65% max HP', '+90% max HP'],
-    'swift-boots': ['+8% move speed', '+16% move speed', '+24% move speed', '+34% move speed', '+46% move speed'],
-    magnet: ['+28 pickup range', '+56 pickup range', '+84 pickup range', '+120 pickup range', 'pull XP faster'],
-    focus: ['-8% cooldowns', '-16% cooldowns', '-24% cooldowns', '-34% cooldowns', '-46% cooldowns'],
-    luck: ['+4% crit chance', '+8% crit chance', '+12% crit chance', '+18% crit chance', '+25% crit chance'],
-    growth: ['+10% XP gained', '+20% XP gained', '+30% XP gained', '+42% XP gained', '+58% XP gained'],
-    armor: ['-8% damage taken', '-16% damage taken', '-24% damage taken', '-34% damage taken', '-46% damage taken'],
+    power: ['+12% damage 💪', '+24% damage 🔥', '+36% damage 💥', '+50% damage ⚡', '+70% GIGA DAMAGE 👑'],
+    vitality: ['+15% max HP ❤️', '+30% max HP 🍖', '+45% max HP 🥩', '+65% max HP 🛡️', '+90% CHONK GOD 👑'],
+    'swift-boots': ['+8% speed 👟', '+16% speed 🏃', '+24% speed 💨', '+34% speed ⚡', '+46% HYPERSPEED 🚀'],
+    magnet: ['+28 pickup range 🧲', '+56 pickup range 🧲', '+84 pickup range ✨', '+120 pickup range 🌀', 'Instant XP Vacuum! 🌟'],
+    focus: ['-8% cooldowns ⏱️', '-16% cooldowns ⚡', '-24% cooldowns ☕', '-34% cooldowns 🚀', '-46% TURBO SPAM 👑'],
+    luck: ['+4% crit chance 🍀', '+8% crit chance 🎲', '+12% crit chance 🎯', '+18% crit chance 💥', '+25% CRIT BONANZA 👑'],
+    growth: ['+10% XP gain 🧠', '+20% XP gain 📚', '+30% XP gain 🎓', '+42% XP gain 🌟', '+58% GALAXY BRAIN 👑'],
+    armor: ['-8% damage taken 🛡️', '-16% damage taken 🛡️', '-24% damage taken 🧱', '-34% damage taken 💎', '-46% TITANIUM SUIT 👑'],
   };
 
   return {
     id,
     title: passive.name,
-    description: 'Strengthen the build without adding another active control.',
+    description: `Boost ${passive.name} across your entire build.`,
     nextEffect: effects[id as PassiveId][Math.min(level, 4)],
     icon: passive.icon,
     kind: 'passive',

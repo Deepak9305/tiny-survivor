@@ -15,11 +15,10 @@ function difficultyFor(worldId: number, stageNumber: number): StageDifficulty {
   const local = (stageNumber - 1) / (STAGES_PER_WORLD - 1);
   const world = worldId - 1;
   return {
-    enemyHpMultiplier: 0.92 + world * 0.14 + local * 0.34,
-    enemyDamageMultiplier: 0.90 + world * 0.11 + local * 0.28,
-    // Fewer bodies than the old crowd-heavy tuning. Difficulty comes from composition and attacks.
-    densityMultiplier: 0.72 + world * 0.035 + local * 0.24,
-    eliteMultiplier: 0.30 + world * 0.20 + local * 1.55,
+    enemyHpMultiplier: 1.00 + world * 0.28 + local * 0.38,
+    enemyDamageMultiplier: 1.00 + world * 0.24 + local * 0.30,
+    densityMultiplier: 0.76 + world * 0.05 + local * 0.26,
+    eliteMultiplier: 0.35 + world * 0.22 + local * 1.40,
   };
 }
 

@@ -22,27 +22,28 @@ export class XPPickup3D {
     this.group = new THREE.Group();
     this.group.name = id;
 
-    // Small: blue, Medium: cyan, Large: purple
-    const color = value > 30 ? 0xc58cff : value > 15 ? 0x5de7ff : 0x4aafff;
-    const innerColor = value > 30 ? 0xffffff : value > 15 ? 0xd6f7ff : 0xb8e6ff;
-    const baseScale = value > 30 ? 0.26 : value > 15 ? 0.2 : 0.15;
+    // Small: electric cyan, Medium: emerald green (Brawl Stars Gem Grab gem), Large: golden star gem
+    const color = value > 30 ? 0xf59e0b : value > 15 ? 0x10b981 : 0x06b6d4;
+    const innerColor = value > 30 ? 0xfef08a : value > 15 ? 0xa7f3d0 : 0xa5f3fc;
+    const baseScale = value > 30 ? 0.28 : value > 15 ? 0.22 : 0.16;
     this.initialScale = baseScale;
 
     // Main faceted gem
-    const gem = addMesh(this.group, resources.octa(`xp-gem-${color}`), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.2 }));
-    gem.scale.set(baseScale * 0.9, baseScale * 1.4, baseScale * 0.9);
-    gem.position.y = 0.2;
+    const gem = addMesh(this.group, resources.octa(`xp-gem-${color}`), resources.standardMaterial(`xp-${color}`, color, { emissive: color, emissiveIntensity: 1.8, roughness: 0.15, metalness: 0.2 }));
+    gem.scale.set(baseScale * 0.9, baseScale * 1.35, baseScale * 0.9);
+    gem.position.y = 0.22;
+    gem.castShadow = true;
 
     // Glowing core shard
-    const core = addMesh(this.group, resources.octa(`xp-core-${color}`), resources.basicMaterial(`xp-core-${innerColor}`, innerColor, { transparent: true, opacity: 0.85 }));
-    core.scale.set(baseScale * 0.45, baseScale * 0.8, baseScale * 0.45);
-    core.position.y = 0.2;
+    const core = addMesh(this.group, resources.octa(`xp-core-${color}`), resources.basicMaterial(`xp-core-${innerColor}`, innerColor, { transparent: true, opacity: 0.9 }));
+    core.scale.set(baseScale * 0.45, baseScale * 0.75, baseScale * 0.45);
+    core.position.y = 0.22;
 
     // Subtle floating halo ring for medium & large crystals
     if (value > 15) {
-      const halo = addMesh(this.group, resources.torus(`xp-halo-${color}`), resources.basicMaterial(`xp-halo-mat-${color}`, color, { transparent: true, opacity: 0.6 }));
-      halo.scale.setScalar(baseScale * 1.25);
-      halo.position.y = 0.2;
+      const halo = addMesh(this.group, resources.torus(`xp-halo-${color}`), resources.basicMaterial(`xp-halo-mat-${color}`, color, { transparent: true, opacity: 0.65 }));
+      halo.scale.setScalar(baseScale * 1.3);
+      halo.position.y = 0.22;
       halo.rotation.x = Math.PI / 2;
     }
 

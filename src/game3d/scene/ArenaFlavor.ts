@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { BiomeTheme } from './BiomeTheme';
 import { ARENA_DEPTH, ARENA_WIDTH } from '../core/coordinates';
-import { SharedResources } from '../core/SharedResources';
+import { SharedResources, addMesh } from '../core/SharedResources';
 
 type VisionPatch = {
   center: THREE.Vector2;
@@ -87,6 +87,8 @@ function createClutter(
     mesh.setMatrixAt(i, dummy.matrix);
   }
   mesh.instanceMatrix.needsUpdate = true;
+  mesh.castShadow = !lowPerformanceMode;
+  mesh.receiveShadow = !lowPerformanceMode;
   parent.add(mesh);
 
   const accentGeometry = worldId === 4 ? resources.box('arena-flavor-ember-stone') : resources.ico(`arena-flavor-accent-${worldId}`);
@@ -98,6 +100,8 @@ function createClutter(
   });
   const accents = new THREE.InstancedMesh(accentGeometry, accentMaterial, secondaryCount);
   accents.name = `arena-biome-accents-${worldId}`;
+  accents.castShadow = !lowPerformanceMode;
+  accents.receiveShadow = !lowPerformanceMode;
   for (let i = 0; i < secondaryCount; i += 1) {
     const x = (rng() - 0.5) * ARENA_WIDTH * 0.9;
     const z = (rng() - 0.5) * ARENA_DEPTH * 0.88;
@@ -161,6 +165,184 @@ function createVisionPatches(
   return patches;
 }
 
+function createGoofyBrawlStarsProps(
+  parent: THREE.Group,
+  resources: SharedResources,
+  worldId: number,
+  rng: () => number,
+  lowPerformanceMode: boolean,
+): void {
+  const goofyGroup = new THREE.Group();
+  goofyGroup.name = 'brawl-stars-goofy-props';
+
+  const mWoodCrate = resources.standardMaterial('brawl-wood-crate', 0xb45309, { roughness: 0.72 });
+  const mYellowX = resources.standardMaterial('brawl-yellow-x', 0xfacc15, { roughness: 0.5, emissive: 0x78350f, emissiveIntensity: 0.25 });
+  const mCactusGreen = resources.standardMaterial('brawl-cactus-green', 0x16a34a, { roughness: 0.65 });
+  const mPinkFlower = resources.basicMaterial('brawl-pink-flower', 0xf43f5e);
+  const mEyeWhite = resources.basicMaterial('brawl-prop-eye-white', 0xffffff);
+  const mEyePupil = resources.basicMaterial('brawl-prop-eye-pupil', 0x09090b);
+  const mMushroomRed = resources.standardMaterial('brawl-mushroom-red', 0xef4444, { roughness: 0.5 });
+  const mMushroomStem = resources.standardMaterial('brawl-mushroom-stem', 0xfef08a, { roughness: 0.8 });
+  const mBushLime = resources.standardMaterial('brawl-bush-lime', 0x22c55e, { roughness: 0.75 });
+  const mStarGold = resources.standardMaterial('brawl-star-gold', 0xfbbf24, { metalness: 0.8, roughness: 0.25, emissive: 0x92400e, emissiveIntensity: 0.4 });
+  const mHazardYellow = resources.standardMaterial('brawl-hazard-yellow', 0xfacc15, { roughness: 0.4 });
+  const mHazardDark = resources.standardMaterial('brawl-hazard-dark', 0x0f172a, { roughness: 0.5 });
+
+  // 1. Chunky Brawl Wooden Crates with Yellow X
+  const crateCount = lowPerformanceMode ? 6 : 12;
+  for (let i = 0; i < crateCount; i += 1) {
+    const angle = (i / crateCount) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+    const dist = ARENA_WIDTH * (0.33 + rng() * 0.12);
+    const cx = Math.cos(angle) * dist;
+    const cz = Math.sin(angle) * (dist * 0.78);
+    const crate = new THREE.Group();
+    crate.position.set(cx, 0.38, cz);
+    crate.rotation.y = rng() * Math.PI * 2;
+
+    const box = addMesh(crate, resources.box('brawl-crate-box'), mWoodCrate);
+    box.scale.set(0.76, 0.76, 0.76);
+
+    // Yellow X straps on front and sides
+    const strapX = addMesh(crate, resources.box('brawl-crate-strap1'), mYellowX);
+    strapX.scale.set(0.12, 0.80, 0.80);
+    strapX.rotation.z = Math.PI / 4;
+
+    const strapY = addMesh(crate, resources.box('brawl-crate-strap2'), mYellowX);
+    strapY.scale.set(0.12, 0.80, 0.80);
+    strapY.rotation.z = -Math.PI / 4;
+
+    goofyGroup.add(crate);
+  }
+
+  // 2. Goofy Bouncy Cacti with Pink Flowers & Googly Eyes
+  const cactusCount = lowPerformanceMode ? 4 : 8;
+  for (let i = 0; i < cactusCount; i += 1) {
+    const angle = ((i + 0.5) / cactusCount) * Math.PI * 2 + (rng() - 0.5) * 0.3;
+    const dist = ARENA_WIDTH * (0.35 + rng() * 0.10);
+    const kx = Math.cos(angle) * dist;
+    const kz = Math.sin(angle) * (dist * 0.80);
+    const cactus = new THREE.Group();
+    cactus.position.set(kx, 0, kz);
+    cactus.rotation.y = (rng() - 0.5) * 0.6;
+
+    const body = addMesh(cactus, resources.cylinder('brawl-cactus-body'), mCactusGreen);
+    body.scale.set(0.44, 1.05, 0.44);
+    body.position.y = 0.52;
+
+    const cap = addMesh(cactus, resources.sphere('brawl-cactus-cap'), mCactusGreen);
+    cap.scale.set(0.44, 0.32, 0.44);
+    cap.position.y = 1.05;
+
+    // Pink flower hat
+    const flower = addMesh(cactus, resources.octa('brawl-cactus-flower'), mPinkFlower);
+    flower.scale.set(0.24, 0.18, 0.24);
+    flower.position.set(0, 1.28, 0);
+
+    // Googly eyes looking around
+    for (const ex of [-0.11, 0.11]) {
+      const eyeW = addMesh(cactus, resources.sphere('brawl-cactus-eye-w'), mEyeWhite);
+      eyeW.scale.set(0.08, 0.08, 0.04);
+      eyeW.position.set(ex, 0.70, 0.22);
+
+      const eyeP = addMesh(cactus, resources.sphere('brawl-cactus-eye-p'), mEyePupil);
+      eyeP.scale.set(0.04, 0.04, 0.04);
+      eyeP.position.set(ex + (ex < 0 ? 0.015 : -0.01), 0.70, 0.24);
+    }
+
+    // Goofy curved arms
+    for (const dir of [-1, 1]) {
+      const armH = addMesh(cactus, resources.cylinder(`brawl-cactus-arm-${dir}`), mCactusGreen);
+      armH.scale.set(0.16, 0.28, 0.16);
+      armH.position.set(dir * 0.28, 0.58, 0);
+      armH.rotation.z = Math.PI / 2;
+
+      const armV = addMesh(cactus, resources.cylinder(`brawl-cactus-arm-v-${dir}`), mCactusGreen);
+      armV.scale.set(0.16, 0.32, 0.16);
+      armV.position.set(dir * 0.40, 0.72, 0);
+    }
+
+    goofyGroup.add(cactus);
+  }
+
+  // 3. Goofy Bouncy Cartoon Mushrooms with Red Polka-Dot Caps
+  const shroomCount = lowPerformanceMode ? 4 : 8;
+  for (let i = 0; i < shroomCount; i += 1) {
+    const angle = rng() * Math.PI * 2;
+    const dist = ARENA_WIDTH * (0.26 + rng() * 0.16);
+    const mx = Math.cos(angle) * dist;
+    const mz = Math.sin(angle) * (dist * 0.76);
+    const shroom = new THREE.Group();
+    shroom.position.set(mx, 0, mz);
+    shroom.rotation.y = rng() * Math.PI * 2;
+
+    const stem = addMesh(shroom, resources.cylinder('brawl-shroom-stem'), mMushroomStem);
+    stem.scale.set(0.20, 0.40, 0.20);
+    stem.position.y = 0.20;
+
+    const redCap = addMesh(shroom, resources.sphere('brawl-shroom-cap'), mMushroomRed);
+    redCap.scale.set(0.52, 0.30, 0.52);
+    redCap.position.y = 0.44;
+
+    for (const [px, py, pz] of [[0, 0.58, 0], [0.20, 0.48, 0.12], [-0.18, 0.48, 0.12], [0, 0.48, -0.22]]) {
+      const dot = addMesh(shroom, resources.sphere('brawl-shroom-dot'), mEyeWhite);
+      dot.scale.setScalar(0.08);
+      dot.position.set(px, py, pz);
+    }
+
+    goofyGroup.add(shroom);
+  }
+
+  // 4. Goofy Bouncy Bushes with Flower Blossoms
+  const bushCount = lowPerformanceMode ? 5 : 10;
+  for (let i = 0; i < bushCount; i += 1) {
+    const angle = (i / bushCount) * Math.PI * 2 + (rng() - 0.5) * 0.25;
+    const dist = ARENA_WIDTH * (0.31 + rng() * 0.12);
+    const bx = Math.cos(angle) * dist;
+    const bz = Math.sin(angle) * (dist * 0.78);
+    const bush = new THREE.Group();
+    bush.position.set(bx, 0, bz);
+
+    for (let c = 0; c < 3; c += 1) {
+      const clump = addMesh(bush, resources.sphere(`brawl-bush-clump-${c}`), mBushLime);
+      clump.scale.set(0.44 + rng() * 0.18, 0.38 + rng() * 0.14, 0.44 + rng() * 0.18);
+      clump.position.set((c - 1) * 0.26, 0.28 + c * 0.05, (rng() - 0.5) * 0.18);
+    }
+
+    const flowerBud = addMesh(bush, resources.octa('brawl-bush-flower'), mStarGold);
+    flowerBud.scale.setScalar(0.11);
+    flowerBud.position.set(0, 0.52, 0.14);
+
+    goofyGroup.add(bush);
+  }
+
+  // 5. Brawl Stars Tournament Hazard Bumper Posts
+  const postCount = 8;
+  for (let p = 0; p < postCount; p += 1) {
+    const angle = (p / postCount) * Math.PI * 2;
+    const postX = Math.cos(angle) * (ARENA_WIDTH * 0.48);
+    const postZ = Math.sin(angle) * (ARENA_DEPTH * 0.48);
+    const post = new THREE.Group();
+    post.position.set(postX, 0, postZ);
+
+    const pillar = addMesh(post, resources.cylinder(`brawl-post-pillar-${p}`), mHazardDark);
+    pillar.scale.set(0.24, 1.2, 0.24);
+    pillar.position.y = 0.6;
+
+    const stripe = addMesh(post, resources.torus(`brawl-post-stripe-${p}`), mHazardYellow);
+    stripe.scale.set(0.26, 0.26, 0.14);
+    stripe.position.set(0, 0.6, 0);
+    stripe.rotation.x = Math.PI / 2;
+
+    const starTop = addMesh(post, resources.octa(`brawl-post-star-${p}`), mStarGold);
+    starTop.scale.setScalar(0.22);
+    starTop.position.set(0, 1.35, 0);
+
+    goofyGroup.add(post);
+  }
+
+  parent.add(goofyGroup);
+}
+
 export function createArenaFlavor(
   parent: THREE.Group,
   resources: SharedResources,
@@ -170,6 +352,7 @@ export function createArenaFlavor(
   lowPerformanceMode: boolean,
 ): ArenaFlavorController {
   createClutter(parent, resources, theme, worldId, rng, lowPerformanceMode);
+  createGoofyBrawlStarsProps(parent, resources, worldId, rng, lowPerformanceMode);
   const patches = createVisionPatches(parent, theme, worldId, rng, lowPerformanceMode);
   let phase = 0;
 

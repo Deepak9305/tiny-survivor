@@ -233,6 +233,18 @@ export interface GameSnapshot {
     maxHp: number;
     phase: number;
   };
+  dashCooldownRatio?: number;
+  isDashing?: boolean;
+  gems?: number;
+  comboStreak?: number;
+  bloodMoonActive?: boolean;
+  rerollsRemaining?: number;
+}
+
+export interface ChestReward {
+  upgrades: UpgradeChoice[];
+  coins: number;
+  gems: number;
 }
 
 export interface UpgradeChoice {
@@ -254,6 +266,7 @@ export interface RunResult {
   eliteKills: number;
   bossKills: number;
   coins: number;
+  gems?: number;
   xpCollected: number;
   highestLevel: number;
   mode?: RunMode;

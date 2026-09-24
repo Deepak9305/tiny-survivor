@@ -6,7 +6,7 @@ import { registerAppLifecycle } from './services/nativeService';
 import { DEFAULT_SAVE, loadSave, normalizeSave, resetSave, saveGame } from './services/saveService';
 import { getPermanentUpgradeCost } from './data/balance';
 import { getCurrentStage, getNextCampaignStageId, getStage, getTotalCampaignStageCount, isStageUnlocked, isWorldCleared, stageNumber } from './data/stages';
-import { getBossFirstClearEquipment } from './data/equipment';
+import { ALL_EQUIPMENT_IDS, getBossFirstClearEquipment } from './data/equipment';
 import { getHeroDefinition } from './data/heroes';
 import { HomeScreen } from './screens/HomeScreen';
 import { SplashScreen } from './screens/SplashScreen';
@@ -169,7 +169,7 @@ export default function App() {
     const nextSave = normalizeSave({
       ...codex,
       coins: save.coins + result.coins,
-      gems: save.gems + (firstClear ? stage.firstClearReward : 0),
+      gems: save.gems + (result.gems ?? 0) + (firstClear ? stage.firstClearReward : 0),
       highestUnlockedStage: Math.max(save.highestUnlockedStage, next),
       completedStages,
       unlockedAbilities,
@@ -198,6 +198,7 @@ export default function App() {
     const nextSave = normalizeSave({
       ...mergeCodexProgress(save, finalResult),
       coins: save.coins + finalResult.coins,
+      gems: save.gems + (finalResult.gems ?? 0),
       totalRuns: save.totalRuns + 1,
       totalDeaths: save.totalDeaths + 1,
       totalKills: save.totalKills + finalResult.kills,
@@ -211,11 +212,19 @@ export default function App() {
     setLastResult(finalResult);
   }, [runMode, save]);
 
-  const handleUpgrade = useCallback((id: string) => {
+  const handleUpgrade = useCallback((id: string, useGems = false) => {
     const level = save.permanentUpgrades[id] ?? 0;
-    const cost = getPermanentUpgradeCost(id, level);
-    if (level >= 5 || save.coins < cost) return;
-    persist({ ...save, coins: save.coins - cost, permanentUpgrades: { ...save.permanentUpgrades, [id]: level + 1 } });
+    if (level >= 5) return;
+    const coinCost = getPermanentUpgradeCost(id, level);
+    const gemCost = Math.max(4, Math.round(coinCost / 40));
+
+    if (useGems) {
+      if (save.gems < gemCost) return;
+      persist({ ...save, gems: save.gems - gemCost, permanentUpgrades: { ...save.permanentUpgrades, [id]: level + 1 } });
+    } else {
+      if (save.coins < coinCost) return;
+      persist({ ...save, coins: save.coins - coinCost, permanentUpgrades: { ...save.permanentUpgrades, [id]: level + 1 } });
+    }
   }, [persist, save]);
 
   const handleHeroSelect = useCallback((id: HeroId | string) => {
@@ -248,14 +257,59 @@ export default function App() {
     persist({ ...save, heroLoadouts: currentLoadouts });
   }, [persist, save]);
 
-  const handleBuyHero = useCallback((heroId: HeroId, cost: number) => {
-    if (save.coins < cost || save.heroesUnlocked.includes(heroId)) return;
-    persist({ ...save, coins: save.coins - cost, heroesUnlocked: [...save.heroesUnlocked, heroId] });
+  const handleBuyHero = useCallback((heroId: HeroId, cost: number, currency: 'coins' | 'gems' = 'coins') => {
+    if (save.heroesUnlocked.includes(heroId)) return;
+    if (currency === 'gems') {
+      if (save.gems < cost) return;
+      persist({ ...save, gems: save.gems - cost, heroesUnlocked: [...save.heroesUnlocked, heroId] });
+    } else {
+      if (save.coins < cost) return;
+      persist({ ...save, coins: save.coins - cost, heroesUnlocked: [...save.heroesUnlocked, heroId] });
+    }
   }, [persist, save]);
 
-  const handleBuyEquipment = useCallback((equipmentId: EquipmentId, cost: number) => {
-    if (save.coins < cost || save.ownedEquipment.includes(equipmentId)) return;
-    persist({ ...save, coins: save.coins - cost, ownedEquipment: [...save.ownedEquipment, equipmentId] });
+  const handleBuyEquipment = useCallback((equipmentId: EquipmentId, cost: number, currency: 'coins' | 'gems' = 'coins') => {
+    if (save.ownedEquipment.includes(equipmentId)) return;
+    if (currency === 'gems') {
+      if (save.gems < cost) return;
+      persist({ ...save, gems: save.gems - cost, ownedEquipment: [...save.ownedEquipment, equipmentId] });
+    } else {
+      if (save.coins < cost) return;
+      persist({ ...save, coins: save.coins - cost, ownedEquipment: [...save.ownedEquipment, equipmentId] });
+    }
+  }, [persist, save]);
+
+  const handleOpenGemChest = useCallback((cost = 15): { rewardItem?: EquipmentId; bonusCoins: number } | false => {
+    if (save.gems < cost) return false;
+    const unowned = ALL_EQUIPMENT_IDS.filter((id) => !save.ownedEquipment.includes(id));
+    let rewardItem: EquipmentId | undefined = undefined;
+    let bonusCoins = 400;
+    let newOwnedEquipment = save.ownedEquipment;
+
+    if (unowned.length > 0) {
+      rewardItem = unowned[Math.floor(Math.random() * unowned.length)];
+      newOwnedEquipment = [...save.ownedEquipment, rewardItem];
+    } else {
+      bonusCoins = 1200;
+    }
+
+    persist({
+      ...save,
+      gems: save.gems - cost,
+      coins: save.coins + bonusCoins,
+      ownedEquipment: newOwnedEquipment,
+    });
+    return { rewardItem, bonusCoins };
+  }, [persist, save]);
+
+  const handleConvertGems = useCallback((gemCost = 10, coinsReward = 650): boolean => {
+    if (save.gems < gemCost) return false;
+    persist({
+      ...save,
+      gems: save.gems - gemCost,
+      coins: save.coins + coinsReward,
+    });
+    return true;
   }, [persist, save]);
 
   const handleMissionClaim = useCallback((id: string) => {
@@ -312,7 +366,17 @@ export default function App() {
       view = <MissionsScreen save={save} onBack={sharedBack} onClaim={handleMissionClaim} />;
       break;
     case 'shop':
-      view = <ShopScreen save={save} onBack={sharedBack} onFreeChest={handleFreeChest} onBuyHero={handleBuyHero} onBuyEquipment={handleBuyEquipment} />;
+      view = (
+        <ShopScreen
+          save={save}
+          onBack={sharedBack}
+          onFreeChest={handleFreeChest}
+          onOpenGemChest={handleOpenGemChest}
+          onConvertGems={handleConvertGems}
+          onBuyHero={handleBuyHero}
+          onBuyEquipment={handleBuyEquipment}
+        />
+      );
       break;
     case 'settings':
       view = <SettingsScreen save={save} onBack={sharedBack} onUpdate={handleSettings} onReset={() => { void resetSave().then((fresh) => { setSave(fresh); setScreen('home'); }); }} />;
@@ -359,13 +423,15 @@ export default function App() {
 
   return (
     <>
-      <div className="rotate-device-overlay" role="dialog" aria-modal="true" aria-label="Rotate device to landscape">
-        <div className="rotate-device-card">
-          <div className="rotate-device-icon-box"><Smartphone size={38} className="rotate-device-phone" /></div>
-          <h2>ROTATE TO PLAY</h2>
-          <p>Tiny Survivor is designed for landscape combat. Please turn your device sideways.</p>
+      {screen === 'game' && (
+        <div className="rotate-device-overlay" role="dialog" aria-modal="true" aria-label="Rotate device to landscape">
+          <div className="rotate-device-card">
+            <div className="rotate-device-icon-box"><Smartphone size={38} className="rotate-device-phone" /></div>
+            <h2>ROTATE TO PLAY</h2>
+            <p>Tiny Survivor is designed for landscape combat. Please turn your device sideways.</p>
+          </div>
         </div>
-      </div>
+      )}
       <Suspense fallback={<RouteLoadingFallback />}>
         <ScreenTransition screen={`${screen}-${runKey}`}>{view}</ScreenTransition>
       </Suspense>

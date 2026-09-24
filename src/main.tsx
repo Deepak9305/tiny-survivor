@@ -14,6 +14,9 @@ import './styles/anti-slop.css';
 import './styles/combat-depth-overhaul.css';
 import './styles/home-studio-redesign.css';
 import './styles/three-model-restoration.css';
+import './styles/mobile-optimise.css';
+import './styles/all-devices-responsive.css';
+import './styles/brawl-stars-theme.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

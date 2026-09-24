@@ -10,18 +10,26 @@ export type Transform = {
   rotationZ?: number;
 };
 
+function applyShadow(mesh: THREE.Mesh, mat?: THREE.Material): THREE.Mesh {
+  if (mat && !mat.transparent) {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+  }
+  return mesh;
+}
+
 export function createBox(sx: number, sy: number, sz: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
   mesh.position.set(px, py, pz);
   mesh.rotation.set(rx, ry, rz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function createCylinder(rt: number, rb: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, s), mat);
   mesh.position.set(px, py, pz);
   mesh.rotation.set(rx, ry, rz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function createSphere(
@@ -37,34 +45,34 @@ export function createSphere(
     const mat = matOrPx as THREE.Material;
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, s, s), mat);
     mesh.position.set(pxOrPy, pyOrPz, pz);
-    return mesh;
+    return applyShadow(mesh, mat);
   }
   const mat = sOrMat as THREE.Material;
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 8), mat);
   const px = typeof matOrPx === 'number' ? matOrPx : 0;
   mesh.position.set(px, pxOrPy, pyOrPz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function createOcta(r: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(r), mat);
   mesh.position.set(px, py, pz);
   mesh.rotation.set(rx, ry, rz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function createCone(r: number, h: number, s: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.ConeGeometry(r, h, s), mat);
   mesh.position.set(px, py, pz);
   mesh.rotation.set(rx, ry, rz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function createTorus(r: number, tube: number, radSegs: number, tubSegs: number, mat: THREE.Material, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.TorusGeometry(r, tube, radSegs, tubSegs), mat);
   mesh.position.set(px, py, pz);
   mesh.rotation.set(rx, ry, rz);
-  return mesh;
+  return applyShadow(mesh, mat);
 }
 
 export function placeProp(
@@ -91,6 +99,19 @@ export function placeProp(
     obj.userData.originalOpacity = 1.0;
     if (occluderList) occluderList.push(obj);
   }
+
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const mat = child.material;
+      const isTransparent = Array.isArray(mat)
+        ? mat.some((m) => m.transparent)
+        : Boolean(mat && mat.transparent);
+      if (!isTransparent) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    }
+  });
 
   parent.add(obj);
   return obj;

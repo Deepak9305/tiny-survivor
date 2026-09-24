@@ -1,0 +1,909 @@
+/*
+ * mobile-optimise.css  v2
+ * Tiny Survivor - comprehensive mobile optimisation pass
+ *
+ * KEY DESIGN DECISIONS:
+ * ─────────────────────
+ * 1. The left VirtualStick zone is now a large quadrant (45vw × 55vh).
+ *    The ring floats to wherever the thumb first touches (done in JS).
+ * 2. The right side keeps the fire button + ability fan; the DASH button
+ *    sits above the fire button so the right thumb can hit it easily.
+ * 3. Virtual stick CSS is updated to match the new DOM structure where
+ *    .virtual-stick__ring is a child of the zone (not the outer stick div).
+ * 4. Backdrop-filter is removed from gameplay elements to save GPU time.
+ * 5. Touch targets meet the 44px Apple / Google minimum everywhere.
+ */
+
+/* =========================================================================
+   ROOT VARIABLES — extend the existing :root definitions
+   ========================================================================= */
+
+:root {
+  --aim-stick-size: 140px;
+  --aim-stick-right: max(18px, env(safe-area-inset-right));
+  --aim-stick-bottom: max(18px, env(safe-area-inset-bottom));
+  --move-stick-left: max(18px, env(safe-area-inset-left));
+  --move-stick-bottom: max(18px, env(safe-area-inset-bottom));
+}
+/* =========================================================================
+   1. FLOATING VIRTUAL STICK — zone + knob reconciliation
+   The new JS makes the ring float inside a LARGE zone (not a small 140px box).
+   We need to:
+   a) Override the base .twin-stick-zone--left size to fill the quadrant.
+   b) Override .virtual-stick to fill its parent.
+   c) Keep .virtual-stick__ring as the floating element (positioned by JS).
+   d) Knob lives inside the ring, offset from center by JS transform.
+   ========================================================================= */
+
+/* Expand the move zone to fill the bottom-left play area */
+.twin-stick-zone--left {
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 46% !important;
+  height: 58% !important;
+  /* override the flex-center that comes from .twin-stick-zone */
+  align-items: unset;
+  justify-content: unset;
+}
+
+/* Virtual stick fills its parent zone completely */
+.virtual-stick {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+/* Touch area fills zone */
+.virtual-stick__touch-area {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Ring: the floating visual — JS sets its position via transform translate */
+.virtual-stick__ring {
+  position: absolute !important;
+  /* Default: center of the zone until first touch */
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate3d(-50%, -50%, 0) !important;
+  /* Sizing */
+  width: clamp(90px, 23vw, 124px) !important;
+  height: clamp(90px, 23vw, 124px) !important;
+  inset: auto !important;
+  border-radius: 50% !important;
+  border: 2px solid rgba(82, 189, 235, 0.38) !important;
+  background: radial-gradient(circle, rgba(8, 28, 48, 0.55) 0 52%, rgba(3, 12, 22, 0.4) 53% 100%) !important;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.4), inset 0 0 14px rgba(82, 189, 235, 0.08) !important;
+  pointer-events: none !important;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease !important;
+  will-change: transform;
+}
+
+.virtual-stick.is-active .virtual-stick__ring {
+  border-color: rgba(82, 189, 235, 0.72) !important;
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.48), inset 0 0 18px rgba(82, 189, 235, 0.14) !important;
+  opacity: 1;
+}
+
+/* Subtle hint ring at bottom-left when no touch active */
+.virtual-stick:not(.is-active) .virtual-stick__ring {
+  opacity: 0.35;
+}
+
+/* Knob lives inside the ring, always offset from ring center by JS */
+.virtual-stick__knob {
+  position: absolute !important;
+  /* centered in the ring by default; JS adds translate via style.transform */
+  left: 50% !important;
+  top: 50% !important;
+  width: clamp(30px, 7.5vw, 42px) !important;
+  height: clamp(30px, 7.5vw, 42px) !important;
+  border-radius: 50% !important;
+  will-change: transform !important;
+  pointer-events: none !important;
+  /* strip background — knob-center handles visuals */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* The actual visible knob sphere */
+.virtual-stick__knob-center {
+  display: block !important;
+  position: absolute !important;
+  inset: 2px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 36% 30%, rgba(148, 220, 255, 0.96), rgba(24, 108, 168, 0.9) 54%, rgba(8, 34, 60, 0.94)) !important;
+  border: 1.5px solid rgba(180, 235, 255, 0.65) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 12px rgba(82, 216, 255, 0.26) !important;
+  /* Remove the tiny white dot default */
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+}
+
+/* Tick marks inside the ring */
+.virtual-stick__ticks {
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 50% !important;
+  background:
+    linear-gradient(0deg, transparent 48%, rgba(82, 216, 255, 0.22) 48%, rgba(82, 216, 255, 0.22) 52%, transparent 52%),
+    linear-gradient(90deg, transparent 48%, rgba(82, 216, 255, 0.22) 48%, rgba(82, 216, 255, 0.22) 52%, transparent 52%) !important;
+  pointer-events: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+}
+
+/* MOVE label: absolute-position at bottom-center of the zone */
+.twin-stick-zone--left .twin-stick-label {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  opacity: 0.42;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+/* =========================================================================
+   2. DASH BUTTON
+   Lives above the fire button — right thumb can hit it without moving much.
+   ========================================================================= */
+
+.game-dash-btn {
+  position: fixed;
+  z-index: 48;
+  /* Above the fire button zone */
+  right: calc(var(--aim-stick-right, 18px) + var(--aim-stick-size, 140px) * 0.08);
+  bottom: calc(var(--aim-stick-bottom, 18px) + var(--aim-stick-size, 140px) + 12px);
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(24, 80, 130, 0.9), rgba(6, 18, 36, 0.95));
+  color: #d8f4ff;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.09s ease, filter 0.12s ease, box-shadow 0.12s ease;
+  will-change: transform;
+  /* Default shadow */
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 2px rgba(56, 189, 248, 0.38),
+    inset 0 0 12px rgba(56, 189, 248, 0.08);
+}
+
+.game-dash-btn__arc {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  pointer-events: none;
+}
+
+.game-dash-btn__icon {
+  font-size: 22px;
+  line-height: 1;
+  display: block;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.65));
+}
+
+.game-dash-btn__label {
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(150, 210, 240, 0.62);
+  font: 800 8px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Ready */
+.game-dash-btn.is-ready {
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.52),
+    inset 0 0 0 2px rgba(56, 189, 248, 0.7),
+    inset 0 0 16px rgba(56, 189, 248, 0.14),
+    0 0 16px rgba(56, 189, 248, 0.2);
+}
+
+/* Cooldown */
+.game-dash-btn.is-cooldown {
+  filter: saturate(0.38) brightness(0.65);
+}
+
+/* Dashing */
+.game-dash-btn.is-dashing {
+  transform: scale(0.90);
+  filter: brightness(1.28);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.55),
+    0 0 22px rgba(56, 189, 248, 0.5);
+}
+
+.game-dash-btn:active:not(:disabled) {
+  transform: scale(0.90);
+  filter: brightness(1.14);
+}
+
+/* =========================================================================
+   3. TOUCH TARGET MINIMUMS (44 × 44 px everywhere)
+   ========================================================================= */
+
+.game-pause {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Ability buttons: strip backdrop-filter to save GPU, keep 44px */
+.ability-btn {
+  min-width: 44px;
+  min-height: 44px;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Auto-fire chip */
+.auto-fire-chip {
+  min-height: 36px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* =========================================================================
+   4. GPU SAVINGS — strip backdrop-filter from ALL gameplay HUD elements
+   These are composited on top of a WebGL canvas; blur is very expensive.
+   ========================================================================= */
+
+.game-screen .auto-fire-chip,
+.game-screen .ability-btn,
+.game-screen .game-pause {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* =========================================================================
+   5. SAFE-AREA INSETS (notch, dynamic island, home bar)
+   ========================================================================= */
+
+@media (orientation: landscape) {
+  .game-topbar {
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  .twin-stick-zone--left {
+    left: max(0px, env(safe-area-inset-left)) !important;
+  }
+}
+
+/* =========================================================================
+   6. COMPACT LANDSCAPE PHONES (max-height: 520px)
+   Override compact-landscape.css variables for the left zone and dash btn.
+   ========================================================================= */
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .twin-stick-zone--left {
+    height: 100% !important;
+    width: 44% !important;
+  }
+
+  .virtual-stick__ring {
+    width: clamp(78px, 19vw, 106px) !important;
+    height: clamp(78px, 19vw, 106px) !important;
+  }
+
+  .virtual-stick__knob {
+    width: clamp(26px, 6.5vw, 38px) !important;
+    height: clamp(26px, 6.5vw, 38px) !important;
+  }
+
+  .game-dash-btn {
+    right: calc(var(--aim-stick-right, 10px) + var(--aim-stick-size, 124px) * 0.06);
+    bottom: calc(var(--aim-stick-bottom, 8px) + var(--aim-stick-size, 124px) + 10px);
+    width: 46px;
+    height: 46px;
+  }
+
+  .game-dash-btn__label {
+    display: none;
+  }
+
+  .game-dash-btn__icon {
+    font-size: 19px;
+  }
+}
+
+/* Very short phones */
+@media (orientation: landscape) and (max-height: 400px) {
+  .game-dash-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .game-dash-btn__icon {
+    font-size: 17px;
+  }
+}
+
+/* =========================================================================
+   7. SMALL-WIDTH PHONES (≤ 380px)
+   ========================================================================= */
+
+@media (max-width: 380px) {
+  .game-topbar {
+    padding: max(6px, env(safe-area-inset-top)) 8px 0;
+    gap: 4px;
+  }
+  .game-stage-time { font-size: 16px; }
+  .game-health__track { height: 18px; }
+  .game-pause { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .game-dash-btn { width: 46px; height: 46px; }
+}
+
+/* =========================================================================
+   8. PORTRAIT SAFETY
+   ========================================================================= */
+
+@media (orientation: portrait) {
+  .rotate-device-overlay {
+    display: flex !important;
+  }
+  .rotate-device-card h2 {
+    font-size: clamp(18px, 6vw, 26px);
+  }
+}
+
+/* =========================================================================
+   9. WAVE + KILL CALLOUTS — clear the topbar
+   ========================================================================= */
+
+.game-wave-callout {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 25;
+}
+
+/* =========================================================================
+   10. CANVAS — always block-level to prevent subpixel gaps
+   ========================================================================= */
+
+.three-root canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* =========================================================================
+   11. REDUCED MOTION
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .virtual-stick__ring,
+  .game-dash-btn,
+  .game-dash-btn__arc {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* =========================================================================
+   12. DYNAMIC GAMEPLAY: DIAMONDS, COMBOS & BLOOD MOON
+   ========================================================================= */
+
+.game-diamonds {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(8, 28, 48, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 999px;
+  padding: 4px 11px;
+  color: #38bdf8;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.25);
+  animation: diamondPop 0.3s ease-out;
+}
+
+.game-diamonds__icon {
+  color: #38bdf8;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.75));
+  animation: gemSpin 3s linear infinite;
+}
+
+.game-diamonds__text {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.game-diamonds__label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.game-diamonds__num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+@keyframes diamondPop {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gemSpin {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.game-combo-callout {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(251, 191, 36, 0.8);
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.92) 0%, rgba(220, 38, 38, 0.95) 100%);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), 0 4px 14px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  z-index: 35;
+  animation: comboPop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.game-combo-callout__count {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px rgba(254, 240, 138, 0.7);
+  letter-spacing: 0.5px;
+}
+
+.game-combo-callout__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #fef08a;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes comboPop {
+  0% { transform: translateX(-50%) scale(0.55); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.game-screen--blood-moon {
+  box-shadow: inset 0 0 70px rgba(220, 38, 38, 0.45) !important;
+  animation: bloodMoonVignette 2.4s ease-in-out infinite alternate !important;
+}
+
+@keyframes bloodMoonVignette {
+  0% { box-shadow: inset 0 0 50px rgba(185, 28, 28, 0.35); }
+  100% { box-shadow: inset 0 0 95px rgba(239, 68, 68, 0.6); }
+}
+
+/* =========================================================================
+   13. LEVEL-UP TACTICAL ACTIONS: REROLL & SKIP
+   ========================================================================= */
+
+.level-up-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+
+.level-up-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.level-up-action-btn:active {
+  transform: scale(0.96);
+}
+
+.level-up-action-btn--reroll {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.9), rgba(67, 56, 202, 0.9));
+  color: #c7d2fe;
+  border-color: rgba(129, 140, 248, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.level-up-action-btn--reroll:not(.is-disabled):hover {
+  background: linear-gradient(135deg, rgba(49, 46, 129, 0.95), rgba(79, 70, 229, 0.95));
+  color: #ffffff;
+  border-color: rgba(165, 180, 252, 0.8);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 16px rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+.level-up-action-btn--reroll.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.level-up-action-btn--skip {
+  background: linear-gradient(135deg, rgba(6, 44, 28, 0.9), rgba(16, 110, 68, 0.9));
+  color: #a7f3d0;
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.level-up-action-btn--skip:hover {
+  background: linear-gradient(135deg, rgba(6, 60, 38, 0.95), rgba(5, 150, 105, 0.95));
+  color: #ffffff;
+  border-color: rgba(110, 231, 183, 0.8);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 16px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.level-up-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.level-up-badge--reward {
+  background: rgba(16, 185, 129, 0.3);
+  color: #d1fae5;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.level-up-key-hint {
+  font-family: inherit;
+  font-size: 10px;
+  opacity: 0.65;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* =========================================================================
+   14. IN-RUN TREASURE CHEST OPENING CEREMONY MODAL
+   ========================================================================= */
+
+.chest-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: chestModalFadeIn 0.3s ease-out;
+}
+
+.chest-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(30, 20, 5, 0.85) 0%, rgba(5, 5, 8, 0.95) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.chest-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(165deg, rgba(28, 20, 10, 0.96) 0%, rgba(12, 16, 26, 0.98) 100%);
+  border: 2px solid rgba(251, 191, 36, 0.7);
+  border-radius: 20px;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.45), 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  padding: 24px 20px 20px;
+  text-align: center;
+  overflow: hidden;
+  animation: chestCardPop 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chest-modal-rays {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  width: 240px;
+  height: 240px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+  animation: rayPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes rayPulse {
+  0% { transform: translateX(-50%) scale(0.9); opacity: 0.6; }
+  100% { transform: translateX(-50%) scale(1.25); opacity: 1; }
+}
+
+.chest-modal-header {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 16px;
+}
+
+.chest-modal-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fef08a, #f59e0b 60%, #b45309 100%);
+  color: #78350f;
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.8), 0 4px 12px rgba(0, 0, 0, 0.6);
+  margin-bottom: 8px;
+  animation: chestBadgeBounce 0.5s ease-out;
+}
+
+.chest-modal-badge__icon {
+  animation: gemSpin 4s linear infinite;
+}
+
+.chest-modal-eyebrow {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #fde047;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.chest-modal-title {
+  margin: 0 0 4px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 18px rgba(251, 191, 36, 0.7);
+}
+
+.chest-modal-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.chest-upgrades-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.chest-reward-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  text-align: left;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.chest-reward-card__icon-box {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 35% 30%, #38bdf8, #0284c7 70%, #0369a1);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.chest-reward-card__details {
+  flex: 1;
+  min-width: 0;
+}
+
+.chest-reward-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.chest-rarity-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.25);
+  color: #fde047;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+.chest-reward-card__name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chest-reward-card__tier {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.chest-reward-card__effect {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: #e2e8f0;
+  line-height: 1.25;
+}
+
+.chest-currency-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 2;
+}
+
+.chest-currency-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.chest-currency-pill--gold {
+  background: rgba(69, 41, 13, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  color: #fef08a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.chest-currency-pill--gem {
+  background: rgba(8, 38, 64, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  color: #7dd3fc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.chest-modal-footer {
+  position: relative;
+  z-index: 2;
+}
+
+.chest-claim-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+  color: #ffffff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.6), 0 4px 20px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chest-claim-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.8), 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+.chest-claim-btn:active {
+  transform: scale(0.98);
+}
+
+.chest-key-hint {
+  font-size: 12px;
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+@keyframes chestModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes chestCardPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes chestBadgeBounce {
+  0% { transform: scale(0.3); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
